@@ -83,19 +83,19 @@ export default function AutopilotPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['admin-autopilot'],
     queryFn: async () => {
-      try { const r = await getAutopilot(); return r.data; }
+      try { const r = await adminApi.get('/admin/autopilot'); return r.data; }
       catch { return { settings: MOCK_SETTINGS, queue: MOCK_QUEUE, stats: MOCK_STATS }; }
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: (d: Record<string, unknown>) => updateAutopilotSettings(d),
+    mutationFn: (d: Record<string, unknown>) => adminApi.put('/admin/autopilot/settings', d),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-autopilot'] }); toast('Ayarlar kaydedildi', 'success'); setEditMode(false); },
     onError: () => toast('Güncelleme başarısız', 'error'),
   });
 
   const runMutation = useMutation({
-    mutationFn: () => runAutopilot(),
+    mutationFn: () => adminApi.post('/admin/autopilot/run'),
     onSuccess: () => toast('Autopilot çalıştırıldı', 'success'),
     onError: () => toast('Çalıştırma başarısız', 'error'),
   });
