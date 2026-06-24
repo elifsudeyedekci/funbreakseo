@@ -75,20 +75,20 @@ export default function CostControlPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['admin-cost-control'],
     queryFn: async () => {
-      try { const r = await getCostControl(); return r.data; }
+      try { const r = await adminApi.get('/admin/cost-control'); return r.data; }
       catch { return { items: MOCK_COSTS, killSwitch: MOCK_KILL_SWITCH }; }
     },
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, limit, behavior }: { id: string; limit: number; behavior: string }) =>
-      updateCostLimit(id, { limit, behavior }),
+      adminApi.patch(`/admin/cost-control/${id}`, { limit, behavior }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-cost-control'] }); toast('Limit güncellendi', 'success'); },
     onError: () => toast('Güncelleme başarısız', 'error'),
   });
 
   const killSwitchMutation = useMutation({
-    mutationFn: (d: Record<string, unknown>) => updateGlobalKillSwitch(d),
+    mutationFn: (d: Record<string, unknown>) => adminApi.put('/admin/cost-control/kill-switch', d),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-cost-control'] }); toast('Kill-switch güncellendi', 'success'); },
   });
 

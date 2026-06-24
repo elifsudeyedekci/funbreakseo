@@ -52,14 +52,14 @@ export default function InvoicesPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['admin-invoices'],
     queryFn: async () => {
-      try { const r = await getInvoices({ limit: 100 }); return r.data?.data ?? MOCK_INVOICES; }
+      try { const r = await adminApi.get('/admin/invoices', { params: { limit: 100 } }); return r.data?.data ?? MOCK_INVOICES; }
       catch { return MOCK_INVOICES; }
     },
   });
 
   const refundMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: { amount: number; type: 'full' | 'partial' } }) =>
-      refundInvoice(id, data),
+      adminApi.post(`/admin/invoices/${id}/refund`, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-invoices'] });
       toast('İade işlemi başlatıldı', 'success');

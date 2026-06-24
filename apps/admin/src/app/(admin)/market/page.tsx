@@ -6,11 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { type ColumnDef } from '@tanstack/react-table';
-import {
-  getPublisherOffers, approveOffer, rejectOffer,
-  getMarketListings, updateListingPrice,
-  getBacklinkOrders, resolveDispute,
-} from '@/lib/api';
+import { adminApi } from '@/lib/api';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
 import { DataTable } from '@/components/DataTable';
 import { Badge } from '@/components/ui/Badge';
@@ -59,17 +55,17 @@ export default function MarketPage() {
 
   const { data: offers = MOCK_OFFERS, isLoading: offersLoading } = useQuery({
     queryKey: ['admin-offers'],
-    queryFn: async () => { try { const r = await getPublisherOffers(); return r.data?.data ?? MOCK_OFFERS; } catch { return MOCK_OFFERS; } },
+    queryFn: async () => { try { const r = await adminApi.get('/admin/market/offers'); return r.data?.data ?? MOCK_OFFERS; } catch { return MOCK_OFFERS; } },
   });
 
   const { data: listings = MOCK_LISTINGS } = useQuery({
     queryKey: ['admin-listings'],
-    queryFn: async () => { try { const r = await getMarketListings(); return r.data?.data ?? MOCK_LISTINGS; } catch { return MOCK_LISTINGS; } },
+    queryFn: async () => { try { const r = await adminApi.get('/admin/market/listings'); return r.data?.data ?? MOCK_LISTINGS; } catch { return MOCK_LISTINGS; } },
   });
 
   const { data: orders = MOCK_ORDERS } = useQuery({
     queryKey: ['admin-orders'],
-    queryFn: async () => { try { const r = await getBacklinkOrders(); return r.data?.data ?? MOCK_ORDERS; } catch { return MOCK_ORDERS; } },
+    queryFn: async () => { try { const r = await adminApi.get('/admin/market/orders'); return r.data?.data ?? MOCK_ORDERS; } catch { return MOCK_ORDERS; } },
   });
 
   // State for approve modal
@@ -77,13 +73,13 @@ export default function MarketPage() {
   const { register, handleSubmit, formState: { errors }, reset } = useForm({ resolver: zodResolver(ApproveOfferSchema) });
 
   const approveMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: { salePrice: number; adminNote?: string } }) => approveOffer(id, data),
+    mutationFn: ({ id, data }: { id: string; data: { salePrice: number; adminNote?: string } }) => adminApi.post(`/admin/market/offers/${id}/approve`, data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-offers'] }); toast('Teklif onaylandı, ilan oluşturuldu', 'success'); setApproveOffer(null); reset(); },
     onError: () => toast('İşlem başarısız', 'error'),
   });
 
   const rejectMutation = useMutation({
-    mutationFn: ({ id }: { id: string }) => rejectOffer(id, ''),
+    mutationFn: ({ id }: { id: string }) => adminApi.post(`/admin/market/offers/${id}/reject`),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-offers'] }); toast('Teklif reddedildi', 'warning'); },
     onError: () => toast('İşlem başarısız', 'error'),
   });

@@ -22,18 +22,7 @@ import {
   Settings,
   CreditCard,
 } from 'lucide-react';
-import {
-  suspendCustomer,
-  activateCustomer,
-  cancelSubscription,
-  changePlan,
-  refundCustomer,
-  addCredit,
-  overrideQuota,
-  setDigestFrequency,
-  impersonateCustomer,
-  sendCustomerEmail,
-} from '@/lib/api';
+import { adminApi } from '@/lib/api';
 import { useQueryClient } from '@tanstack/react-query';
 
 interface CustomerActionBarProps {
@@ -106,7 +95,7 @@ export function CustomerActionBar({ customerId, status, onRefresh }: CustomerAct
           size="sm"
           variant="outline"
           icon={<LogIn className="w-3.5 h-3.5" />}
-          onClick={() => run(() => impersonateCustomer(customerId), 'Müşteri oturumu açıldı (audit kaydedildi)')}
+          onClick={() => run(() => adminApi.post(`/admin/customers/${customerId}/impersonate`), 'Müşteri oturumu açıldı (audit kaydedildi)')}
           loading={loading && modal === null}
         >
           Adına Giriş
@@ -117,7 +106,7 @@ export function CustomerActionBar({ customerId, status, onRefresh }: CustomerAct
       <ActionModal
         open={modal === 'suspend'}
         onClose={close}
-        onConfirm={() => run(() => suspendCustomer(customerId), 'Müşteri askıya alındı.')}
+        onConfirm={() => run(() => adminApi.post(`/admin/customers/${customerId}/suspend`), 'Müşteri askıya alındı.')}
         title="Müşteriyi Askıya Al"
         description="Bu müşteriyi askıya almak istediğinize emin misiniz? Müşteri platforma erişemeyecek."
         confirmLabel="Askıya Al"
@@ -129,7 +118,7 @@ export function CustomerActionBar({ customerId, status, onRefresh }: CustomerAct
       <ActionModal
         open={modal === 'activate'}
         onClose={close}
-        onConfirm={() => run(() => activateCustomer(customerId), 'Müşteri aktifleştirildi.')}
+        onConfirm={() => run(() => adminApi.post(`/admin/customers/${customerId}/activate`), 'Müşteri aktifleştirildi.')}
         title="Müşteriyi Aktifleştir"
         description="Bu müşteriyi yeniden aktifleştirmek istiyor musunuz?"
         confirmLabel="Aktifleştir"
@@ -141,7 +130,7 @@ export function CustomerActionBar({ customerId, status, onRefresh }: CustomerAct
       <CancelModal
         open={modal === 'cancel'}
         onClose={close}
-        onConfirm={(immediate) => run(() => cancelSubscription(customerId, immediate), 'Abonelik iptal edildi.')}
+        onConfirm={(immediate) => run(() => adminApi.post(`/admin/customers/${customerId}/cancel-subscription`, { immediate }), 'Abonelik iptal edildi.')}
         loading={loading}
       />
 
@@ -149,7 +138,7 @@ export function CustomerActionBar({ customerId, status, onRefresh }: CustomerAct
       <PlanChangeModal
         open={modal === 'plan'}
         onClose={close}
-        onConfirm={(d) => run(() => changePlan(customerId, d), 'Plan değiştirildi.')}
+        onConfirm={(d) => run(() => adminApi.post(`/admin/customers/${customerId}/change-plan`, d), 'Plan değiştirildi.')}
         loading={loading}
       />
 
@@ -157,7 +146,7 @@ export function CustomerActionBar({ customerId, status, onRefresh }: CustomerAct
       <RefundModal
         open={modal === 'refund'}
         onClose={close}
-        onConfirm={(d) => run(() => refundCustomer(customerId, d), 'İade işlemi başlatıldı.')}
+        onConfirm={(d) => run(() => adminApi.post(`/admin/customers/${customerId}/refund`, d), 'İade işlemi başlatıldı.')}
         loading={loading}
       />
 
@@ -165,7 +154,7 @@ export function CustomerActionBar({ customerId, status, onRefresh }: CustomerAct
       <CreditModal
         open={modal === 'credit'}
         onClose={close}
-        onConfirm={(d) => run(() => addCredit(customerId, d), 'Kredi eklendi.')}
+        onConfirm={(d) => run(() => adminApi.post(`/admin/customers/${customerId}/add-credit`, d), 'Kredi eklendi.')}
         loading={loading}
       />
 
@@ -173,7 +162,7 @@ export function CustomerActionBar({ customerId, status, onRefresh }: CustomerAct
       <QuotaModal
         open={modal === 'quota'}
         onClose={close}
-        onConfirm={(d) => run(() => overrideQuota(customerId, d), 'Kota güncellendi.')}
+        onConfirm={(d) => run(() => adminApi.post(`/admin/customers/${customerId}/override-quota`, d), 'Kota güncellendi.')}
         loading={loading}
       />
 
@@ -181,7 +170,7 @@ export function CustomerActionBar({ customerId, status, onRefresh }: CustomerAct
       <DigestModal
         open={modal === 'digest'}
         onClose={close}
-        onConfirm={(freq) => run(() => setDigestFrequency(customerId, freq), 'Dijest sıklığı güncellendi.')}
+        onConfirm={(freq) => run(() => adminApi.post(`/admin/customers/${customerId}/digest-frequency`, { frequency: freq }), 'Dijest sıklığı güncellendi.')}
         loading={loading}
       />
 
@@ -189,7 +178,7 @@ export function CustomerActionBar({ customerId, status, onRefresh }: CustomerAct
       <EmailModal
         open={modal === 'email'}
         onClose={close}
-        onConfirm={(d) => run(() => sendCustomerEmail(customerId, d), 'E-posta gönderildi.')}
+        onConfirm={(d) => run(() => adminApi.post(`/admin/customers/${customerId}/send-email`, d), 'E-posta gönderildi.')}
         loading={loading}
       />
     </>

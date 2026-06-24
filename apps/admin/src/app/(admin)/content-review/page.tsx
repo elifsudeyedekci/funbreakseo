@@ -52,19 +52,19 @@ export default function ContentReviewPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['admin-content-review'],
     queryFn: async () => {
-      try { const r = await getContentReview(); return r.data?.data ?? MOCK_CONTENT; }
+      try { const r = await adminApi.get('/admin/content-review'); return r.data?.data ?? MOCK_CONTENT; }
       catch { return MOCK_CONTENT; }
     },
   });
 
   const approveMutation = useMutation({
-    mutationFn: (id: string) => approveContent(id),
+    mutationFn: (id: string) => adminApi.post(`/admin/content-review/${id}/approve`),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-content-review'] }); toast('İçerik onaylandı', 'success'); },
     onError: () => toast('İşlem başarısız', 'error'),
   });
 
   const rejectMutation = useMutation({
-    mutationFn: ({ id, reason }: { id: string; reason: string }) => rejectContent(id, reason),
+    mutationFn: ({ id, reason }: { id: string; reason: string }) => adminApi.post(`/admin/content-review/${id}/reject`, { reason }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-content-review'] }); toast('İçerik reddedildi', 'warning'); setRejectItem(null); setRejectReason(''); },
     onError: () => toast('İşlem başarısız', 'error'),
   });

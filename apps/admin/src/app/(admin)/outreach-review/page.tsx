@@ -46,19 +46,19 @@ export default function OutreachReviewPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['admin-outreach-review'],
     queryFn: async () => {
-      try { const r = await getOutreachReview(); return r.data?.data ?? MOCK_REPLIES; }
+      try { const r = await adminApi.get('/admin/outreach/review'); return r.data?.data ?? MOCK_REPLIES; }
       catch { return MOCK_REPLIES; }
     },
   });
 
   const approveMutation = useMutation({
-    mutationFn: (id: string) => approveOutreachReply(id),
+    mutationFn: (id: string) => adminApi.post(`/admin/outreach/replies/${id}/approve`),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-outreach-review'] }); toast('Yanıt onaylandı', 'success'); setDetail(null); },
     onError: () => toast('İşlem başarısız', 'error'),
   });
 
   const rejectMutation = useMutation({
-    mutationFn: (id: string) => rejectOutreachReply(id),
+    mutationFn: (id: string) => adminApi.post(`/admin/outreach/replies/${id}/reject`),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-outreach-review'] }); toast('Yanıt reddedildi', 'warning'); setDetail(null); },
     onError: () => toast('İşlem başarısız', 'error'),
   });

@@ -57,17 +57,17 @@ export default function PlansPage() {
 
   const { data: coupons, isLoading: couponsLoading } = useQuery({
     queryKey: ['admin-coupons'],
-    queryFn: async () => { try { const r = await getCoupons(); return r.data?.data ?? MOCK_COUPONS; } catch { return MOCK_COUPONS; } },
+    queryFn: async () => { try { const r = await adminApi.get('/admin/coupons'); return r.data?.data ?? MOCK_COUPONS; } catch { return MOCK_COUPONS; } },
   });
 
   const createCouponMutation = useMutation({
-    mutationFn: (d: CouponForm) => createCoupon(d as Record<string, unknown>),
+    mutationFn: (d: CouponForm) => adminApi.post('/admin/coupons', d),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-coupons'] }); toast('Kupon oluşturuldu', 'success'); setCouponModal(false); resetCoupon(); },
     onError: () => toast('İşlem başarısız', 'error'),
   });
 
   const deleteCouponMutation = useMutation({
-    mutationFn: (id: string) => deleteCoupon(id),
+    mutationFn: (id: string) => adminApi.delete(`/admin/coupons/${id}`),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-coupons'] }); toast('Kupon silindi', 'warning'); },
   });
 

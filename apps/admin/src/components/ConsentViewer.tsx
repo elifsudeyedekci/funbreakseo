@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { FileText, Download } from 'lucide-react';
-import { getConsentPdf } from '@/lib/api';
+import { adminApi } from '@/lib/api';
 
 interface ConsentRecord {
   id: string;
@@ -30,7 +30,7 @@ export function ConsentViewer({ consent, customerId, onClose }: ConsentViewerPro
   const handlePdfDownload = async () => {
     try {
       setDownloading(true);
-      const res = await getConsentPdf(customerId, consent.id);
+      const res = await adminApi.get(`/admin/customers/${customerId}/consents/${consent.id}/pdf`, { responseType: 'blob' });
       const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
       const a = document.createElement('a');
       a.href = url;

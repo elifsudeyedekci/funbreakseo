@@ -1,6 +1,7 @@
 'use client';
 import { AdminSidebar } from '@/components/AdminSidebar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from '@/components/ui/Toaster';
 import * as React from 'react';
 
 const queryClient = new QueryClient({
@@ -16,6 +17,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {children}
         </main>
       </div>
+      <Toaster />
     </QueryClientProvider>
   );
 }
