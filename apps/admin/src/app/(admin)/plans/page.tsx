@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { type ColumnDef } from '@tanstack/react-table';
-import { getPlans, createPlan, updatePlan, getCoupons, createCoupon, deleteCoupon } from '@/lib/api';
+import { adminApi } from '@/lib/api';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
 import { DataTable } from '@/components/DataTable';
 import { Badge } from '@/components/ui/Badge';

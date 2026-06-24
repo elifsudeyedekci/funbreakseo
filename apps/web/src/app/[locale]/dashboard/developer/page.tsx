@@ -1,224 +1,141 @@
-'use client';
+﻿"use client";
 
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Plus, Trash2, Copy, Code2 } from "lucide-react";
+import { developerApi } from "@/lib/api";
+import { formatDate } from "@/lib/utils";
 
 interface ApiKey {
   id: string;
   name: string;
-  prefix: string;
+  key: string;
   scopes: string[];
-  lastUsedAt?: string;
+  lastUsedAt: string | null;
   createdAt: string;
 }
 
-export default function DeveloperPage() {
-  const [showCreate, setShowCreate] = useState(false);
-  const [keyName, setKeyName] = useState('');
-  const [newKeyValue, setNewKeyValue] = useState<string | null>(null);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-  const qc = useQueryClient();
+const AVAILABLE_SCOPES = [
+  "projects:read", "projects:write",
+  "keywords:read", "keywords:write",
+  "content:read", "content:write",
+  "geo:read", "reports:read",
+];
 
-  const { data: keys, isLoading } = useQuery<ApiKey[]>({
-    queryKey: ['api-keys'],
-    queryFn: () => api.get('/developer/keys').then((r: any) => r.data?.data ?? r.data ?? []),
+export default function DeveloperPage() {
+  const queryClient = useQueryClient();
+  const [showModal, setShowModal] = useState(false);
+  const [newKeyName, setNewKeyName] = useState("");
+  const [selectedScopes, setSelectedScopes] = useState<string[]>(["projects:read"]);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const { data } = useQuery({
+    queryKey: ["api-keys"],
+    queryFn: () => developerApi.apiKeys().then((r) => r.data.data as ApiKey[]),
   });
 
   const createMutation = useMutation({
-    mutationFn: (name: string) =>
-      api.post('/developer/keys', { name }).then((r: any) => r.data?.data ?? r.data),
-    onSuccess: (data: any) => {
-      qc.invalidateQueries({ queryKey: ['api-keys'] });
-      setNewKeyValue(data?.key ?? data?.token ?? null);
-      setShowCreate(false);
-      setKeyName('');
+    mutationFn: () => developerApi.createApiKey({ name: newKeyName, scopes: selectedScopes }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["api-keys"] });
+      setShowModal(false);
+      setNewKeyName("");
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => api.delete(`/developer/keys/${id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['api-keys'] }),
+    mutationFn: (id: string) => developerApi.deleteApiKey(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["api-keys"] }),
   });
 
-  const copyToClipboard = (text: string, id: string) => {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopiedId(id);
-      setTimeout(() => setCopiedId(null), 2000);
-    });
-  };
+  function copyKey(key: string, id: string) {
+    navigator.clipboard.writeText(key);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  }
+
+  const keys = data || [];
 
   return (
-    <div className="min-h-screen p-6 space-y-6" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)' }}>
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="p-6 max-w-3xl">
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold">Developer</h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-            Manage API keys and integrate FunBreakSEO into your workflow.
-          </p>
+          <h1 className="text-2xl font-bold text-white">Developer</h1>
+          <p className="text-white/50 text-sm mt-1">API anahtarlarini yonetin</p>
         </div>
-        <div className="flex gap-2">
-          <a
-            href="https://api.funbreakseo.com/api/docs"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-4 py-2 rounded-lg text-sm transition hover:bg-white/5"
-            style={{ color: 'var(--accent)', border: '1px solid rgba(91,141,239,0.3)' }}
-          >
-            API Docs
-          </a>
-          <button
-            onClick={() => setShowCreate(true)}
-            className="px-4 py-2 rounded-lg text-sm font-medium transition hover:opacity-90"
-            style={{ background: 'var(--accent)', color: '#fff' }}
-          >
-            + Create API Key
-          </button>
+        <button onClick={() => setShowModal(true)}
+          className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 transition-all">
+          <Plus className="h-4 w-4" />Yeni Anahtar
+        </button>
+      </div>
+      <div className="mb-6 rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-4 flex items-start gap-3">
+        <Code2 className="h-5 w-5 text-indigo-400 mt-0.5 flex-shrink-0" />
+        <div>
+          <p className="text-sm font-medium text-white mb-1">API Dokumantasyonu</p>
+          <a href="https://docs.funbreakseo.com/api" target="_blank" rel="noopener noreferrer"
+            className="text-xs text-indigo-400 hover:text-indigo-300 underline">docs.funbreakseo.com/api</a>
         </div>
       </div>
-
-      {/* New Key Banner */}
-      {newKeyValue && (
-        <div className="rounded-xl p-4 space-y-2" style={{ background: 'rgba(91,141,239,0.08)', border: '1px solid rgba(91,141,239,0.25)' }}>
-          <p className="text-sm font-semibold" style={{ color: 'var(--accent)' }}>
-            Your new API key — copy it now, it won't be shown again.
-          </p>
-          <div className="flex items-center gap-2">
-            <code
-              className="flex-1 rounded-lg px-3 py-2 text-xs font-mono overflow-x-auto"
-              style={{ background: 'var(--bg-base)', color: 'var(--text-primary)', border: '1px solid rgba(255,255,255,0.08)' }}
-            >
-              {newKeyValue}
-            </code>
-            <button
-              onClick={() => copyToClipboard(newKeyValue, 'new')}
-              className="px-3 py-2 rounded-lg text-xs transition hover:opacity-80"
-              style={{ background: 'var(--accent)', color: '#fff' }}
-            >
-              {copiedId === 'new' ? 'Copied!' : 'Copy'}
-            </button>
-            <button onClick={() => setNewKeyValue(null)} className="px-3 py-2 rounded-lg text-xs" style={{ color: 'var(--text-muted)' }}>
-              Dismiss
-            </button>
-          </div>
+      {keys.length === 0 ? (
+        <div className="rounded-2xl border border-white/10 p-10 text-center text-white/30 text-sm">Henuz API anahtari olusturulmamis</div>
+      ) : (
+        <div className="space-y-3">
+          {keys.map((k) => (
+            <div key={k.id} className="rounded-2xl border border-white/10 bg-white/2 p-5">
+              <div className="flex items-start justify-between gap-4 mb-3">
+                <div>
+                  <h3 className="font-semibold text-white">{k.name}</h3>
+                  <p className="text-xs text-white/40 mt-0.5">Olusturuldu: {formatDate(k.createdAt)}</p>
+                </div>
+                <button onClick={() => deleteMutation.mutate(k.id)}
+                  className="p-1.5 rounded-lg text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-colors">
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="flex items-center gap-2 bg-black/30 rounded-lg px-3 py-2 font-mono text-xs mb-3">
+                <span className="flex-1 text-white/60 truncate">{k.key.slice(0,8)}{"x".repeat(24)}</span>
+                <button onClick={() => copyKey(k.key, k.id)} className="text-white/30 hover:text-white"><Copy className="h-3.5 w-3.5" /></button>
+                {copiedId === k.id && <span className="text-emerald-400 text-xs">Kopyalandi!</span>}
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {k.scopes.map((s) => (<span key={s} className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] text-white/50 font-mono">{s}</span>))}
+              </div>
+            </div>
+          ))}
         </div>
       )}
-
-      {/* API Keys Table */}
-      <div className="rounded-xl overflow-hidden" style={{ background: 'var(--bg-surface)', border: '1px solid rgba(255,255,255,0.06)' }}>
-        <div className="px-4 py-3 border-b flex items-center justify-between" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-          <h2 className="text-sm font-semibold">API Keys</h2>
-          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{(keys ?? []).length} key{(keys ?? []).length !== 1 ? 's' : ''}</span>
-        </div>
-        {isLoading ? (
-          <div className="p-6 space-y-3">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="h-14 rounded-lg bg-white/5 animate-pulse" />
-            ))}
-          </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                {['Name', 'Key Prefix', 'Scopes', 'Last Used', 'Created', ''].map((h) => (
-                  <th key={h} className="text-left px-4 py-3 font-medium" style={{ color: 'var(--text-muted)' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {(keys ?? []).length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center" style={{ color: 'var(--text-muted)' }}>
-                    No API keys yet. Create one to get started.
-                  </td>
-                </tr>
-              )}
-              {(keys ?? []).map((key) => (
-                <tr key={key.id} className="hover:bg-white/[0.02]" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                  <td className="px-4 py-3 font-medium">{key.name}</td>
-                  <td className="px-4 py-3">
-                    <code className="text-xs px-2 py-0.5 rounded" style={{ background: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
-                      {key.prefix}••••••••
-                    </code>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-1 flex-wrap">
-                      {(key.scopes ?? []).map((scope) => (
-                        <span key={scope} className="text-xs px-2 py-0.5 rounded" style={{ background: 'rgba(91,141,239,0.1)', color: 'var(--accent)' }}>
-                          {scope}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3" style={{ color: 'var(--text-muted)' }}>
-                    {key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleDateString() : 'Never'}
-                  </td>
-                  <td className="px-4 py-3" style={{ color: 'var(--text-muted)' }}>
-                    {key.createdAt ? new Date(key.createdAt).toLocaleDateString() : '—'}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => deleteMutation.mutate(key.id)}
-                      disabled={deleteMutation.isPending}
-                      className="text-xs transition hover:underline disabled:opacity-40"
-                      style={{ color: '#ef4444' }}
-                    >
-                      Revoke
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      {/* Docs callout */}
-      <div className="rounded-xl p-5 flex items-center gap-4" style={{ background: 'var(--bg-surface)', border: '1px solid rgba(255,255,255,0.06)' }}>
-        <div className="text-2xl">📖</div>
-        <div className="flex-1">
-          <p className="font-medium text-sm">API Documentation</p>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-            Full REST API reference with examples, authentication guides, and webhooks.
-          </p>
-        </div>
-        <a
-          href="https://api.funbreakseo.com/api/docs"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="px-4 py-2 rounded-lg text-sm font-medium transition hover:opacity-90 whitespace-nowrap"
-          style={{ background: 'var(--accent)', color: '#fff' }}
-        >
-          Open Docs
-        </a>
-      </div>
-
-      {/* Create Dialog */}
-      {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl p-6 space-y-4" style={{ background: 'var(--bg-elevated)', border: '1px solid rgba(255,255,255,0.1)' }}>
-            <h2 className="text-lg font-semibold">Create API Key</h2>
-            <div>
-              <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>Key Name</label>
-              <input
-                value={keyName}
-                onChange={(e) => setKeyName(e.target.value)}
-                placeholder="e.g. Production Integration"
-                className="w-full px-4 py-2 rounded-lg outline-none text-sm"
-                style={{ background: 'var(--bg-base)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-primary)' }}
-              />
-            </div>
-            <div className="flex gap-2 justify-end">
-              <button onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm rounded-lg" style={{ color: 'var(--text-secondary)' }}>Cancel</button>
-              <button
-                onClick={() => createMutation.mutate(keyName)}
-                disabled={!keyName || createMutation.isPending}
-                className="px-4 py-2 text-sm rounded-lg font-medium disabled:opacity-50"
-                style={{ background: 'var(--accent)', color: '#fff' }}
-              >
-                {createMutation.isPending ? 'Creating…' : 'Create Key'}
-              </button>
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowModal(false)} />
+          <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-[#111118] p-6 shadow-2xl">
+            <h2 className="text-lg font-semibold text-white mb-4">Yeni API Anahtari</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-1.5">Anahtar Adi</label>
+                <input value={newKeyName} onChange={(e) => setNewKeyName(e.target.value)}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-white/30 focus:border-indigo-500/50 focus:outline-none"
+                  placeholder="Production API" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-2">Yetkiler</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {AVAILABLE_SCOPES.map((scope) => (
+                    <label key={scope} className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={selectedScopes.includes(scope)}
+                        onChange={(e) => setSelectedScopes((prev) => e.target.checked ? [...prev, scope] : prev.filter((s) => s !== scope))}
+                        className="rounded border border-white/20 bg-white/5 text-indigo-600 cursor-pointer h-3.5 w-3.5" />
+                      <span className="text-xs font-mono text-white/60">{scope}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button onClick={() => setShowModal(false)} className="flex-1 rounded-xl border border-white/20 py-2.5 text-sm font-medium text-white/60 hover:bg-white/10">Iptal</button>
+                <button onClick={() => createMutation.mutate()} disabled={!newKeyName || createMutation.isPending}
+                  className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50">
+                  {createMutation.isPending ? "Olusturuluyor..." : "Olustur"}
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { type ColumnDef } from '@tanstack/react-table';
-import { getQueues, retryQueue, cleanQueue, getSystemSettings, updateSystemSetting, getApiUsage, getAuditLog } from '@/lib/api';
+import { adminApi } from '@/lib/api';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
 import { DataTable } from '@/components/DataTable';
 import { Badge } from '@/components/ui/Badge';
@@ -61,36 +61,36 @@ export default function SystemPage() {
 
   const { data: queues = MOCK_QUEUES } = useQuery({
     queryKey: ['admin-queues'],
-    queryFn: async () => { try { const r = await getQueues(); return r.data?.data ?? MOCK_QUEUES; } catch { return MOCK_QUEUES; } },
+    queryFn: async () => { try { const r = await adminApi.get('/admin/queue-health'); return r.data?.data ?? MOCK_QUEUES; } catch { return MOCK_QUEUES; } },
   });
 
   const { data: settings = MOCK_SETTINGS } = useQuery({
     queryKey: ['admin-settings'],
-    queryFn: async () => { try { const r = await getSystemSettings(); return r.data?.data ?? MOCK_SETTINGS; } catch { return MOCK_SETTINGS; } },
+    queryFn: async () => { try { const r = await adminApi.get('/admin/settings'); return r.data?.data ?? MOCK_SETTINGS; } catch { return MOCK_SETTINGS; } },
   });
 
   const { data: apiUsage = MOCK_API_USAGE } = useQuery({
     queryKey: ['admin-api-usage'],
-    queryFn: async () => { try { const r = await getApiUsage(); return r.data?.data ?? MOCK_API_USAGE; } catch { return MOCK_API_USAGE; } },
+    queryFn: async () => { try { const r = await adminApi.get('/admin/api-usage'); return r.data?.data ?? MOCK_API_USAGE; } catch { return MOCK_API_USAGE; } },
   });
 
   const { data: auditLog = MOCK_AUDIT } = useQuery({
     queryKey: ['admin-audit-log'],
-    queryFn: async () => { try { const r = await getAuditLog({ limit: 50 }); return r.data?.data ?? MOCK_AUDIT; } catch { return MOCK_AUDIT; } },
+    queryFn: async () => { try { const r = await adminApi.get('/admin/audit-logs', { params: { limit: 50 } }); return r.data?.data ?? MOCK_AUDIT; } catch { return MOCK_AUDIT; } },
   });
 
   const retryMutation = useMutation({
-    mutationFn: (name: string) => retryQueue(name),
+    mutationFn: (name: string) => adminApi.post(`/admin/queue-health/${name}/retry`),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-queues'] }); toast('Yeniden deneme başlatıldı', 'success'); },
   });
 
   const cleanMutation = useMutation({
-    mutationFn: (name: string) => cleanQueue(name),
+    mutationFn: (name: string) => adminApi.post(`/admin/queue-health/${name}/clean`),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-queues'] }); toast('Kuyruk temizlendi', 'warning'); },
   });
 
   const updateSettingMutation = useMutation({
-    mutationFn: ({ key, value }: { key: string; value: string }) => updateSystemSetting(key, value),
+    mutationFn: ({ key, value }: { key: string; value: string }) => adminApi.patch(`/admin/settings/${key}`, { value }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-settings'] }); toast('Ayar güncellendi', 'success'); },
     onError: () => toast('Güncelleme başarısız', 'error'),
   });

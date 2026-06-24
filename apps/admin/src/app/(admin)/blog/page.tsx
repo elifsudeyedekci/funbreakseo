@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { type ColumnDef } from '@tanstack/react-table';
-import { getBlogPosts, createBlogPost, updateBlogPost, deleteBlogPost } from '@/lib/api';
+import { adminApi } from '@/lib/api';
 import { DataTable } from '@/components/DataTable';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -61,23 +61,23 @@ export default function BlogPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-blog'],
-    queryFn: async () => { try { const r = await getBlogPosts(); return r.data?.data ?? MOCK_POSTS; } catch { return MOCK_POSTS; } },
+    queryFn: async () => { try { const r = await adminApi.get('/admin/blog'); return r.data?.data ?? MOCK_POSTS; } catch { return MOCK_POSTS; } },
   });
 
   const createMutation = useMutation({
-    mutationFn: (d: PostForm) => createBlogPost(d as Record<string, unknown>),
+    mutationFn: (d: PostForm) => adminApi.post('/admin/blog', d),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-blog'] }); toast('Yazı oluşturuldu', 'success'); setModalOpen(false); reset(); },
     onError: () => toast('İşlem başarısız', 'error'),
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: PostForm }) => updateBlogPost(id, data as Record<string, unknown>),
+    mutationFn: ({ id, data }: { id: string; data: PostForm }) => adminApi.put(`/admin/blog/${id}`, data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-blog'] }); toast('Yazı güncellendi', 'success'); setEditPost(null); reset(); },
     onError: () => toast('İşlem başarısız', 'error'),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteBlogPost(id),
+    mutationFn: (id: string) => adminApi.delete(`/admin/blog/${id}`),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-blog'] }); toast('Yazı silindi', 'warning'); },
     onError: () => toast('İşlem başarısız', 'error'),
   });
