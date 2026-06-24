@@ -1,0 +1,28 @@
+{
+  "name": "funbreakseo",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "clean": "turbo run clean",
+    "db:migrate": "pnpm --filter @funbreakseo/database migrate:dev",
+    "db:push": "pnpm --filter @funbreakseo/database db:push",
+    "db:seed": "pnpm --filter @funbreakseo/database seed",
+    "db:generate": "pnpm --filter @funbreakseo/database generate",
+    "db:studio": "pnpm --filter @funbreakseo/database studio"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2",
+    "@types/node": "^22.10.1"
+  },
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.15.0"
+}

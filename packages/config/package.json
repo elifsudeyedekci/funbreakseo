@@ -1,0 +1,10 @@
+{
+  "name": "@funbreakseo/config",
+  "version": "1.0.0",
+  "private": true,
+  "exports": {
+    "./tsconfig/*": "./tsconfig/*.json",
+    "./eslint/*": "./eslint/*.js",
+    "./tailwind": "./tailwind/index.js"
+  }
+}

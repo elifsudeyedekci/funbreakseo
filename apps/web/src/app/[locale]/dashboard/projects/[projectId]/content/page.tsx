@@ -1,0 +1,220 @@
+'use client';
+
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Plus, FileText, Sparkles, X } from 'lucide-react';
+import { contentApi } from '@/lib/api';
+import { cn } from '@/lib/utils';
+import type { ContentStatus } from '@funbreakseo/shared';
+
+interface Content {
+  id: string;
+  title: string;
+  keyword: string;
+  contentType: string;
+  status: ContentStatus;
+  seoScore: number;
+  wordCount: number;
+  createdAt: string;
+}
+
+const STATUS_CONFIG: Record<ContentStatus, { label: string; color: string }> = {
+  DRAFT: { label: 'Taslak', color: 'bg-white/10 text-white/50' },
+  GENERATING: { label: 'Üretiliyor...', color: 'bg-blue-500/20 text-blue-400' },
+  REVIEW: { label: 'İnceleme', color: 'bg-yellow-500/20 text-yellow-400' },
+  APPROVED: { label: 'Onaylı', color: 'bg-emerald-500/20 text-emerald-400' },
+  PUBLISHED: { label: 'Yayınlandı', color: 'bg-green-500/20 text-green-400' },
+  REJECTED: { label: 'Reddedildi', color: 'bg-red-500/20 text-red-400' },
+};
+
+export default function ContentPage({ params }: { params: { projectId: string } }) {
+  const queryClient = useQueryClient();
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState({ keyword: '', contentType: 'BLOG', language: 'tr', tone: 'professional' });
+  const [filterStatus, setFilterStatus] = useState<ContentStatus | 'ALL'>('ALL');
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['content', params.projectId],
+    queryFn: () => contentApi.list(params.projectId).then((r) => r.data.data as Content[]),
+    refetchInterval: (query) => {
+      const items = query.state.data as Content[] | undefined;
+      return items?.some((c) => c.status === 'GENERATING') ? 5000 : false;
+    },
+  });
+
+  const generateMutation = useMutation({
+    mutationFn: () => contentApi.generate(params.projectId, { ...form }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['content', params.projectId] });
+      setShowModal(false);
+      setForm({ keyword: '', contentType: 'BLOG', language: 'tr', tone: 'professional' });
+    },
+  });
+
+  const items = (data || []).filter((c) => filterStatus === 'ALL' || c.status === filterStatus);
+
+  return (
+    <div className="p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-white">İçerik</h1>
+          <p className="text-white/50 text-sm mt-1">AI destekli SEO ve GEO uyumlu içerik üretimi</p>
+        </div>
+        <button
+          onClick={() => setShowModal(true)}
+          className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 transition-all"
+        >
+          <Sparkles className="h-4 w-4" />
+          Yeni İçerik Üret
+        </button>
+      </div>
+
+      {/* Status filter */}
+      <div className="flex gap-2 flex-wrap">
+        {(['ALL', 'DRAFT', 'GENERATING', 'REVIEW', 'APPROVED', 'PUBLISHED'] as const).map((s) => (
+          <button
+            key={s}
+            onClick={() => setFilterStatus(s)}
+            className={cn(
+              'rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
+              filterStatus === s ? 'bg-indigo-600 text-white' : 'border border-white/10 text-white/50 hover:text-white hover:bg-white/10'
+            )}
+          >
+            {s === 'ALL' ? 'Tümü' : STATUS_CONFIG[s].label}
+          </button>
+        ))}
+      </div>
+
+      {/* Content list */}
+      {isLoading ? (
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="rounded-2xl border border-white/10 h-20 animate-pulse" />
+          ))}
+        </div>
+      ) : items.length === 0 ? (
+        <div className="rounded-2xl border border-white/10 p-12 text-center">
+          <FileText className="h-10 w-10 text-white/20 mx-auto mb-3" />
+          <p className="text-white/50 mb-4">Henüz içerik yok</p>
+          <button
+            onClick={() => setShowModal(true)}
+            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 transition-all"
+          >
+            <Plus className="h-4 w-4" />
+            İlk İçeriği Üret
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {items.map((item) => (
+            <div key={item.id} className="rounded-2xl border border-white/10 bg-white/2 p-5 hover:bg-white/5 transition-colors cursor-pointer">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <h3 className="font-semibold text-white truncate">{item.title || item.keyword}</h3>
+                  <div className="flex items-center gap-3 mt-1">
+                    <span className="text-xs text-white/40">{item.keyword}</span>
+                    <span className="text-xs text-white/30">·</span>
+                    <span className="text-xs text-white/40">{item.contentType}</span>
+                    {item.wordCount > 0 && (
+                      <>
+                        <span className="text-xs text-white/30">·</span>
+                        <span className="text-xs text-white/40">{item.wordCount.toLocaleString('tr-TR')} kelime</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  {item.seoScore > 0 && (
+                    <div className="text-center">
+                      <div className={`text-lg font-bold ${item.seoScore >= 80 ? 'text-emerald-400' : item.seoScore >= 60 ? 'text-yellow-400' : 'text-red-400'}`}>
+                        {item.seoScore}
+                      </div>
+                      <div className="text-[10px] text-white/30">SEO</div>
+                    </div>
+                  )}
+                  <span className={cn('text-xs px-2.5 py-1 rounded-full font-medium', STATUS_CONFIG[item.status].color)}>
+                    {STATUS_CONFIG[item.status].label}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Generate modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowModal(false)} />
+          <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-[#111118] p-6 shadow-2xl">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-semibold text-white">İçerik Üret</h2>
+              <button onClick={() => setShowModal(false)} className="p-1 rounded-lg text-white/50 hover:text-white hover:bg-white/10">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-1.5">Hedef Anahtar Kelime</label>
+                <input
+                  value={form.keyword}
+                  onChange={(e) => setForm((p) => ({ ...p, keyword: e.target.value }))}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-white/30 focus:border-indigo-500/50 focus:outline-none"
+                  placeholder="örn: seo nasıl yapılır"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-1.5">İçerik Türü</label>
+                  <select
+                    value={form.contentType}
+                    onChange={(e) => setForm((p) => ({ ...p, contentType: e.target.value }))}
+                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-white focus:border-indigo-500/50 focus:outline-none"
+                  >
+                    <option value="BLOG">Blog Yazısı</option>
+                    <option value="PRODUCT">Ürün Açıklaması</option>
+                    <option value="LANDING">Landing Page</option>
+                    <option value="FAQ">SSS Bölümü</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-1.5">Dil</label>
+                  <select
+                    value={form.language}
+                    onChange={(e) => setForm((p) => ({ ...p, language: e.target.value }))}
+                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-white focus:border-indigo-500/50 focus:outline-none"
+                  >
+                    <option value="tr">Türkçe</option>
+                    <option value="en">İngilizce</option>
+                    <option value="de">Almanca</option>
+                    <option value="fr">Fransızca</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="flex-1 rounded-xl border border-white/20 py-2.5 text-sm font-medium text-white/60 hover:bg-white/10 transition-colors"
+                >
+                  İptal
+                </button>
+                <button
+                  onClick={() => generateMutation.mutate()}
+                  disabled={!form.keyword || generateMutation.isPending}
+                  className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                >
+                  {generateMutation.isPending ? (
+                    <><span className="inline-block h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Üretiliyor...</>
+                  ) : (
+                    <><Sparkles className="h-4 w-4" /> Üret</>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

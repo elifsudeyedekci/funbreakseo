@@ -1,0 +1,9 @@
+{
+  "common": { "loading": "लोड हो रहा है...", "error": "एक त्रुटि हुई", "save": "सहेजें", "cancel": "रद्द करें", "search": "खोजें...", "getStarted": "शुरू करें", "tryFree": "मुफ़्त आज़माएं", "contactUs": "संपर्क करें" },
+  "nav": { "features": "सुविधाएं", "pricing": "मूल्य निर्धारण", "blog": "ब्लॉग", "about": "हमारे बारे में", "contact": "संपर्क", "login": "लॉग इन", "register": "मुफ़्त आज़माएं", "dashboard": "डैशबोर्ड" },
+  "hero": { "badge": "SEO + GEO प्लेटफ़ॉर्म", "title": "Google और", "titleHighlight": "AI खोज में दिखें", "subtitle": "ट्रैक करें कि ChatGPT, Gemini और Perplexity आपके ब्रांड का कितनी बार उल्लेख करते हैं। तकनीकी SEO, सामग्री निर्माण, बैकलिंक और आउटरीच — एक प्लेटफ़ॉर्म।", "cta": "14 दिन मुफ़्त आज़माएं", "ctaNote": "क्रेडिट कार्ड की आवश्यकता नहीं", "freeAuditBtn": "विश्लेषण करें" },
+  "pricing": { "title": "पारदर्शी मूल्य निर्धारण", "subtitle": "GST सहित, कोई आश्चर्य नहीं। 14 दिन मुफ़्त।", "monthly": "मासिक", "yearly": "वार्षिक", "yearlyBadge": "2 महीने मुफ़्त", "starter": "स्टार्टर", "growth": "ग्रोथ", "pro": "प्रो", "enterprise": "एंटरप्राइज़", "perMonth": "/माह", "trialCta": "मुफ़्त शुरू करें" },
+  "footer": { "company": "FunBreak Global Teknoloji Ltd. Şti.", "description": "पूरी तरह स्वचालित SEO + GEO प्लेटफ़ॉर्म।", "allRights": "सर्वाधिकार सुरक्षित।" },
+  "cookie": { "title": "कुकी सेटिंग्स", "desc": "हम बेहतर अनुभव के लिए कुकी का उपयोग करते हैं।", "accept": "सभी स्वीकार करें", "decline": "केवल आवश्यक" },
+  "errors": { "notFound": "पृष्ठ नहीं मिला", "goHome": "होम पर जाएं" }
+}

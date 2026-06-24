@@ -1,0 +1,9 @@
+{
+  "common": { "loading": "Загрузка...", "error": "Произошла ошибка", "save": "Сохранить", "cancel": "Отмена", "search": "Поиск...", "getStarted": "Начать", "tryFree": "Попробовать бесплатно", "contactUs": "Связаться" },
+  "nav": { "features": "Возможности", "pricing": "Цены", "blog": "Блог", "about": "О нас", "contact": "Контакты", "login": "Войти", "register": "Попробовать бесплатно", "dashboard": "Панель" },
+  "hero": { "badge": "Платформа SEO + GEO", "title": "Будьте заметны в Google и", "titleHighlight": "ИИ-поиске", "subtitle": "Отслеживайте, как часто ChatGPT, Gemini и Perplexity упоминают ваш бренд. Технический SEO, создание контента, ссылки и аутрич — одна платформа.", "cta": "Бесплатно 14 дней", "ctaNote": "Без кредитной карты", "freeAuditBtn": "Анализировать" },
+  "pricing": { "title": "Прозрачные Цены", "subtitle": "С НДС, без сюрпризов. 14 дней бесплатно.", "monthly": "Ежемесячно", "yearly": "Ежегодно", "yearlyBadge": "2 МЕСЯЦА БЕСПЛАТНО", "starter": "Стартер", "growth": "Рост", "pro": "Про", "enterprise": "Корпоративный", "perMonth": "/мес", "trialCta": "Начать бесплатно" },
+  "footer": { "company": "FunBreak Global Teknoloji Ltd. Şti.", "description": "Полностью автоматизированная платформа SEO + GEO.", "allRights": "Все права защищены." },
+  "cookie": { "title": "Настройки файлов cookie", "desc": "Мы используем файлы cookie для лучшего опыта.", "accept": "Принять все", "decline": "Только необходимые" },
+  "errors": { "notFound": "Страница не найдена", "goHome": "На главную" }
+}

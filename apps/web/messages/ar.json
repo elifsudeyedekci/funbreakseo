@@ -1,0 +1,9 @@
+{
+  "common": { "loading": "جار التحميل...", "error": "حدث خطأ", "save": "حفظ", "cancel": "إلغاء", "search": "بحث...", "getStarted": "ابدأ الآن", "tryFree": "جرب مجاناً", "contactUs": "تواصل معنا" },
+  "nav": { "features": "المميزات", "pricing": "الأسعار", "blog": "المدونة", "about": "حول", "contact": "تواصل", "login": "تسجيل الدخول", "register": "جرب مجاناً", "dashboard": "لوحة التحكم" },
+  "hero": { "badge": "منصة SEO + GEO", "title": "كن مرئياً على Google و", "titleHighlight": "بحث الذكاء الاصطناعي", "subtitle": "تتبع كم مرة يستشهد ChatGPT وGemini وPerplexity بعلامتك التجارية. SEO التقني، إنشاء المحتوى، الروابط الخلفية والتواصل — منصة واحدة.", "cta": "جربها مجاناً 14 يوماً", "ctaNote": "لا تحتاج بطاقة ائتمانية", "freeAuditBtn": "تحليل" },
+  "pricing": { "title": "أسعار شفافة", "subtitle": "شاملة ضريبة القيمة المضافة، بدون مفاجآت. 14 يوماً مجاناً.", "monthly": "شهري", "yearly": "سنوي", "yearlyBadge": "شهران مجاناً", "starter": "مبتدئ", "growth": "نمو", "pro": "احترافي", "enterprise": "مؤسسة", "perMonth": "/شهر", "trialCta": "ابدأ مجاناً" },
+  "footer": { "company": "FunBreak Global Teknoloji Ltd. Şti.", "description": "منصة SEO + GEO آلية بالكامل.", "allRights": "جميع الحقوق محفوظة." },
+  "cookie": { "title": "إعدادات ملفات تعريف الارتباط", "desc": "نستخدم ملفات تعريف الارتباط لتحسين تجربتك.", "accept": "قبول الكل", "decline": "الأساسية فقط" },
+  "errors": { "notFound": "الصفحة غير موجودة", "goHome": "العودة للرئيسية" }
+}

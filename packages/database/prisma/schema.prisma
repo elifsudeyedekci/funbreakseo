@@ -1,0 +1,1659 @@
+// FunBreak SEO — Full Prisma Schema
+// All tables, relations, enums as per MASTER_PROMPT specification
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  STAFF
+  CUSTOMER
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  PENDING
+}
+
+enum OrgMemberRole {
+  OWNER
+  MEMBER
+  VIEWER
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  SUSPENDED
+  CANCELED
+}
+
+enum BillingCycle {
+  MONTHLY
+  YEARLY
+}
+
+enum InvoiceStatus {
+  PAID
+  UNPAID
+  REFUNDED
+}
+
+enum WalletTxType {
+  TOPUP
+  SPEND
+  REFUND
+  ESCROW_HOLD
+  ESCROW_RELEASE
+}
+
+enum UsageMetric {
+  KEYWORDS_TRACKED
+  CRAWLS
+  AI_BLOGS
+  GEO_QUERIES
+  OUTREACH_SENT
+}
+
+enum ProjectStatus {
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum KeywordIntent {
+  INFORMATIONAL
+  NAVIGATIONAL
+  TRANSACTIONAL
+  COMMERCIAL
+}
+
+enum TrackingDepth {
+  FIRST_PAGE
+  TOP_100
+}
+
+enum CrawlJobStatus {
+  QUEUED
+  RUNNING
+  DONE
+  FAILED
+}
+
+enum CrawlTrigger {
+  MANUAL
+  SCHEDULED
+}
+
+enum IssueSeverity {
+  CRITICAL
+  WARNING
+  NOTICE
+}
+
+enum IssueCategory {
+  TITLE
+  META
+  HEADING
+  CONTENT
+  TECHNICAL
+  SPEED
+  SCHEMA
+  LINKS
+  MOBILE
+  SECURITY
+}
+
+enum ContentType {
+  BLOG
+  PRODUCT_DESC
+  META
+  FAQ
+  LANDING
+}
+
+enum ContentStatus {
+  DRAFT
+  GENERATING
+  REVIEW
+  APPROVED
+  PUBLISHED
+  REJECTED
+}
+
+enum GeoplatForm {
+  CHATGPT
+  GEMINI
+  PERPLEXITY
+  CLAUDE
+  GOOGLE_AI_OVERVIEW
+  GOOGLE_AI_MODE
+}
+
+enum Sentiment {
+  POSITIVE
+  NEUTRAL
+  NEGATIVE
+}
+
+enum GeoQueryStatus {
+  ACTIVE
+  PAUSED
+}
+
+enum OutreachCampaignStatus {
+  DRAFT
+  RUNNING
+  PAUSED
+  COMPLETED
+}
+
+enum ProspectStatus {
+  FOUND
+  CONTACTED
+  REPLIED_POSITIVE
+  REPLIED_NEGATIVE
+  WON
+  LOST
+  BOUNCED
+}
+
+enum ProspectFoundVia {
+  SEARCH
+  GUEST_POST_SIGNAL
+  JOURNALIST
+}
+
+enum EmailStatus {
+  QUEUED
+  SENT
+  OPENED
+  REPLIED
+  BOUNCED
+}
+
+enum ReplyClassification {
+  INTERESTED
+  NOT_INTERESTED
+  QUESTION
+  NEGOTIATION
+  AUTO_REPLY
+}
+
+enum OfferStatus {
+  PENDING_ADMIN_REVIEW
+  APPROVED
+  REJECTED
+  NEGOTIATING
+}
+
+enum PublisherSiteAddedVia {
+  MANUAL
+  OUTREACH_AUTO
+}
+
+enum MarketLinkType {
+  GUEST_POST
+  NICHE_EDIT
+  HOMEPAGE
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  ESCROW_HELD
+  CONTENT_READY
+  PUBLISHED
+  VERIFIED
+  COMPLETED
+  DISPUTED
+  REFUNDED
+}
+
+enum NotificationStatus {
+  UNREAD
+  READ
+}
+
+enum ApiProvider {
+  GSC
+  GA4
+  DATAFORSEO
+}
+
+enum ReportFrequency {
+  WEEKLY
+  MONTHLY
+}
+
+enum ReportFormat {
+  PDF
+  EMAIL
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TicketStatus {
+  OPEN
+  PENDING
+  RESOLVED
+  CLOSED
+}
+
+enum PendingProjectStatus {
+  WATCHING
+  EXPIRED
+  CONVERTED
+}
+
+enum AutopilotPublishMode {
+  AUTO
+  SEMI_AUTO
+}
+
+enum AutopilotKeywordStatus {
+  DISCOVERED
+  QUEUED
+  GENERATED
+  PUBLISHED
+  SKIPPED
+}
+
+enum AutopilotRunStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum DigestFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  OFF
+}
+
+enum ConsentType {
+  DISTANCE_SALES
+  PRE_INFO
+  TERMS
+  KVKK
+  COOKIE
+}
+
+enum LegalDocumentType {
+  DISTANCE_SALES
+  PRE_INFO
+  TERMS
+  KVKK
+  PRIVACY
+  COOKIE
+  REFUND
+}
+
+enum SystemHealthStatus {
+  UP
+  DEGRADED
+  DOWN
+}
+
+enum SystemHealthService {
+  DB
+  REDIS
+  WORKER
+  DISK
+  DATAFORSEO
+  LLM
+  SMTP
+}
+
+enum ChurnRisk {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum CouponType {
+  PERCENT
+  FIXED
+  FIRST_MONTH_FREE
+}
+
+enum InvoiceType {
+  INDIVIDUAL
+  CORPORATE
+}
+
+enum CancellationReason {
+  TOO_EXPENSIVE
+  MISSING_FEATURE
+  NOT_USING
+  SWITCHING
+  OTHER
+}
+
+enum EmailCampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+}
+
+enum OrganizationStatus {
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+enum BacklinkStatus {
+  ACTIVE
+  LOST
+}
+
+enum AbTestStatus {
+  RUNNING
+  COMPLETED
+  PAUSED
+}
+
+enum PublisherSiteStatus {
+  APPROVED
+  PAUSED
+}
+
+// ============================================================
+// MODELS
+// ============================================================
+
+model User {
+  id                String          @id @default(uuid())
+  email             String          @unique
+  passwordHash      String
+  fullName          String
+  phone             String?
+  role              UserRole        @default(CUSTOMER)
+  emailVerified     Boolean         @default(false)
+  emailVerifyToken  String?
+  twoFactorEnabled  Boolean         @default(false)
+  twoFactorSecret   String?
+  avatarUrl         String?
+  locale            String          @default("tr")
+  lastLoginAt       DateTime?
+  status            UserStatus      @default(PENDING)
+  organizationId    String?
+  organization      Organization?   @relation(fields: [organizationId], references: [id])
+  refreshTokens     RefreshToken[]
+  auditLogs         AuditLog[]      @relation("Actor")
+  consentRecords    ConsentRecord[]
+  notifications     Notification[]
+  supportTickets    SupportTicket[]
+  supportMessages   SupportMessage[]
+  contentItems      ContentItem[]   @relation("CreatedBy")
+  contentReviewed   ContentItem[]   @relation("ReviewedBy")
+  orgMemberships    OrganizationMember[]
+  createdProjects   Project[]
+  emailCampaigns    EmailCampaign[]
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  deletedAt         DateTime?
+
+  @@map("users")
+}
+
+model Organization {
+  id                    String                 @id @default(uuid())
+  name                  String
+  slug                  String                 @unique
+  taxNumber             String?
+  taxOffice             String?
+  billingAddress        String?
+  country               String                 @default("TR")
+  ownerUserId           String
+  walletBalance         Decimal                @default(0) @db.Decimal(18, 2)
+  status                OrganizationStatus     @default(ACTIVE)
+  users                 User[]
+  members               OrganizationMember[]
+  projects              Project[]
+  pendingProjects       PendingProject[]
+  subscription          Subscription?
+  invoices              Invoice[]
+  walletTransactions    WalletTransaction[]
+  usageRecords          UsageRecord[]
+  apiIntegrations       ApiIntegration[]
+  scheduledReports      ScheduledReport[]
+  onboardingProgress    OnboardingProgress[]
+  supportTickets        SupportTicket[]
+  affiliate             Affiliate?
+  apiKeys               ApiKey[]
+  billingProfile        BillingProfile?
+  cancellationFeedback  CancellationFeedback[]
+  notificationPref      NotificationPreference?
+  couponRedemptions     CouponRedemption[]
+  customerHealthScore   CustomerHealthScore?
+  consentRecords        ConsentRecord[]
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  @@map("organizations")
+}
+
+model OrganizationMember {
+  id             String        @id @default(uuid())
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  userId         String
+  user           User          @relation(fields: [userId], references: [id])
+  role           OrgMemberRole @default(MEMBER)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@unique([organizationId, userId])
+  @@map("organization_members")
+}
+
+model RefreshToken {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  userAgent   String?
+  ip          String?
+  createdAt   DateTime  @default(now())
+
+  @@map("refresh_tokens")
+}
+
+model AuditLog {
+  id           String   @id @default(uuid())
+  actorUserId  String?
+  actor        User?    @relation("Actor", fields: [actorUserId], references: [id])
+  action       String
+  entityType   String
+  entityId     String?
+  meta         Json?
+  ip           String?
+  createdAt    DateTime @default(now())
+
+  @@index([actorUserId])
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}
+
+model ConsentRecord {
+  id               String       @id @default(uuid())
+  userId           String
+  user             User         @relation(fields: [userId], references: [id])
+  organizationId   String?
+  organization     Organization? @relation(fields: [organizationId], references: [id])
+  consentType      ConsentType
+  documentVersion  String
+  documentSnapshot String       @db.Text
+  acceptedAt       DateTime     @default(now())
+  ip               String?
+  userAgent        String?
+  legalDocumentId  String?
+  legalDocument    LegalDocument? @relation(fields: [legalDocumentId], references: [id])
+
+  @@index([userId])
+  @@index([organizationId])
+  @@map("consent_records")
+}
+
+model LegalDocument {
+  id            String            @id @default(uuid())
+  type          LegalDocumentType
+  version       String
+  locale        String            @default("tr")
+  content       String            @db.Text
+  effectiveDate DateTime
+  isActive      Boolean           @default(true)
+  consentRecords ConsentRecord[]
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@unique([type, locale, version])
+  @@map("legal_documents")
+}
+
+// ============================================================
+// BILLING & SUBSCRIPTION
+// ============================================================
+
+model Plan {
+  id             String         @id @default(uuid())
+  name           String
+  slug           String         @unique
+  monthlyPrice   Decimal        @db.Decimal(10, 2)
+  yearlyPrice    Decimal        @db.Decimal(10, 2)
+  currency       String         @default("TRY")
+  isActive       Boolean        @default(true)
+  sortOrder      Int            @default(0)
+  limits         Json
+  subscriptions  Subscription[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@map("plans")
+}
+
+model Subscription {
+  id                      String             @id @default(uuid())
+  organizationId          String             @unique
+  organization            Organization       @relation(fields: [organizationId], references: [id])
+  planId                  String
+  plan                    Plan               @relation(fields: [planId], references: [id])
+  status                  SubscriptionStatus @default(TRIALING)
+  billingCycle            BillingCycle       @default(MONTHLY)
+  currentPeriodStart      DateTime
+  currentPeriodEnd        DateTime
+  trialEndsAt             DateTime?
+  cancelAtPeriodEnd       Boolean            @default(false)
+  paymentProviderRef      String?
+  pastDueSince            DateTime?
+  isComplimentary         Boolean            @default(false)
+  complimentaryReason     String?
+  complimentaryUntil      DateTime?
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+
+  @@map("subscriptions")
+}
+
+model Invoice {
+  id                  String        @id @default(uuid())
+  organizationId      String
+  organization        Organization  @relation(fields: [organizationId], references: [id])
+  subscriptionId      String?
+  number              String        @unique
+  amount              Decimal       @db.Decimal(10, 2)
+  tax                 Decimal       @db.Decimal(10, 2)
+  total               Decimal       @db.Decimal(10, 2)
+  currency            String        @default("TRY")
+  status              InvoiceStatus @default(UNPAID)
+  pdfUrl              String?
+  paymentProviderRef  String?
+  parasutInvoiceId    String?
+  parasutStatus       String?
+  issuedAt            DateTime      @default(now())
+  paidAt              DateTime?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  @@index([organizationId])
+  @@map("invoices")
+}
+
+model WalletTransaction {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  type           WalletTxType
+  amount         Decimal      @db.Decimal(10, 2)
+  balanceAfter   Decimal      @db.Decimal(10, 2)
+  refType        String?
+  refId          String?
+  description    String?
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId])
+  @@map("wallet_transactions")
+}
+
+model UsageRecord {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  metric         UsageMetric
+  value          Int
+  periodStart    DateTime
+  periodEnd      DateTime
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId, metric])
+  @@map("usage_records")
+}
+
+model BillingProfile {
+  id             String       @id @default(uuid())
+  organizationId String       @unique
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  invoiceType    InvoiceType  @default(INDIVIDUAL)
+  companyTitle   String?
+  taxOffice      String?
+  taxNumber      String?
+  tckn           String?
+  address        String?
+  city           String?
+  country        String       @default("TR")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@map("billing_profiles")
+}
+
+model Coupon {
+  id               String            @id @default(uuid())
+  code             String            @unique
+  type             CouponType
+  value            Decimal           @db.Decimal(10, 2)
+  maxRedemptions   Int?
+  redemptionCount  Int               @default(0)
+  validFrom        DateTime
+  validUntil       DateTime?
+  applicablePlans  Json?
+  isActive         Boolean           @default(true)
+  redemptions      CouponRedemption[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@map("coupons")
+}
+
+model CouponRedemption {
+  id              String       @id @default(uuid())
+  couponId        String
+  coupon          Coupon       @relation(fields: [couponId], references: [id])
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  discountApplied Decimal      @db.Decimal(10, 2)
+  redeemedAt      DateTime     @default(now())
+
+  @@unique([couponId, organizationId])
+  @@map("coupon_redemptions")
+}
+
+model CancellationFeedback {
+  id             String             @id @default(uuid())
+  organizationId String
+  organization   Organization       @relation(fields: [organizationId], references: [id])
+  reason         CancellationReason
+  comment        String?
+  offerShown     String?
+  offerAccepted  Boolean            @default(false)
+  canceledAt     DateTime           @default(now())
+
+  @@map("cancellation_feedback")
+}
+
+// ============================================================
+// PROJECTS & SEO CORE
+// ============================================================
+
+model Project {
+  id                    String              @id @default(uuid())
+  organizationId        String
+  organization          Organization        @relation(fields: [organizationId], references: [id])
+  name                  String
+  domain                String
+  faviconUrl            String?
+  country               String              @default("TR")
+  language              String              @default("tr")
+  searchEngine          String              @default("google.com.tr")
+  status                ProjectStatus       @default(ACTIVE)
+  healthScore           Int                 @default(0)
+  geoVisibilityScore    Int                 @default(0)
+  gscConnected          Boolean             @default(false)
+  createdByUserId       String
+  createdBy             User                @relation(fields: [createdByUserId], references: [id])
+  keywords              Keyword[]
+  competitors           Competitor[]
+  backlinks             Backlink[]
+  crawlJobs             CrawlJob[]
+  contentItems          ContentItem[]
+  geoQueries            GeoQuery[]
+  geoSnapshots          GeoVisibilitySnapshot[]
+  geoCompetitors        GeoCompetitor[]
+  outreachCampaigns     OutreachCampaign[]
+  backlinkOrders        BacklinkOrder[]
+  scheduledReports      ScheduledReport[]
+  apiIntegrations       ApiIntegration[]
+  contentProject        ContentProject?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  deletedAt             DateTime?
+
+  @@index([organizationId])
+  @@map("projects")
+}
+
+model PendingProject {
+  id                String               @id @default(uuid())
+  organizationId    String
+  organization      Organization         @relation(fields: [organizationId], references: [id])
+  domain            String
+  attemptedByUserId String
+  attemptedAt       DateTime             @default(now())
+  status            PendingProjectStatus @default(WATCHING)
+  watchUntil        DateTime
+  lightSnapshotJson Json?
+  adminNotified     Boolean              @default(false)
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  @@index([organizationId])
+  @@map("pending_projects")
+}
+
+model Keyword {
+  id             String        @id @default(uuid())
+  projectId      String
+  project        Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  phrase         String
+  location       String        @default("Turkey")
+  language       String        @default("tr")
+  searchVolume   Int?
+  difficulty     Int?
+  cpc            Decimal?      @db.Decimal(10, 2)
+  intent         KeywordIntent @default(INFORMATIONAL)
+  trackingDepth  TrackingDepth @default(FIRST_PAGE)
+  isStarred      Boolean       @default(false)
+  tagId          String?
+  tag            KeywordTag?   @relation(fields: [tagId], references: [id])
+  ranks          KeywordRank[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@unique([projectId, phrase, location])
+  @@index([projectId])
+  @@map("keywords")
+}
+
+model KeywordRank {
+  id               String    @id @default(uuid())
+  keywordId        String
+  keyword          Keyword   @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+  position         Int?
+  previousPosition Int?
+  url              String?
+  serpFeatures     Json?
+  checkedAt        DateTime  @default(now())
+
+  @@index([keywordId])
+  @@index([checkedAt])
+  @@map("keyword_ranks")
+}
+
+model KeywordTag {
+  id        String    @id @default(uuid())
+  projectId String
+  name      String
+  color     String    @default("#5B8DEF")
+  keywords  Keyword[]
+  createdAt DateTime  @default(now())
+
+  @@unique([projectId, name])
+  @@map("keyword_tags")
+}
+
+model Competitor {
+  id               String  @id @default(uuid())
+  projectId        String
+  project          Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  domain           String
+  isAuto           Boolean @default(false)
+  visibilityScore  Int     @default(0)
+  commonKeywords   Int     @default(0)
+  avgPosition      Float?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([projectId, domain])
+  @@map("competitors")
+}
+
+model Backlink {
+  id            String        @id @default(uuid())
+  projectId     String
+  project       Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sourceDomain  String
+  sourceUrl     String
+  targetUrl     String
+  anchorText    String?
+  domainRating  Int?
+  isDofollow    Boolean       @default(true)
+  firstSeen     DateTime
+  lastSeen      DateTime
+  status        BacklinkStatus @default(ACTIVE)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([projectId])
+  @@map("backlinks")
+}
+
+// ============================================================
+// CRAWLER & TECHNICAL SEO
+// ============================================================
+
+model CrawlJob {
+  id           String         @id @default(uuid())
+  projectId    String
+  project      Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  status       CrawlJobStatus @default(QUEUED)
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  pagesScanned Int            @default(0)
+  issuesFound  Int            @default(0)
+  healthScore  Int?
+  triggeredBy  CrawlTrigger   @default(MANUAL)
+  pages        CrawledPage[]
+  issues       SeoIssue[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@index([projectId])
+  @@map("crawl_jobs")
+}
+
+model CrawledPage {
+  id               String    @id @default(uuid())
+  crawlJobId       String
+  crawlJob         CrawlJob  @relation(fields: [crawlJobId], references: [id], onDelete: Cascade)
+  url              String
+  statusCode       Int?
+  title            String?
+  titleLength      Int?
+  metaDescription  String?
+  metaLength       Int?
+  h1Count          Int       @default(0)
+  wordCount        Int       @default(0)
+  loadTimeMs       Int?
+  isIndexable      Boolean   @default(true)
+  canonicalUrl     String?
+  hasSchema        Boolean   @default(false)
+  depth            Int       @default(0)
+  issues           SeoIssue[]
+  createdAt        DateTime  @default(now())
+
+  @@index([crawlJobId])
+  @@map("crawled_pages")
+}
+
+model SeoIssue {
+  id              String        @id @default(uuid())
+  crawlJobId      String
+  crawlJob        CrawlJob      @relation(fields: [crawlJobId], references: [id], onDelete: Cascade)
+  crawledPageId   String?
+  crawledPage     CrawledPage?  @relation(fields: [crawledPageId], references: [id])
+  ruleId          String?
+  rule            SeoRuleDefinition? @relation(fields: [ruleId], references: [id])
+  category        IssueCategory
+  severity        IssueSeverity
+  code            String
+  message         String
+  recommendation  String?
+  autoFixable     Boolean       @default(false)
+  fixed           Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+
+  @@index([crawlJobId])
+  @@map("seo_issues")
+}
+
+model SeoRuleDefinition {
+  id               String        @id @default(uuid())
+  code             String        @unique
+  category         IssueCategory
+  severity         IssueSeverity
+  titleTr          String
+  descriptionTr    String
+  recommendationTr String
+  weight           Int           @default(1)
+  autoFixable      Boolean       @default(false)
+  issues           SeoIssue[]
+  createdAt        DateTime      @default(now())
+
+  @@map("seo_rule_definitions")
+}
+
+// ============================================================
+// CONTENT ENGINE
+// ============================================================
+
+model ContentProject {
+  id              String  @id @default(uuid())
+  projectId       String  @unique
+  project         Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  defaultTone     String  @default("professional")
+  defaultLanguage String  @default("tr")
+  brandVoiceNotes String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("content_projects")
+}
+
+model ContentItem {
+  id                  String          @id @default(uuid())
+  projectId           String
+  project             Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  type                ContentType     @default(BLOG)
+  title               String
+  slug                String
+  focusKeyword        String?
+  secondaryKeywords   Json?
+  status              ContentStatus   @default(DRAFT)
+  bodyMarkdown        String?         @db.Text
+  bodyHtml            String?         @db.Text
+  wordCount           Int             @default(0)
+  seoScore            Int             @default(0)
+  geoScore            Int             @default(0)
+  readabilityScore    Int             @default(0)
+  metaTitle           String?
+  metaDescription     String?
+  jsonLd              Json?
+  aiModel             String?
+  generationCost      Decimal?        @db.Decimal(10, 4)
+  h1                  String?
+  headingsOutline     Json?
+  publishedUrl        String?
+  scheduledAt         DateTime?
+  createdByUserId     String?
+  createdBy           User?           @relation("CreatedBy", fields: [createdByUserId], references: [id])
+  reviewedByUserId    String?
+  reviewedBy          User?           @relation("ReviewedBy", fields: [reviewedByUserId], references: [id])
+  revisions           ContentRevision[]
+  scoreBreakdowns     ContentScoreBreakdown[]
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  @@index([projectId])
+  @@map("content_items")
+}
+
+model ContentRevision {
+  id             String      @id @default(uuid())
+  contentItemId  String
+  contentItem    ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  version        Int
+  bodyMarkdown   String      @db.Text
+  editedByUserId String?
+  note           String?
+  createdAt      DateTime    @default(now())
+
+  @@map("content_revisions")
+}
+
+model ContentScoreBreakdown {
+  id            String      @id @default(uuid())
+  contentItemId String
+  contentItem   ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  criterion     String
+  score         Int
+  maxScore      Int
+  note          String?
+  createdAt     DateTime    @default(now())
+
+  @@map("content_score_breakdowns")
+}
+
+// ============================================================
+// GEO (GENERATIVE ENGINE OPTIMIZATION)
+// ============================================================
+
+model GeoQuery {
+  id          String         @id @default(uuid())
+  projectId   String
+  project     Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  prompt      String
+  location    String         @default("Turkey")
+  language    String         @default("tr")
+  status      GeoQueryStatus @default(ACTIVE)
+  checkedAt   DateTime?
+  results     GeoResult[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([projectId])
+  @@map("geo_queries")
+}
+
+model GeoResult {
+  id              String      @id @default(uuid())
+  geoQueryId      String
+  geoQuery        GeoQuery    @relation(fields: [geoQueryId], references: [id], onDelete: Cascade)
+  platform        GeoplatForm
+  brandMentioned  Boolean     @default(false)
+  brandCited      Boolean     @default(false)
+  citedUrl        String?
+  position        Int?
+  sentiment       Sentiment   @default(NEUTRAL)
+  responseSnippet String?     @db.Text
+  sourcesJson     Json?
+  checkedAt       DateTime    @default(now())
+
+  @@index([geoQueryId])
+  @@map("geo_results")
+}
+
+model GeoVisibilitySnapshot {
+  id                       String   @id @default(uuid())
+  projectId                String
+  project                  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  date                     DateTime
+  mentionCount             Int      @default(0)
+  citationCount            Int      @default(0)
+  citationToMentionRatio   Float?
+  shareOfVoice             Float?
+  byPlatform               Json?
+  createdAt                DateTime @default(now())
+
+  @@unique([projectId, date])
+  @@index([projectId])
+  @@map("geo_visibility_snapshots")
+}
+
+model GeoCompetitor {
+  id            String   @id @default(uuid())
+  projectId     String
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  domain        String
+  mentionCount  Int      @default(0)
+  citationCount Int      @default(0)
+  shareOfVoice  Float?
+  updatedAt     DateTime @updatedAt
+  createdAt     DateTime @default(now())
+
+  @@unique([projectId, domain])
+  @@map("geo_competitors")
+}
+
+// ============================================================
+// OUTREACH / DIGITAL PR
+// ============================================================
+
+model OutreachCampaign {
+  id              String                  @id @default(uuid())
+  projectId       String
+  project         Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name            String
+  targetUrl       String
+  anchorText      String?
+  topic           String?
+  status          OutreachCampaignStatus  @default(DRAFT)
+  prospectsFound  Int                     @default(0)
+  emailsSent      Int                     @default(0)
+  replies         Int                     @default(0)
+  linksWon        Int                     @default(0)
+  createdByUserId String?
+  prospects       Prospect[]
+  publisherOffers PublisherOffer[]
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+
+  @@index([projectId])
+  @@map("outreach_campaigns")
+}
+
+model Prospect {
+  id              String          @id @default(uuid())
+  campaignId      String
+  campaign        OutreachCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  domain          String
+  contactEmail    String?
+  contactName     String?
+  domainRating    Int?
+  relevanceScore  Int             @default(0)
+  status          ProspectStatus  @default(FOUND)
+  foundVia        ProspectFoundVia @default(SEARCH)
+  emails          OutreachEmail[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([campaignId])
+  @@map("prospects")
+}
+
+model OutreachEmail {
+  id            String      @id @default(uuid())
+  prospectId    String
+  prospect      Prospect    @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  sequenceStep  Int         @default(1)
+  subject       String
+  body          String      @db.Text
+  status        EmailStatus @default(QUEUED)
+  sentAt        DateTime?
+  openedAt      DateTime?
+  repliedAt     DateTime?
+  threadId      String?
+  replies       OutreachReply[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([prospectId])
+  @@map("outreach_emails")
+}
+
+model OutreachReply {
+  id                String             @id @default(uuid())
+  outreachEmailId   String
+  outreachEmail     OutreachEmail      @relation(fields: [outreachEmailId], references: [id], onDelete: Cascade)
+  rawText           String             @db.Text
+  classification    ReplyClassification @default(AUTO_REPLY)
+  aiSummary         String?
+  needsHumanReview  Boolean            @default(false)
+  createdAt         DateTime           @default(now())
+
+  @@map("outreach_replies")
+}
+
+// ============================================================
+// BACKLINK MARKET
+// ============================================================
+
+model PublisherOffer {
+  id                  String        @id @default(uuid())
+  sourceCampaignId    String?
+  sourceCampaign      OutreachCampaign? @relation(fields: [sourceCampaignId], references: [id])
+  ownerUserId         String?
+  domain              String
+  domainRating        Int?
+  organicTraffic      Int?
+  category            String?
+  language            String?
+  country             String?
+  linkType            MarketLinkType?
+  publisherAskingPrice Decimal?     @db.Decimal(10, 2)
+  turnaroundDays      Int?
+  sampleUrl           String?
+  rawReplyText        String?       @db.Text
+  status              OfferStatus   @default(PENDING_ADMIN_REVIEW)
+  reviewedByUserId    String?
+  salePrice           Decimal?      @db.Decimal(10, 2)
+  adminNote           String?
+  publisherSite       PublisherSite?
+  listing             MarketListing?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  @@map("publisher_offers")
+}
+
+model PublisherSite {
+  id             String              @id @default(uuid())
+  ownerUserId    String?
+  offerId        String?             @unique
+  offer          PublisherOffer?     @relation(fields: [offerId], references: [id])
+  domain         String              @unique
+  domainRating   Int?
+  organicTraffic Int?
+  category       String?
+  language       String?
+  country        String?
+  priceMin       Decimal?            @db.Decimal(10, 2)
+  priceMax       Decimal?            @db.Decimal(10, 2)
+  turnaroundDays Int?
+  isVerified     Boolean             @default(false)
+  status         PublisherSiteStatus @default(APPROVED)
+  addedVia       PublisherSiteAddedVia @default(MANUAL)
+  listings       MarketListing[]
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@map("publisher_sites")
+}
+
+model MarketListing {
+  id              String         @id @default(uuid())
+  publisherSiteId String
+  publisherSite   PublisherSite  @relation(fields: [publisherSiteId], references: [id])
+  offerId         String?        @unique
+  offer           PublisherOffer? @relation(fields: [offerId], references: [id])
+  linkType        MarketLinkType @default(GUEST_POST)
+  publisherCost   Decimal        @db.Decimal(10, 2)
+  price           Decimal        @db.Decimal(10, 2)
+  margin          Decimal        @db.Decimal(10, 2)
+  drTier          String?
+  maxLinks        Int            @default(1)
+  isDofollow      Boolean        @default(true)
+  sampleUrl       String?
+  isActive        Boolean        @default(true)
+  orders          BacklinkOrder[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([publisherSiteId])
+  @@map("market_listings")
+}
+
+model BacklinkOrder {
+  id             String        @id @default(uuid())
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  projectId      String
+  project        Project       @relation(fields: [projectId], references: [id])
+  listingId      String
+  listing        MarketListing @relation(fields: [listingId], references: [id])
+  targetUrl      String
+  anchorText     String?
+  contentBrief   String?       @db.Text
+  status         OrderStatus   @default(PENDING_PAYMENT)
+  price          Decimal       @db.Decimal(10, 2)
+  escrowTxId     String?
+  publishedUrl   String?
+  verifiedAt     DateTime?
+  verifications  BacklinkVerification[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([organizationId])
+  @@index([projectId])
+  @@map("backlink_orders")
+}
+
+model BacklinkVerification {
+  id             String       @id @default(uuid())
+  orderId        String
+  order          BacklinkOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  attempt        Int          @default(1)
+  found          Boolean      @default(false)
+  httpStatus     Int?
+  isDofollow     Boolean?
+  anchorMatched  Boolean?
+  checkedAt      DateTime     @default(now())
+
+  @@map("backlink_verifications")
+}
+
+// ============================================================
+// NOTIFICATIONS & SYSTEM
+// ============================================================
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  body      String
+  isRead    Boolean  @default(false)
+  link      String?
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+model ApiIntegration {
+  id             String       @id @default(uuid())
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  projectId      String?
+  project        Project?     @relation(fields: [projectId], references: [id])
+  provider       ApiProvider
+  credentials    Json
+  status         String       @default("connected")
+  connectedAt    DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId])
+  @@map("api_integrations")
+}
+
+model ScheduledReport {
+  id             String         @id @default(uuid())
+  projectId      String
+  project        Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization   @relation(fields: [organizationId], references: [id])
+  frequency      ReportFrequency
+  recipients     Json
+  lastSentAt     DateTime?
+  format         ReportFormat   @default(PDF)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@map("scheduled_reports")
+}
+
+model SystemSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("system_settings")
+}
+
+model CurrencyRate {
+  id        String   @id @default(uuid())
+  base      String   @default("TRY")
+  target    String
+  rate      Decimal  @db.Decimal(20, 8)
+  fetchedAt DateTime @default(now())
+
+  @@unique([base, target])
+  @@map("currency_rates")
+}
+
+model BlogPost {
+  id               String   @id @default(uuid())
+  slug             String   @unique
+  locale           String   @default("tr")
+  title            String
+  h1               String
+  metaTitle        String
+  metaDescription  String
+  focusKeyword     String
+  bodyMarkdown     String   @db.Text
+  bodyHtml         String   @db.Text
+  coverImageUrl    String?
+  jsonLd           Json?
+  authorName       String   @default("FunBreak SEO Ekibi")
+  status           String   @default("PUBLISHED")
+  publishedAt      DateTime @default(now())
+  readingMinutes   Int      @default(5)
+  viewCount        Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([locale, status])
+  @@map("blog_posts")
+}
+
+// ============================================================
+// ONBOARDING / SUPPORT / AFFILIATE / API KEYS
+// ============================================================
+
+model OnboardingProgress {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  step           String
+  completedAt    DateTime     @default(now())
+
+  @@unique([organizationId, step])
+  @@map("onboarding_progress")
+}
+
+model SupportTicket {
+  id               String        @id @default(uuid())
+  organizationId   String
+  organization     Organization  @relation(fields: [organizationId], references: [id])
+  userId           String
+  user             User          @relation(fields: [userId], references: [id])
+  subject          String
+  category         String?
+  priority         TicketPriority @default(MEDIUM)
+  status           TicketStatus  @default(OPEN)
+  assignedToUserId String?
+  messages         SupportMessage[]
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@index([organizationId])
+  @@map("support_tickets")
+}
+
+model SupportMessage {
+  id            String       @id @default(uuid())
+  ticketId      String
+  ticket        SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  senderUserId  String
+  sender        User         @relation(fields: [senderUserId], references: [id])
+  body          String       @db.Text
+  attachments   Json?
+  isStaff       Boolean      @default(false)
+  createdAt     DateTime     @default(now())
+
+  @@index([ticketId])
+  @@map("support_messages")
+}
+
+model Affiliate {
+  id              String             @id @default(uuid())
+  organizationId  String             @unique
+  organization    Organization       @relation(fields: [organizationId], references: [id])
+  code            String             @unique
+  clicks          Int                @default(0)
+  signups         Int                @default(0)
+  conversions     Int                @default(0)
+  totalEarned     Decimal            @default(0) @db.Decimal(10, 2)
+  balance         Decimal            @default(0) @db.Decimal(10, 2)
+  commissionRate  Decimal            @default(0.15) @db.Decimal(5, 4)
+  referrals       AffiliateReferral[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@map("affiliates")
+}
+
+model AffiliateReferral {
+  id                     String       @id @default(uuid())
+  affiliateId            String
+  affiliate              Affiliate    @relation(fields: [affiliateId], references: [id])
+  referredOrganizationId String
+  status                 String       @default("pending")
+  commissionAmount       Decimal?     @db.Decimal(10, 2)
+  paidAt                 DateTime?
+  createdAt              DateTime     @default(now())
+
+  @@map("affiliate_referrals")
+}
+
+model ApiKey {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  name           String
+  keyHash        String       @unique
+  lastUsedAt     DateTime?
+  scopes         Json?
+  rateLimit      Int          @default(1000)
+  revokedAt      DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId])
+  @@map("api_keys")
+}
+
+// ============================================================
+// AUTOPILOT
+// ============================================================
+
+model AutopilotSettings {
+  id                   String               @id @default(uuid())
+  enabledLocales       Json                 @default("[\"tr\"]")
+  weeklyTargetPerLocale Json                @default("{\"tr\":5,\"en\":5}")
+  publishMode          AutopilotPublishMode @default(SEMI_AUTO)
+  minSeoScore          Int                  @default(75)
+  minGeoScore          Int                  @default(60)
+  nicheTopics          Json?
+  monthlyBudgetUsd     Decimal              @default(100) @db.Decimal(10, 2)
+  isActive             Boolean              @default(false)
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  @@map("autopilot_settings")
+}
+
+model AutopilotKeyword {
+  id               String                 @id @default(uuid())
+  locale           String
+  phrase           String
+  searchVolume     Int?
+  difficulty       Int?
+  opportunityScore Float?
+  status           AutopilotKeywordStatus @default(DISCOVERED)
+  discoveredAt     DateTime               @default(now())
+
+  @@unique([locale, phrase])
+  @@map("autopilot_keywords")
+}
+
+model AutopilotRun {
+  id                  String             @id @default(uuid())
+  runAt               DateTime           @default(now())
+  locale              String
+  keywordsDiscovered  Int                @default(0)
+  contentGenerated    Int                @default(0)
+  contentPublished    Int                @default(0)
+  costUsd             Decimal            @default(0) @db.Decimal(10, 4)
+  status              AutopilotRunStatus @default(RUNNING)
+
+  @@map("autopilot_runs")
+}
+
+model AutopilotContentPerformance {
+  id              String    @id @default(uuid())
+  blogPostId      String
+  locale          String
+  keyword         String
+  publishedAt     DateTime
+  currentPosition Int?
+  bestPosition    Int?
+  geoCitations    Int       @default(0)
+  organicClicks   Int       @default(0)
+  lastCheckedAt   DateTime?
+  needsRefresh    Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([blogPostId])
+  @@map("autopilot_content_performance")
+}
+
+// ============================================================
+// NOTIFICATIONS & MARKETING
+// ============================================================
+
+model NotificationPreference {
+  id                  String          @id @default(uuid())
+  organizationId      String          @unique
+  organization        Organization    @relation(fields: [organizationId], references: [id])
+  digestFrequency     DigestFrequency @default(WEEKLY)
+  eventEmails         Json            @default("{\"crawlDone\":true,\"contentApproval\":true,\"payment\":true,\"quotaAlert\":true,\"subscriptionEnd\":true}")
+  unsubscribeToken    String          @unique @default(uuid())
+  marketingOptIn      Boolean         @default(true)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  @@map("notification_preferences")
+}
+
+model AdminNotificationSetting {
+  id                          String          @id @default(uuid())
+  financialDigestFrequency    DigestFrequency @default(WEEKLY)
+  financialDigestEmail        String          @default("doganizzetcan@gmail.com")
+  saleAlertEnabled            Boolean         @default(true)
+  saleAlertEmail              String          @default("doganizzetcan@gmail.com")
+  createdAt                   DateTime        @default(now())
+  updatedAt                   DateTime        @updatedAt
+
+  @@map("admin_notification_settings")
+}
+
+model Testimonial {
+  id          String   @id @default(uuid())
+  authorName  String
+  company     String?
+  avatarUrl   String?
+  rating      Int      @default(5)
+  text        String   @db.Text
+  locale      String   @default("tr")
+  isApproved  Boolean  @default(false)
+  isFeatured  Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("testimonials")
+}
+
+model CaseStudy {
+  id           String   @id @default(uuid())
+  slug         String   @unique
+  title        String
+  clientName   String
+  industry     String?
+  summary      String?
+  resultsJson  Json?
+  bodyMarkdown String?  @db.Text
+  coverImageUrl String?
+  isPublished  Boolean  @default(false)
+  locale       String   @default("tr")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("case_studies")
+}
+
+model AbTest {
+  id        String       @id @default(uuid())
+  name      String
+  page      String
+  variantA  Json
+  variantB  Json
+  metric    String
+  status    AbTestStatus @default(RUNNING)
+  results   Json?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@map("ab_tests")
+}
+
+model SystemHealthCheck {
+  id        String              @id @default(uuid())
+  service   SystemHealthService
+  status    SystemHealthStatus  @default(UP)
+  latencyMs Int?
+  checkedAt DateTime            @default(now())
+
+  @@index([service, checkedAt])
+  @@map("system_health_checks")
+}
+
+model CustomerHealthScore {
+  id             String       @id @default(uuid())
+  organizationId String       @unique
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  score          Int          @default(100)
+  churnRisk      ChurnRisk    @default(LOW)
+  signals        Json?
+  computedAt     DateTime     @default(now())
+
+  @@map("customer_health_scores")
+}
+
+model EmailCampaign {
+  id              String              @id @default(uuid())
+  name            String
+  subject         String
+  bodyHtml        String              @db.Text
+  segment         Json?
+  locale          String              @default("tr")
+  status          EmailCampaignStatus @default(DRAFT)
+  scheduledAt     DateTime?
+  sentCount       Int                 @default(0)
+  openCount       Int                 @default(0)
+  clickCount      Int                 @default(0)
+  unsubscribeCount Int                @default(0)
+  createdByUserId String?
+  createdBy       User?               @relation(fields: [createdByUserId], references: [id])
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@map("email_campaigns")
+}

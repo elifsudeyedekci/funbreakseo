@@ -1,0 +1,9 @@
+{
+  "common": { "loading": "Cargando...", "error": "Ha ocurrido un error", "save": "Guardar", "cancel": "Cancelar", "search": "Buscar...", "getStarted": "Comenzar", "tryFree": "Prueba gratis", "contactUs": "Contáctenos" },
+  "nav": { "features": "Características", "pricing": "Precios", "blog": "Blog", "about": "Acerca de", "contact": "Contacto", "login": "Iniciar sesión", "register": "Prueba gratis", "dashboard": "Panel" },
+  "hero": { "badge": "Plataforma SEO + GEO", "title": "Visible en Google y", "titleHighlight": "búsquedas de IA", "subtitle": "Rastree con qué frecuencia ChatGPT, Gemini y Perplexity citan su marca. SEO técnico, creación de contenido, backlinks y outreach — una plataforma.", "cta": "Prueba gratis 14 días", "ctaNote": "Sin tarjeta de crédito", "freeAuditBtn": "Analizar" },
+  "pricing": { "title": "Precios Transparentes", "subtitle": "IVA incluido, sin sorpresas. 14 días gratis.", "monthly": "Mensual", "yearly": "Anual", "yearlyBadge": "2 MESES GRATIS", "starter": "Inicial", "growth": "Crecimiento", "pro": "Pro", "enterprise": "Empresa", "perMonth": "/mes", "trialCta": "Empezar gratis" },
+  "footer": { "company": "FunBreak Global Teknoloji Ltd. Şti.", "description": "Plataforma SEO + GEO completamente automatizada.", "allRights": "Todos los derechos reservados." },
+  "cookie": { "title": "Preferencias de cookies", "desc": "Usamos cookies para mejorar su experiencia.", "accept": "Aceptar todo", "decline": "Solo esenciales" },
+  "errors": { "notFound": "Página no encontrada", "goHome": "Ir al inicio" }
+}
