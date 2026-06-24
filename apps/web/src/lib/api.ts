@@ -132,10 +132,15 @@ export const geoApi = {
 
 export const outreachApi = {
   list: (projectId: string) => api.get(`/projects/${projectId}/outreach/campaigns`),
+  campaigns: (projectId: string) => api.get(`/projects/${projectId}/outreach/campaigns`),
   create: (projectId: string, d: Record<string, unknown>) => api.post(`/projects/${projectId}/outreach/campaigns`, d),
+  createCampaign: (projectId: string, d: Record<string, unknown>) => api.post(`/projects/${projectId}/outreach/campaigns`, d),
   get: (id: string) => api.get(`/campaigns/${id}`),
   generateEmails: (id: string) => api.post(`/campaigns/${id}/generate-emails`),
   start: (id: string) => api.post(`/campaigns/${id}/start`),
+  backlinks: (projectId: string, params?: Record<string, unknown>) => api.get(`/projects/${projectId}/backlinks`, { params }),
+  marketListings: (params?: Record<string, unknown>) => api.get('/market/listings', { params }),
+  orders: (projectId: string) => api.get(`/projects/${projectId}/backlink-orders`),
 };
 
 export const marketApi = {
@@ -165,4 +170,51 @@ export const publicApi = {
   getBlogPost: (slug: string) => api.get(`/public/blog/${slug}`),
   contact: (d: Record<string, unknown>) => api.post('/public/contact', d),
   freeAudit: (domain: string) => api.post('/public/free-audit', { domain }),
+};
+
+export const reportsApi = {
+  list: (projectId: string) => api.get(`/projects/${projectId}/reports`),
+  generate: (projectId: string, d: Record<string, unknown>) => api.post(`/projects/${projectId}/reports/generate`, d),
+  get: (projectId: string, reportId: string) => api.get(`/projects/${projectId}/reports/${reportId}`),
+  scheduled: (projectId: string) => api.get(`/projects/${projectId}/reports/scheduled`),
+  createSchedule: (projectId: string, d: Record<string, unknown>) => api.post(`/projects/${projectId}/reports/schedules`, d),
+  deleteSchedule: (projectId: string, scheduleId: string) => api.delete(`/projects/${projectId}/reports/schedules/${scheduleId}`),
+};
+
+export const developerApi = {
+  apiKeys: () => api.get('/developer/api-keys'),
+  createApiKey: (d: Record<string, unknown>) => api.post('/developer/api-keys', d),
+  deleteApiKey: (id: string) => api.delete(`/developer/api-keys/${id}`),
+  webhooks: () => api.get('/developer/webhooks'),
+  createWebhook: (d: Record<string, unknown>) => api.post('/developer/webhooks', d),
+  deleteWebhook: (id: string) => api.delete(`/developer/webhooks/${id}`),
+  usage: () => api.get('/developer/usage'),
+};
+
+export const affiliateApi = {
+  me: () => api.get('/affiliate/me'),
+  referrals: () => api.get('/affiliate/referrals'),
+  payouts: () => api.get('/affiliate/payouts'),
+  requestPayout: (amount: number) => api.post('/affiliate/payouts', { amount }),
+};
+
+export const accountApi = {
+  me: () => api.get('/account/me'),
+  update: (d: Record<string, unknown>) => api.patch('/account/me', d),
+  organization: () => api.get('/account/organization'),
+  updateOrganization: (d: Record<string, unknown>) => api.patch('/account/organization', d),
+  changePassword: (d: Record<string, unknown>) => api.post('/account/change-password', d),
+  enable2fa: () => api.post('/account/2fa/enable'),
+  disable2fa: (d: Record<string, unknown>) => api.post('/account/2fa/disable', d),
+  verify2fa: (code: string) => api.post('/account/2fa/verify', { code }),
+  integrations: () => api.get('/account/integrations'),
+  connectGsc: (d: Record<string, unknown>) => api.post('/account/integrations/gsc', d),
+};
+
+// Extend outreachApi with backlink-specific methods
+export const backlinkApi = {
+  list: (projectId: string, params?: Record<string, unknown>) => api.get(`/projects/${projectId}/backlinks`, { params }),
+  marketListings: (params?: Record<string, unknown>) => api.get('/market/listings', { params }),
+  orders: (projectId: string) => api.get(`/projects/${projectId}/backlink-orders`),
+  createOrder: (projectId: string, d: Record<string, unknown>) => api.post(`/projects/${projectId}/backlink-orders`, d),
 };
