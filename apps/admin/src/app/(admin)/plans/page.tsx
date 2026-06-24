@@ -52,7 +52,7 @@ export default function PlansPage() {
 
   const { data: plans, isLoading: plansLoading } = useQuery({
     queryKey: ['admin-plans'],
-    queryFn: async () => { try { const r = await getPlans(); return r.data?.data ?? MOCK_PLANS; } catch { return MOCK_PLANS; } },
+    queryFn: async () => { try { const r = await adminApi.get('/admin/plans'); return r.data?.data ?? MOCK_PLANS; } catch { return MOCK_PLANS; } },
   });
 
   const { data: coupons, isLoading: couponsLoading } = useQuery({

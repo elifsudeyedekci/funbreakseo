@@ -48,11 +48,11 @@ export default function FinancePage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-finance'],
-    queryFn: async () => { try { const r = await getFinance(); return r.data; } catch { return MOCK_FINANCE; } },
+    queryFn: async () => { try { const r = await adminApi.get('/admin/revenue'); return r.data; } catch { return MOCK_FINANCE; } },
   });
 
   const updateMutation = useMutation({
-    mutationFn: (d: Record<string, unknown>) => updateFinanceSettings(d),
+    mutationFn: (d: Record<string, unknown>) => adminApi.put('/admin/finance/settings', d),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-finance'] }); toast('Bildirim ayarları güncellendi', 'success'); setEditingNotif(false); },
     onError: () => toast('Güncelleme başarısız', 'error'),
   });
