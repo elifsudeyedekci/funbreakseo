@@ -101,7 +101,7 @@ export default function AutopilotPage() {
   });
 
   const discoverMutation = useMutation({
-    mutationFn: () => discoverKeywords(),
+    mutationFn: () => adminApi.post('/admin/autopilot/discover-keywords'),
     onSuccess: () => toast('Kelime keşfi başlatıldı', 'success'),
   });
 
