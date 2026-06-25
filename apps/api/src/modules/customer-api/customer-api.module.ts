@@ -2,13 +2,14 @@ import { Module } from '@nestjs/common';
 import { CustomerApiService } from './customer-api.service';
 import {
   DeveloperKeyController,
+  DeveloperApiKeyAliasController,
   CustomerApiV1Controller,
 } from './customer-api.controller';
 import { ApiKeyGuard } from './api-key.guard';
 import { PrismaService } from '../../prisma.service';
 
 @Module({
-  controllers: [DeveloperKeyController, CustomerApiV1Controller],
+  controllers: [DeveloperKeyController, DeveloperApiKeyAliasController, CustomerApiV1Controller],
   providers: [CustomerApiService, ApiKeyGuard, PrismaService],
   exports: [CustomerApiService],
 })

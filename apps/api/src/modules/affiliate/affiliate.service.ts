@@ -180,6 +180,21 @@ export class AffiliateService {
     });
   }
 
+  async getPayouts(orgId: string) {
+    const affiliate = await this.prisma.affiliate.findFirst({ where: { organizationId: orgId } });
+    if (!affiliate) return [];
+    return this.prisma.affiliatePayout.findMany({
+      where: { affiliateId: affiliate.id },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async requestPayoutByOrg(orgId: string, amount: number) {
+    const affiliate = await this.prisma.affiliate.findFirst({ where: { organizationId: orgId } });
+    if (!affiliate) throw new NotFoundException('Affiliate not found');
+    return this.requestPayout(affiliate.id, amount);
+  }
+
   // Admin
   async getAllAffiliates() {
     return this.prisma.affiliate.findMany({

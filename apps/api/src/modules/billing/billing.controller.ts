@@ -249,6 +249,30 @@ export class BillingController {
     return this.billingService.getWalletTransactions(user.organizationId!);
   }
 
+  @Get('billing/subscription')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Get current subscription' })
+  async getSubscription(@CurrentUser() user: User) {
+    return this.billingService.getSubscription(user.organizationId!);
+  }
+
+  @Get('billing/usage')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Get current usage' })
+  async getUsage(@CurrentUser() user: User) {
+    return this.billingService.getUsage(user.organizationId!);
+  }
+
+  @Get('billing/wallet')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Get wallet balance' })
+  async getWallet(@CurrentUser() user: User) {
+    return this.billingService.getWallet(user.organizationId!);
+  }
+
   @Post('webhooks/vakifbank')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'VakıfBank payment webhook (signature required)' })

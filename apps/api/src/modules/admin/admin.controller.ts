@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Patch,
   Delete,
   Param,
@@ -145,6 +146,21 @@ export class AdminController {
   }
 
   // Consents
+  @Get('admin/customers/:id/subscription')
+  getCustomerSubscription(@Param('id') orgId: string) {
+    return this.adminService.getCustomerSubscription(orgId);
+  }
+
+  @Get('admin/customers/:id/invoices')
+  getCustomerInvoices(@Param('id') orgId: string) {
+    return this.adminService.getCustomerInvoices(orgId);
+  }
+
+  @Get('admin/customers/:id/usage')
+  getCustomerUsage(@Param('id') orgId: string) {
+    return this.adminService.getCustomerUsage(orgId);
+  }
+
   @Get('admin/customers/:id/consents')
   getConsentRecords(
     @Param('id') orgId: string,
@@ -297,5 +313,274 @@ export class AdminController {
   @Get('admin/customer-health')
   getCustomerHealth() {
     return this.adminService.getCustomerHealth();
+  }
+
+  // ─── System health aliases (short paths used by admin pages) ────────────────
+
+  @Get('admin/system-health')
+  getSystemHealth() {
+    return this.adminService.getSystemHealthStatus();
+  }
+
+  @Get('admin/queue-health')
+  getQueueHealth() {
+    return this.adminService.getSystemQueues();
+  }
+
+  @Post('admin/queue-health/:name/retry')
+  retryQueueJobs(@Param('name') name: string) {
+    return this.adminService.retryQueueJobs(name);
+  }
+
+  @Post('admin/queue-health/:name/clean')
+  cleanQueueJobs(@Param('name') name: string) {
+    return this.adminService.cleanQueueJobs(name);
+  }
+
+  @Get('admin/settings')
+  getSettings() {
+    return this.adminService.getSystemSettings();
+  }
+
+  @Patch('admin/settings/:key')
+  updateSettings(@Param('key') key: string, @Body('value') value: string) {
+    return this.adminService.updateSystemSetting(key, value);
+  }
+
+  @Get('admin/api-usage')
+  getApiUsageAlias() {
+    return this.adminService.getApiUsage();
+  }
+
+  // ─── Revenue / Finance ───────────────────────────────────────────────────────
+
+  @Get('admin/revenue')
+  getRevenue() {
+    return this.adminService.getRevenue();
+  }
+
+  @Put('admin/finance/settings')
+  updateFinanceSettings(@Body() dto: Record<string, unknown>) {
+    return this.adminService.updateFinanceSettings(dto);
+  }
+
+  // ─── Coupons ─────────────────────────────────────────────────────────────────
+
+  @Get('admin/coupons')
+  getCoupons() {
+    return this.adminService.getCoupons();
+  }
+
+  @Post('admin/coupons')
+  createCoupon(@Body() dto: Record<string, unknown>) {
+    return this.adminService.createCoupon(dto);
+  }
+
+  @Delete('admin/coupons/:id')
+  deleteCoupon(@Param('id') id: string) {
+    return this.adminService.deleteCoupon(id);
+  }
+
+  // ─── Subscriptions (admin view) ───────────────────────────────────────────────
+
+  @Get('admin/subscriptions')
+  getAllSubscriptions(@Query('page') page = '1', @Query('limit') limit = '50') {
+    return this.adminService.getAllSubscriptions(parseInt(page), parseInt(limit));
+  }
+
+  @Post('admin/subscriptions/:id/suspend')
+  suspendSubscription(@Param('id') id: string) {
+    return this.adminService.suspendSubscription(id);
+  }
+
+  // ─── Staff management ─────────────────────────────────────────────────────────
+
+  @Get('admin/staff')
+  getStaff() {
+    return this.adminService.getStaff();
+  }
+
+  @Post('admin/staff')
+  createStaff(@Body() dto: Record<string, unknown>) {
+    return this.adminService.createStaff(dto);
+  }
+
+  @Put('admin/staff/:id')
+  updateStaff(@Param('id') id: string, @Body() dto: Record<string, unknown>) {
+    return this.adminService.updateStaff(id, dto);
+  }
+
+  // ─── Affiliates (admin view) ──────────────────────────────────────────────────
+
+  @Get('admin/affiliates')
+  getAffiliates() {
+    return this.adminService.getAffiliates();
+  }
+
+  @Get('admin/affiliates/payouts')
+  getAffiliatePendingPayouts() {
+    return this.adminService.getAffiliatePendingPayouts();
+  }
+
+  @Post('admin/affiliates/payouts/:id/approve')
+  approveAffiliatePayout(@Param('id') id: string) {
+    return this.adminService.approveAffiliatePayout(id);
+  }
+
+  // ─── Testimonials ─────────────────────────────────────────────────────────────
+
+  @Get('admin/testimonials')
+  getTestimonials() {
+    return this.adminService.getTestimonials();
+  }
+
+  @Post('admin/testimonials/:id/approve')
+  approveTestimonial(@Param('id') id: string) {
+    return this.adminService.approveTestimonial(id);
+  }
+
+  @Post('admin/testimonials/:id/feature')
+  featureTestimonial(@Param('id') id: string) {
+    return this.adminService.featureTestimonial(id);
+  }
+
+  // ─── Marketing ────────────────────────────────────────────────────────────────
+
+  @Get('admin/marketing/campaigns')
+  getEmailCampaigns() {
+    return this.adminService.getEmailCampaigns();
+  }
+
+  @Post('admin/marketing/campaigns')
+  createEmailCampaign(@Body() dto: Record<string, unknown>) {
+    return this.adminService.createEmailCampaign(dto);
+  }
+
+  @Get('admin/marketing/case-studies')
+  getCaseStudies() {
+    return this.adminService.getCaseStudies();
+  }
+
+  // ─── Cost control ─────────────────────────────────────────────────────────────
+
+  @Get('admin/cost-control')
+  getCostControl() {
+    return this.adminService.getCostControl();
+  }
+
+  @Patch('admin/cost-control/:id')
+  updateCostControl(
+    @Param('id') id: string,
+    @Body('limit') limit: number,
+    @Body('behavior') behavior: string,
+  ) {
+    return this.adminService.updateCostControl(id, limit, behavior);
+  }
+
+  @Put('admin/cost-control/kill-switch')
+  toggleKillSwitch(@Body() dto: Record<string, unknown>) {
+    return this.adminService.toggleKillSwitch(dto);
+  }
+
+  // ─── Legal documents ─────────────────────────────────────────────────────────
+
+  @Get('admin/legal-docs')
+  getLegalDocs() {
+    return this.adminService.getLegalDocs();
+  }
+
+  @Patch('admin/legal-docs/:id')
+  updateLegalDoc(@Param('id') id: string, @Body('content') content: string) {
+    return this.adminService.updateLegalDoc(id, content);
+  }
+
+  // ─── Blog (admin CRUD) ────────────────────────────────────────────────────────
+
+  @Get('admin/blog')
+  getBlogPosts(@Query() params: Record<string, string>) {
+    return this.adminService.getBlogPosts(params);
+  }
+
+  @Post('admin/blog')
+  createBlogPost(@Body() dto: Record<string, unknown>) {
+    return this.adminService.createBlogPost(dto);
+  }
+
+  @Put('admin/blog/:id')
+  updateBlogPost(@Param('id') id: string, @Body() dto: Record<string, unknown>) {
+    return this.adminService.updateBlogPost(id, dto);
+  }
+
+  @Patch('admin/blog/:id')
+  patchBlogPost(@Param('id') id: string, @Body() dto: Record<string, unknown>) {
+    return this.adminService.updateBlogPost(id, dto);
+  }
+
+  @Delete('admin/blog/:id')
+  deleteBlogPost(@Param('id') id: string) {
+    return this.adminService.deleteBlogPost(id);
+  }
+
+  // ─── Market listings approve/reject ──────────────────────────────────────────
+
+  @Post('admin/market/listings/:id/approve')
+  approveListing(@Param('id') id: string) {
+    return this.adminService.approveListing(id);
+  }
+
+  @Post('admin/market/listings/:id/reject')
+  rejectListing(@Param('id') id: string, @Body('reason') reason?: string) {
+    return this.adminService.rejectListing(id, reason);
+  }
+
+  @Get('admin/market/orders')
+  getBacklinkOrders() {
+    return this.adminService.getBacklinkOrders();
+  }
+
+  @Post('admin/market/orders/:id/verify')
+  verifyBacklinkOrder(@Param('id') id: string) {
+    return this.adminService.verifyBacklinkOrder(id);
+  }
+
+  @Get('admin/market/listings')
+  getMarketListings() {
+    return this.adminService.getMarketListings();
+  }
+
+  // ─── Support (admin overrides)  ───────────────────────────────────────────────
+
+  @Get('admin/support/tickets')
+  getSupportTickets(@Query() params: Record<string, string>) {
+    return this.adminService.getSupportTickets(params);
+  }
+
+  @Get('admin/support/tickets/:id')
+  getSupportTicket(@Param('id') id: string) {
+    return this.adminService.getSupportTicket(id);
+  }
+
+  @Patch('admin/support/tickets/:id')
+  updateSupportTicket(@Param('id') id: string, @Body() dto: Record<string, unknown>) {
+    return this.adminService.updateSupportTicket(id, dto);
+  }
+
+  @Post('admin/support/tickets/:id/reply')
+  replySupportTicket(@Param('id') id: string, @Body('message') message: string) {
+    return this.adminService.replySupportTicket(id, message);
+  }
+
+  // ─── Analytics ────────────────────────────────────────────────────────────────
+
+  @Get('admin/analytics')
+  getAnalytics() {
+    return this.adminService.getAnalytics();
+  }
+
+  // ─── Customers audit log ──────────────────────────────────────────────────────
+
+  @Get('admin/customers/:id/audit-log')
+  getCustomerAuditLog(@Param('id') orgId: string) {
+    return this.adminService.getAuditLogs({ orgId });
   }
 }

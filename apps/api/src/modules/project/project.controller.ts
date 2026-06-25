@@ -115,6 +115,7 @@ export class ProjectController {
   }
 
   @Get(':id/overview')
+  @Get(':id/dashboard')
   @ApiOperation({ summary: 'Get project dashboard overview' })
   async getOverview(@CurrentUser() user: User, @Param('id') id: string) {
     return this.projectService.getOverview(id, user.organizationId!);

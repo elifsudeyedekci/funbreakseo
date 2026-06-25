@@ -284,6 +284,79 @@ export class BillingService {
     });
   }
 
+  async getSubscription(orgId: string) {
+    const sub = await this.prisma.subscription.findFirst({
+      where: { organizationId: orgId },
+      include: { plan: true },
+    });
+    if (!sub) return null;
+    return {
+      id: sub.id,
+      planId: sub.planId,
+      planKey: sub.plan.slug,
+      status: sub.status,
+      billingCycle: sub.billingCycle,
+      currentPeriodStart: sub.currentPeriodStart,
+      currentPeriodEnd: sub.currentPeriodEnd,
+      trialEndsAt: sub.trialEndsAt,
+      cancelAtPeriodEnd: sub.cancelAtPeriodEnd,
+      isComplimentary: sub.isComplimentary,
+      plan: sub.plan,
+    };
+  }
+
+  async getUsage(orgId: string) {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    const sub = await this.prisma.subscription.findFirst({
+      where: { organizationId: orgId },
+      include: { plan: true },
+    });
+
+    const limits = (sub?.plan?.limits as Record<string, number> | null) ?? {};
+
+    const [keywords, crawls, aiBlogs, geoQueries] = await Promise.all([
+      this.prisma.keyword.count({
+        where: { project: { organizationId: orgId } },
+      }),
+      this.prisma.crawlJob.count({
+        where: {
+          project: { organizationId: orgId },
+          createdAt: { gte: startOfMonth, lte: endOfMonth },
+        },
+      }),
+      this.prisma.contentItem.count({
+        where: {
+          project: { organizationId: orgId },
+          createdAt: { gte: startOfMonth, lte: endOfMonth },
+        },
+      }),
+      this.prisma.geoQuery.count({
+        where: {
+          project: { organizationId: orgId },
+          createdAt: { gte: startOfMonth, lte: endOfMonth },
+        },
+      }),
+    ]);
+
+    return {
+      keywords: { used: keywords, limit: limits.keywords ?? 50 },
+      crawls: { used: crawls, limit: limits.monthlyCrawls ?? 5 },
+      aiBlogs: { used: aiBlogs, limit: limits.aiBlogsPerProject ?? 5 },
+      geoQueries: { used: geoQueries, limit: limits.geoQueries ?? 25 },
+    };
+  }
+
+  async getWallet(orgId: string) {
+    const wallet = await this.prisma.wallet.findFirst({
+      where: { organizationId: orgId },
+      include: { transactions: { orderBy: { createdAt: 'desc' }, take: 10 } },
+    });
+    return wallet ?? { balance: 0, transactions: [] };
+  }
+
   // ─── VakıfBank Webhook ───────────────────────────────────────────────────────
 
   async handleVakifbankWebhook(payload: Record<string, string>) {

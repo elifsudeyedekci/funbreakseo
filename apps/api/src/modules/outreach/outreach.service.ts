@@ -124,4 +124,20 @@ export class OutreachService {
       orderBy: { createdAt: 'desc' },
     })
   }
+
+  async getBacklinks(projectId: string) {
+    return this.prisma.backlink.findMany({
+      where: { projectId },
+      orderBy: { firstSeen: 'desc' },
+      take: 100,
+    })
+  }
+
+  async getBacklinkOrders(projectId: string) {
+    return this.prisma.backlinkOrder.findMany({
+      where: { projectId },
+      include: { listing: { select: { id: true, price: true, drTier: true, publisherSite: { select: { domain: true, domainRating: true } } } } },
+      orderBy: { createdAt: 'desc' },
+    })
+  }
 }

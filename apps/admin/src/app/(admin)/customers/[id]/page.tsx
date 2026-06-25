@@ -68,6 +68,33 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
     },
   });
 
+  const MOCK_SUBSCRIPTION = { planName: 'Growth', status: 'ACTIVE', currentPeriodStart: new Date(Date.now() - 86400000 * 15).toISOString(), currentPeriodEnd: new Date(Date.now() + 86400000 * 15).toISOString(), cancelAtPeriodEnd: false, price: 49, interval: 'month' };
+  const { data: subscription = MOCK_SUBSCRIPTION } = useQuery({
+    queryKey: ['customer-subscription', id],
+    queryFn: async () => {
+      try { const r = await adminApi.get(`/admin/customers/${id}/subscription`); return r.data?.data ?? MOCK_SUBSCRIPTION; }
+      catch { return MOCK_SUBSCRIPTION; }
+    },
+  });
+
+  const MOCK_INVOICES = Array.from({ length: 3 }, (_, i) => ({ id: `inv-${i}`, number: `INV-2026-${String(i + 1).padStart(3, '0')}`, amount: 49, currency: 'USD', status: i === 0 ? 'PAID' : i === 1 ? 'PAID' : 'PAID', createdAt: new Date(Date.now() - 86400000 * 30 * (i + 1)).toISOString(), pdfUrl: null }));
+  const { data: invoices = MOCK_INVOICES } = useQuery({
+    queryKey: ['customer-invoices', id],
+    queryFn: async () => {
+      try { const r = await adminApi.get(`/admin/customers/${id}/invoices`); return r.data?.data ?? MOCK_INVOICES; }
+      catch { return MOCK_INVOICES; }
+    },
+  });
+
+  const MOCK_USAGE = { keywords: { used: 45, limit: 100 }, crawls: { used: 12, limit: 50 }, aiBlogs: { used: 8, limit: 20 }, geoQueries: { used: 3, limit: 10 } };
+  const { data: usage = MOCK_USAGE } = useQuery({
+    queryKey: ['customer-usage', id],
+    queryFn: async () => {
+      try { const r = await adminApi.get(`/admin/customers/${id}/usage`); return r.data?.data ?? MOCK_USAGE; }
+      catch { return MOCK_USAGE; }
+    },
+  });
+
   const handleExportCSV = async () => {
     try {
       const r = await adminApi.get(`/admin/customers/${id}/consents/export`, { responseType: 'blob' });
@@ -174,8 +201,20 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
         <TabsContent value="subscription">
           <Card>
             <CardHeader><CardTitle className="text-sm">Abonelik Detayı</CardTitle></CardHeader>
-            <CardContent>
-              <p className="text-sm text-[var(--text-muted)]">Abonelik bilgisi: /admin/customers/{id}/subscription</p>
+            <CardContent className="space-y-3">
+              {(() => {
+                const sub = subscription as typeof MOCK_SUBSCRIPTION;
+                return (
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="flex flex-col gap-1"><span className="text-[var(--text-muted)]">Plan</span><span className="font-semibold">{sub.planName}</span></div>
+                    <div className="flex flex-col gap-1"><span className="text-[var(--text-muted)]">Durum</span><Badge variant={sub.status === 'ACTIVE' ? 'success' : 'warning'}>{sub.status}</Badge></div>
+                    <div className="flex flex-col gap-1"><span className="text-[var(--text-muted)]">Dönem Başlangıcı</span><span>{format(new Date(sub.currentPeriodStart), 'dd MMM yyyy', { locale: tr })}</span></div>
+                    <div className="flex flex-col gap-1"><span className="text-[var(--text-muted)]">Dönem Bitişi</span><span>{format(new Date(sub.currentPeriodEnd), 'dd MMM yyyy', { locale: tr })}</span></div>
+                    <div className="flex flex-col gap-1"><span className="text-[var(--text-muted)]">Ücret</span><span className="font-semibold">${sub.price}/{sub.interval}</span></div>
+                    <div className="flex flex-col gap-1"><span className="text-[var(--text-muted)]">Dönem Sonunda İptal</span><Badge variant={sub.cancelAtPeriodEnd ? 'warning' : 'success'}>{sub.cancelAtPeriodEnd ? 'Evet' : 'Hayır'}</Badge></div>
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
         </TabsContent>
@@ -184,7 +223,21 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
           <Card>
             <CardHeader><CardTitle className="text-sm flex items-center gap-2"><FileText className="w-4 h-4" />Faturalar</CardTitle></CardHeader>
             <CardContent>
-              <p className="text-sm text-[var(--text-muted)]">Faturalar: /admin/customers/{id}/invoices</p>
+              <div className="space-y-2">
+                {(invoices as typeof MOCK_INVOICES).map(inv => (
+                  <div key={inv.id} className="flex items-center justify-between py-2 border-b border-[var(--border-subtle)] last:border-0">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium">{inv.number}</span>
+                      <span className="text-xs text-[var(--text-muted)]">{format(new Date(inv.createdAt), 'dd MMM yyyy', { locale: tr })}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-semibold">${inv.amount} {inv.currency}</span>
+                      <Badge variant={inv.status === 'PAID' ? 'success' : inv.status === 'PENDING' ? 'warning' : 'danger'}>{inv.status}</Badge>
+                      {inv.pdfUrl && <Button size="xs" variant="ghost" icon={<Download className="w-3 h-3" />} onClick={() => window.open(inv.pdfUrl!, '_blank')}>PDF</Button>}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -192,8 +245,30 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
         <TabsContent value="usage">
           <Card>
             <CardHeader><CardTitle className="text-sm">Kullanım Kotası</CardTitle></CardHeader>
-            <CardContent>
-              <p className="text-sm text-[var(--text-muted)]">Kullanım: /admin/customers/{id}/usage</p>
+            <CardContent className="space-y-4">
+              {(() => {
+                const u = usage as typeof MOCK_USAGE;
+                const items = [
+                  { label: 'Anahtar Kelimeler', used: u.keywords.used, limit: u.keywords.limit },
+                  { label: 'Site Taramaları', used: u.crawls.used, limit: u.crawls.limit },
+                  { label: 'AI Blog İçerikleri', used: u.aiBlogs.used, limit: u.aiBlogs.limit },
+                  { label: 'GEO Sorguları', used: u.geoQueries.used, limit: u.geoQueries.limit },
+                ];
+                return items.map(item => {
+                  const pct = Math.round((item.used / item.limit) * 100);
+                  return (
+                    <div key={item.label} className="space-y-1">
+                      <div className="flex justify-between text-sm">
+                        <span>{item.label}</span>
+                        <span className="font-semibold text-[var(--text-muted)]">{item.used} / {item.limit}</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-[var(--bg-elevated)] overflow-hidden">
+                        <div className={`h-full rounded-full ${pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-yellow-500' : 'bg-emerald-500'}`} style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
             </CardContent>
           </Card>
         </TabsContent>

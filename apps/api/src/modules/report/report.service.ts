@@ -175,6 +175,20 @@ export class ReportService {
     return report;
   }
 
+  async listReports(projectId: string) {
+    return this.prisma.reportRecord.findMany({
+      where: { projectId },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+  }
+
+  async getReport(projectId: string, reportId: string) {
+    return this.prisma.reportRecord.findFirst({
+      where: { id: reportId, projectId },
+    });
+  }
+
   async getScheduledReports(projectId: string) {
     return this.prisma.scheduledReport.findMany({
       where: { projectId },

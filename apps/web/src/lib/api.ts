@@ -42,6 +42,7 @@ api.interceptors.response.use(
         const { accessToken, refreshToken: newRT } = data.data;
         localStorage.setItem('access_token', accessToken);
         localStorage.setItem('refresh_token', newRT);
+        document.cookie = `access_token=${accessToken}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
         processQueue(null, accessToken);
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         return api(originalRequest);

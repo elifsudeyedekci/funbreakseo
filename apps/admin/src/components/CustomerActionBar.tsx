@@ -162,7 +162,7 @@ export function CustomerActionBar({ customerId, status, onRefresh }: CustomerAct
       <QuotaModal
         open={modal === 'quota'}
         onClose={close}
-        onConfirm={(d) => run(() => adminApi.post(`/admin/customers/${customerId}/override-quota`, d), 'Kota güncellendi.')}
+        onConfirm={(d) => run(() => adminApi.post(`/admin/customers/${customerId}/set-quota`, d), 'Kota güncellendi.')}
         loading={loading}
       />
 
@@ -170,7 +170,7 @@ export function CustomerActionBar({ customerId, status, onRefresh }: CustomerAct
       <DigestModal
         open={modal === 'digest'}
         onClose={close}
-        onConfirm={(freq) => run(() => adminApi.post(`/admin/customers/${customerId}/digest-frequency`, { frequency: freq }), 'Dijest sıklığı güncellendi.')}
+        onConfirm={(freq) => run(() => adminApi.post(`/admin/customers/${customerId}/set-digest-frequency`, { frequency: freq }), 'Dijest sıklığı güncellendi.')}
         loading={loading}
       />
 

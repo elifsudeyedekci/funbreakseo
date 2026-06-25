@@ -524,4 +524,97 @@ export class AuthService {
 
     return { accessToken, refreshToken: rawRefresh };
   }
+
+  // ─── Account management ───────────────────────────────────────────────────────
+
+  async updateProfile(userId: string, dto: Record<string, unknown>) {
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        fullName: dto.fullName ? String(dto.fullName) : undefined,
+        phone: dto.phone ? String(dto.phone) : undefined,
+        locale: dto.locale ? String(dto.locale) : undefined,
+      },
+      select: { id: true, email: true, fullName: true, locale: true, phone: true, role: true },
+    });
+    return { data: updated };
+  }
+
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new Error('User not found');
+
+    const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!valid) throw new Error('Current password is incorrect');
+
+    const newHash = await bcrypt.hash(newPassword, 10);
+    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash: newHash } });
+    return { success: true };
+  }
+
+  async disable2FA(userId: string, code: string) {
+    const verified = await this.verify2FA(userId, code);
+    if (!verified.verified) throw new Error('Invalid 2FA code');
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { twoFactorEnabled: false, twoFactorSecret: null },
+    });
+    return { success: true };
+  }
+
+  async verify2FACode(userId: string, code: string) {
+    return this.verify2FA(userId, code);
+  }
+
+  async getOrganization(orgId: string) {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: orgId },
+      include: { members: { include: { user: { select: { id: true, email: true, fullName: true, role: true } } } } },
+    });
+    return { data: org };
+  }
+
+  async updateOrganization(orgId: string, dto: Record<string, unknown>) {
+    const updated = await this.prisma.organization.update({
+      where: { id: orgId },
+      data: {
+        name: dto.name ? String(dto.name) : undefined,
+        taxNumber: dto.taxNumber ? String(dto.taxNumber) : undefined,
+        billingAddress: dto.billingAddress ? String(dto.billingAddress) : undefined,
+        country: dto.country ? String(dto.country) : undefined,
+      },
+    });
+    return { data: updated };
+  }
+
+  async getIntegrations(orgId: string) {
+    const integrations = await this.prisma.apiIntegration.findMany({
+      where: { organizationId: orgId },
+    });
+    return { data: integrations };
+  }
+
+  async connectGsc(orgId: string, dto: Record<string, unknown>) {
+    const existing = await this.prisma.apiIntegration.findFirst({
+      where: { organizationId: orgId, provider: 'GSC' },
+    });
+
+    if (existing) {
+      await this.prisma.apiIntegration.update({
+        where: { id: existing.id },
+        data: { credentials: dto as object, status: 'connected' },
+      });
+    } else {
+      await this.prisma.apiIntegration.create({
+        data: {
+          organizationId: orgId,
+          provider: 'GSC',
+          credentials: dto as object,
+          status: 'connected',
+        },
+      });
+    }
+    return { success: true };
+  }
 }

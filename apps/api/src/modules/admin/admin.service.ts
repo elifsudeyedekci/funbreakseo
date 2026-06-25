@@ -3,6 +3,7 @@ import {
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma.service';
 import { ConfigService } from '@nestjs/config';
 
@@ -652,5 +653,538 @@ export class AdminService {
     );
 
     return health.sort((a, b) => a.score - b.score);
+  }
+
+  // ─── System Health Status ────────────────────────────────────────────────────
+
+  async getSystemHealthStatus() {
+    const checks = await this.prisma.systemHealthCheck.findMany({
+      orderBy: { checkedAt: 'desc' },
+      distinct: ['service'],
+    });
+
+    const result: Record<string, { status: string; latencyMs?: number; checkedAt: string }> = {};
+    for (const c of checks) {
+      result[c.service.toLowerCase()] = {
+        status: c.status === 'UP' ? 'ok' : c.status.toLowerCase(),
+        latencyMs: c.latencyMs ?? undefined,
+        checkedAt: c.checkedAt.toISOString(),
+      };
+    }
+    return result;
+  }
+
+  async retryQueueJobs(queueName: string) {
+    await this.prisma.queueJob.updateMany({
+      where: { queueName, status: 'FAILED' },
+      data: { status: 'WAITING' },
+    });
+    return { success: true };
+  }
+
+  async cleanQueueJobs(queueName: string) {
+    await this.prisma.queueJob.deleteMany({
+      where: { queueName, status: 'COMPLETED' },
+    });
+    return { success: true };
+  }
+
+  // ─── Revenue / Finance ───────────────────────────────────────────────────────
+
+  async getRevenue() {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+
+    const [thisMonthInvoices, lastMonthInvoices, allTimePaid, activeCount] =
+      await Promise.all([
+        this.prisma.invoice.aggregate({
+          _sum: { total: true },
+          where: { status: 'PAID', paidAt: { gte: startOfMonth } },
+        }),
+        this.prisma.invoice.aggregate({
+          _sum: { total: true },
+          where: { status: 'PAID', paidAt: { gte: startOfLastMonth, lte: endOfLastMonth } },
+        }),
+        this.prisma.invoice.aggregate({
+          _sum: { total: true },
+          where: { status: 'PAID' },
+        }),
+        this.prisma.subscription.count({ where: { status: 'ACTIVE' } }),
+      ]);
+
+    const mrrResult = await this.prisma.$queryRaw<{ mrr: number }[]>`
+      SELECT COALESCE(SUM(p."monthlyPrice"), 0) as mrr
+      FROM subscriptions s JOIN plans p ON p.id = s."planId"
+      WHERE s.status = 'ACTIVE'
+    `;
+    const mrr = Number(mrrResult[0]?.mrr ?? 0);
+    const thisMonth = Number(thisMonthInvoices._sum.total ?? 0);
+    const lastMonth = Number(lastMonthInvoices._sum.total ?? 0);
+    const growth = lastMonth > 0 ? ((thisMonth - lastMonth) / lastMonth) * 100 : 0;
+
+    return {
+      mrr,
+      thisMonth,
+      lastMonth,
+      growth: Math.round(growth * 10) / 10,
+      allTime: Number(allTimePaid._sum.total ?? 0),
+      activeSubscriptions: activeCount,
+    };
+  }
+
+  async updateFinanceSettings(dto: Record<string, unknown>) {
+    for (const [key, value] of Object.entries(dto)) {
+      await this.updateSystemSetting(`finance.${key}`, String(value));
+    }
+    return { success: true };
+  }
+
+  // ─── Coupons ─────────────────────────────────────────────────────────────────
+
+  async getCoupons() {
+    return this.prisma.coupon.findMany({
+      include: { _count: { select: { redemptions: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async createCoupon(dto: Record<string, unknown>) {
+    return this.prisma.coupon.create({
+      data: {
+        code: String(dto.code).toUpperCase(),
+        type: dto.type as 'PERCENT' | 'FIXED' | 'FIRST_MONTH_FREE',
+        value: Number(dto.value),
+        maxRedemptions: dto.maxRedemptions ? Number(dto.maxRedemptions) : null,
+        validFrom: dto.validFrom ? new Date(String(dto.validFrom)) : new Date(),
+        validUntil: dto.validUntil ? new Date(String(dto.validUntil)) : null,
+        isActive: true,
+      },
+    });
+  }
+
+  async deleteCoupon(id: string) {
+    await this.prisma.coupon.delete({ where: { id } });
+    return { success: true };
+  }
+
+  // ─── Subscriptions (admin) ────────────────────────────────────────────────────
+
+  async getAllSubscriptions(page: number, limit: number) {
+    const skip = (page - 1) * limit;
+    const [total, data] = await Promise.all([
+      this.prisma.subscription.count(),
+      this.prisma.subscription.findMany({
+        skip,
+        take: limit,
+        include: {
+          plan: true,
+          organization: { select: { id: true, name: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+    return { total, page, limit, data };
+  }
+
+  async suspendSubscription(id: string) {
+    await this.prisma.subscription.update({
+      where: { id },
+      data: { status: 'SUSPENDED' },
+    });
+    return { success: true };
+  }
+
+  // ─── Staff ────────────────────────────────────────────────────────────────────
+
+  async getStaff() {
+    return this.prisma.user.findMany({
+      where: { role: { in: ['ADMIN', 'SUPER_ADMIN', 'STAFF'] } },
+      select: {
+        id: true, email: true, fullName: true, role: true,
+        status: true, createdAt: true, lastLoginAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async createStaff(dto: Record<string, unknown>) {
+    const passwordHash = await bcrypt.hash(String(dto.password || 'ChangeMe123!'), 10);
+    return this.prisma.user.create({
+      data: {
+        email: String(dto.email),
+        fullName: String(dto.fullName),
+        role: (dto.role as 'ADMIN' | 'STAFF') || 'STAFF',
+        passwordHash,
+        emailVerified: true,
+        status: 'ACTIVE',
+      },
+      select: { id: true, email: true, fullName: true, role: true, status: true, createdAt: true },
+    });
+  }
+
+  async updateStaff(id: string, dto: Record<string, unknown>) {
+    return this.prisma.user.update({
+      where: { id },
+      data: {
+        fullName: dto.fullName ? String(dto.fullName) : undefined,
+        role: dto.role as 'ADMIN' | 'STAFF' | undefined,
+        status: dto.status as 'ACTIVE' | 'SUSPENDED' | undefined,
+      },
+      select: { id: true, email: true, fullName: true, role: true, status: true },
+    });
+  }
+
+  // ─── Affiliates (admin) ───────────────────────────────────────────────────────
+
+  async getAffiliates() {
+    return this.prisma.affiliate.findMany({
+      include: {
+        organization: { select: { id: true, name: true } },
+        _count: { select: { referrals: true, payouts: true } },
+      },
+      orderBy: { totalEarned: 'desc' },
+    });
+  }
+
+  async getAffiliatePendingPayouts() {
+    return this.prisma.affiliatePayout.findMany({
+      where: { status: 'PENDING' },
+      include: {
+        affiliate: {
+          include: { organization: { select: { id: true, name: true } } },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  async approveAffiliatePayout(payoutId: string) {
+    await this.prisma.affiliatePayout.update({
+      where: { id: payoutId },
+      data: { status: 'APPROVED', processedAt: new Date() },
+    });
+    return { success: true };
+  }
+
+  // ─── Testimonials ─────────────────────────────────────────────────────────────
+
+  async getTestimonials() {
+    return this.prisma.testimonial.findMany({ orderBy: { createdAt: 'desc' } });
+  }
+
+  async approveTestimonial(id: string) {
+    await this.prisma.testimonial.update({ where: { id }, data: { isApproved: true } });
+    return { success: true };
+  }
+
+  async featureTestimonial(id: string) {
+    const t = await this.prisma.testimonial.findUnique({ where: { id } });
+    await this.prisma.testimonial.update({ where: { id }, data: { isFeatured: !t?.isFeatured } });
+    return { success: true };
+  }
+
+  // ─── Marketing ────────────────────────────────────────────────────────────────
+
+  async getEmailCampaigns() {
+    return this.prisma.emailCampaign.findMany({ orderBy: { createdAt: 'desc' } });
+  }
+
+  async createEmailCampaign(dto: Record<string, unknown>) {
+    return this.prisma.emailCampaign.create({
+      data: {
+        name: String(dto.name),
+        subject: String(dto.subject),
+        bodyHtml: String(dto.bodyHtml || ''),
+        locale: String(dto.locale || 'tr'),
+        segment: (dto.segment as object) || {},
+        scheduledAt: dto.scheduledAt ? new Date(String(dto.scheduledAt)) : null,
+      },
+    });
+  }
+
+  async getCaseStudies() {
+    return this.prisma.caseStudy.findMany({ orderBy: { createdAt: 'desc' } });
+  }
+
+  // ─── Cost Control ─────────────────────────────────────────────────────────────
+
+  async getCostControl() {
+    const settings = await this.prisma.systemSetting.findMany({
+      where: { key: { startsWith: 'cost.' } },
+    });
+    return settings;
+  }
+
+  async updateCostControl(id: string, limit: number, behavior: string) {
+    return this.prisma.systemSetting.upsert({
+      where: { key: `cost.${id}` },
+      create: { key: `cost.${id}`, value: { limit, behavior } },
+      update: { value: { limit, behavior } },
+    });
+  }
+
+  async toggleKillSwitch(dto: Record<string, unknown>) {
+    return this.prisma.systemSetting.upsert({
+      where: { key: 'cost.killSwitch' },
+      create: { key: 'cost.killSwitch', value: JSON.stringify(dto) },
+      update: { value: JSON.stringify(dto) },
+    });
+  }
+
+  // ─── Legal Documents ─────────────────────────────────────────────────────────
+
+  async getLegalDocs() {
+    return this.prisma.legalDocument.findMany({
+      where: { isActive: true },
+      orderBy: [{ type: 'asc' }, { locale: 'asc' }],
+    });
+  }
+
+  async updateLegalDoc(id: string, content: string) {
+    return this.prisma.legalDocument.update({
+      where: { id },
+      data: { content },
+    });
+  }
+
+  // ─── Blog (admin CRUD) ────────────────────────────────────────────────────────
+
+  async getBlogPosts(params: Record<string, string>) {
+    const page = parseInt(params.page || '1');
+    const limit = parseInt(params.limit || '20');
+    const [total, data] = await Promise.all([
+      this.prisma.blogPost.count(),
+      this.prisma.blogPost.findMany({
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true, slug: true, title: true, locale: true,
+          status: true, publishedAt: true, viewCount: true,
+          seoScore: true, autopilot: true,
+        },
+      }),
+    ]);
+    return { total, page, limit, data };
+  }
+
+  async createBlogPost(dto: Record<string, unknown>) {
+    return this.prisma.blogPost.create({
+      data: {
+        slug: String(dto.slug),
+        locale: String(dto.locale || 'tr'),
+        title: String(dto.title),
+        bodyMarkdown: String(dto.bodyMarkdown || ''),
+        bodyHtml: String(dto.bodyHtml || ''),
+        status: String(dto.status || 'DRAFT'),
+        authorName: String(dto.authorName || 'FunBreak SEO Ekibi'),
+        metaTitle: String(dto.metaTitle || dto.title || ''),
+        metaDescription: String(dto.metaDescription || ''),
+      },
+    });
+  }
+
+  async updateBlogPost(id: string, dto: Record<string, unknown>) {
+    return this.prisma.blogPost.update({
+      where: { id },
+      data: {
+        title: dto.title ? String(dto.title) : undefined,
+        slug: dto.slug ? String(dto.slug) : undefined,
+        bodyMarkdown: dto.bodyMarkdown ? String(dto.bodyMarkdown) : undefined,
+        bodyHtml: dto.bodyHtml ? String(dto.bodyHtml) : undefined,
+        status: dto.status ? String(dto.status) : undefined,
+        metaTitle: dto.metaTitle ? String(dto.metaTitle) : undefined,
+        metaDescription: dto.metaDescription ? String(dto.metaDescription) : undefined,
+      },
+    });
+  }
+
+  async deleteBlogPost(id: string) {
+    await this.prisma.blogPost.delete({ where: { id } });
+    return { success: true };
+  }
+
+  // ─── Market listings ─────────────────────────────────────────────────────────
+
+  async getMarketListings() {
+    return this.prisma.marketListing.findMany({
+      include: {
+        publisherSite: true,
+        offer: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async approveListing(id: string) {
+    await this.prisma.publisherOffer.update({
+      where: { id },
+      data: { status: 'APPROVED' },
+    });
+    return { success: true };
+  }
+
+  async rejectListing(id: string, reason?: string) {
+    await this.prisma.publisherOffer.update({
+      where: { id },
+      data: { status: 'REJECTED', adminNote: reason },
+    });
+    return { success: true };
+  }
+
+  async getBacklinkOrders() {
+    return this.prisma.backlinkOrder.findMany({
+      include: {
+        organization: { select: { id: true, name: true } },
+        listing: { include: { publisherSite: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async verifyBacklinkOrder(id: string) {
+    await this.prisma.backlinkOrder.update({
+      where: { id },
+      data: { status: 'VERIFIED', verifiedAt: new Date() },
+    });
+    return { success: true };
+  }
+
+  // ─── Support tickets ──────────────────────────────────────────────────────────
+
+  async getSupportTickets(params: Record<string, string>) {
+    const page = parseInt(params.page || '1');
+    const limit = parseInt(params.limit || '20');
+    const where: Record<string, unknown> = {};
+    if (params.status) where.status = params.status;
+    if (params.priority) where.priority = params.priority;
+
+    const [total, data] = await Promise.all([
+      this.prisma.supportTicket.count({ where }),
+      this.prisma.supportTicket.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        include: {
+          organization: { select: { id: true, name: true } },
+          user: { select: { id: true, email: true, fullName: true } },
+          messages: { orderBy: { createdAt: 'desc' }, take: 1 },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+    return { total, page, limit, data };
+  }
+
+  async getSupportTicket(id: string) {
+    return this.prisma.supportTicket.findUnique({
+      where: { id },
+      include: {
+        organization: true,
+        user: true,
+        messages: {
+          orderBy: { createdAt: 'asc' },
+          include: { sender: { select: { id: true, fullName: true, role: true } } },
+        },
+      },
+    });
+  }
+
+  async updateSupportTicket(id: string, dto: Record<string, unknown>) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return this.prisma.supportTicket.update({
+      where: { id },
+      data: {
+        ...(dto.status !== undefined && { status: dto.status as any }),
+        ...(dto.priority !== undefined && { priority: dto.priority as any }),
+        ...(dto.assignedToId !== undefined && { assignedToId: dto.assignedToId as string }),
+      },
+    });
+  }
+
+  async replySupportTicket(id: string, message: string) {
+    const ticket = await this.prisma.supportTicket.findUnique({ where: { id } });
+    if (!ticket) throw new NotFoundException('Ticket not found');
+
+    await this.prisma.supportMessage.create({
+      data: {
+        ticketId: id,
+        body: message,
+        isStaff: true,
+      },
+    });
+
+    await this.prisma.supportTicket.update({
+      where: { id },
+      data: { status: 'PENDING' },
+    });
+
+    return { success: true };
+  }
+
+  // ─── Customer detail sub-resources ────────────────────────────────────────────
+
+  async getCustomerSubscription(orgId: string) {
+    const sub = await this.prisma.subscription.findFirst({
+      where: { organizationId: orgId },
+      include: { plan: { select: { name: true, monthlyPrice: true } } },
+    });
+    if (!sub) return null;
+    return {
+      planName: sub.plan?.name ?? 'Unknown',
+      status: sub.status,
+      currentPeriodStart: sub.currentPeriodStart,
+      currentPeriodEnd: sub.currentPeriodEnd,
+      cancelAtPeriodEnd: sub.cancelAtPeriodEnd,
+      price: Number(sub.plan?.monthlyPrice ?? 0),
+      interval: 'month',
+    };
+  }
+
+  async getCustomerInvoices(orgId: string) {
+    return this.prisma.invoice.findMany({
+      where: { organizationId: orgId },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      select: { id: true, number: true, amount: true, currency: true, status: true, createdAt: true, pdfUrl: true },
+    });
+  }
+
+  async getCustomerUsage(orgId: string) {
+    const sub = await this.prisma.subscription.findFirst({
+      where: { organizationId: orgId },
+      include: { plan: true },
+    });
+    const [keywords, crawls, contentItems, geoQueries] = await Promise.all([
+      this.prisma.keyword.count({ where: { project: { organizationId: orgId } } }),
+      this.prisma.crawledPage.count({ where: { crawlJob: { project: { organizationId: orgId } } } }),
+      this.prisma.contentItem.count({ where: { project: { organizationId: orgId } } }),
+      this.prisma.geoQuery.count({ where: { project: { organizationId: orgId } } }),
+    ]);
+    const limits = (sub?.plan?.limits as Record<string, number> | null) ?? {};
+    return {
+      keywords: { used: keywords, limit: limits.keywords ?? 100 },
+      crawls: { used: crawls, limit: limits.crawls ?? 50 },
+      aiBlogs: { used: contentItems, limit: limits.aiBlogs ?? 20 },
+      geoQueries: { used: geoQueries, limit: limits.geoQueries ?? 10 },
+    };
+  }
+
+  // ─── Analytics ────────────────────────────────────────────────────────────────
+
+  async getAnalytics() {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [totalOrgs, activeOrgs, newOrgsThisMonth, apiUsage] = await Promise.all([
+      this.prisma.organization.count(),
+      this.prisma.organization.count({ where: { status: 'ACTIVE' } }),
+      this.prisma.organization.count({ where: { createdAt: { gte: startOfMonth } } }),
+      this.getApiUsage(),
+    ]);
+
+    return { totalOrgs, activeOrgs, newOrgsThisMonth, apiUsage };
   }
 }

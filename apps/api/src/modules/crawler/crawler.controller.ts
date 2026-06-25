@@ -79,4 +79,23 @@ export class CrawlerController {
   getIssueGuide(@Param('id') id: string) {
     return this.crawlerService.getIssueGuide(id)
   }
+
+  // Audit aliases — web dashboard calls /projects/:id/audit instead of /projects/:id/crawl
+  @Get('projects/:id/audit')
+  @ApiOperation({ summary: 'Get latest audit result for project' })
+  getAudit(@Param('id') id: string) {
+    return this.crawlerService.getLatestAudit(id)
+  }
+
+  @Post('projects/:id/audit/start')
+  @ApiOperation({ summary: 'Start an audit crawl for project' })
+  startAudit(@Param('id') id: string, @CurrentUser() currentUser: any) {
+    return this.crawlerService.startCrawl(id, 'MANUAL', currentUser)
+  }
+
+  @Get('projects/:id/audit/history')
+  @ApiOperation({ summary: 'Get audit history for project' })
+  getAuditHistory(@Param('id') id: string) {
+    return this.crawlerService.getCrawlHistory(id)
+  }
 }

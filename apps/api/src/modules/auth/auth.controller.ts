@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Patch,
   Body,
   UseGuards,
   Req,
@@ -209,5 +210,80 @@ export class AuthController {
       ip,
       userAgent,
     });
+  }
+}
+
+// ─── Account Controller (/account/* alias routes) ────────────────────────────
+
+@Controller('account')
+@ApiTags('account')
+@UseGuards(JwtAuthGuard)
+@ApiBearerAuth('access-token')
+export class AccountController {
+  constructor(private readonly authService: AuthService) {}
+
+  @Get('me')
+  @ApiOperation({ summary: 'Get current user profile' })
+  async getMe(@CurrentUser() user: User) {
+    return this.authService.getMe(user.id);
+  }
+
+  @Patch('me')
+  @ApiOperation({ summary: 'Update current user profile' })
+  async updateMe(@CurrentUser() user: User, @Body() dto: Record<string, unknown>) {
+    return this.authService.updateProfile(user.id, dto);
+  }
+
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Change password' })
+  async changePassword(@CurrentUser() user: User, @Body() dto: Record<string, unknown>) {
+    return this.authService.changePassword(user.id, String(dto.currentPassword), String(dto.newPassword));
+  }
+
+  @Post('2fa/enable')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Enable 2FA' })
+  async enable2fa(@CurrentUser() user: User) {
+    return this.authService.enable2FA(user.id);
+  }
+
+  @Post('2fa/disable')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Disable 2FA' })
+  async disable2fa(@CurrentUser() user: User, @Body() dto: Record<string, unknown>) {
+    return this.authService.disable2FA(user.id, String(dto.code));
+  }
+
+  @Post('2fa/verify')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify 2FA code' })
+  async verify2fa(@CurrentUser() user: User, @Body() dto: Record<string, unknown>) {
+    return this.authService.verify2FACode(user.id, String(dto.code));
+  }
+
+  @Get('organization')
+  @ApiOperation({ summary: 'Get organization profile' })
+  async getOrg(@CurrentUser() user: User) {
+    return this.authService.getOrganization(user.organizationId!);
+  }
+
+  @Patch('organization')
+  @ApiOperation({ summary: 'Update organization profile' })
+  async updateOrg(@CurrentUser() user: User, @Body() dto: Record<string, unknown>) {
+    return this.authService.updateOrganization(user.organizationId!, dto);
+  }
+
+  @Get('integrations')
+  @ApiOperation({ summary: 'Get API integrations' })
+  async getIntegrations(@CurrentUser() user: User) {
+    return this.authService.getIntegrations(user.organizationId!);
+  }
+
+  @Post('integrations/gsc')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Connect Google Search Console' })
+  async connectGsc(@CurrentUser() user: User, @Body() dto: Record<string, unknown>) {
+    return this.authService.connectGsc(user.organizationId!, dto);
   }
 }

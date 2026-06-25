@@ -29,12 +29,25 @@ export class AffiliateController {
     return this.affiliateService.getReferrals(user.organizationId!);
   }
 
+  @Get('payouts')
+  getPayouts(@CurrentUser() user: User) {
+    return this.affiliateService.getPayouts(user.organizationId!);
+  }
+
   @Post('payout')
   requestPayout(
     @Body('affiliateId') affiliateId: string,
     @Body('amount') amount: number,
   ) {
     return this.affiliateService.requestPayout(affiliateId, amount);
+  }
+
+  @Post('payouts')
+  requestPayoutAlias(
+    @Body('amount') amount: number,
+    @CurrentUser() user: User,
+  ) {
+    return this.affiliateService.requestPayoutByOrg(user.organizationId!, amount);
   }
 }
 

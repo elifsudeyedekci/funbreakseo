@@ -41,6 +41,28 @@ export class DeveloperKeyController {
   }
 }
 
+// /developer/api-keys — alias used by the web dashboard
+@Controller('developer/api-keys')
+@UseGuards(JwtAuthGuard)
+export class DeveloperApiKeyAliasController {
+  constructor(private readonly customerApiService: CustomerApiService) {}
+
+  @Get()
+  getApiKeys(@CurrentUser() user: User) {
+    return this.customerApiService.getApiKeys(user.organizationId!);
+  }
+
+  @Post()
+  createApiKey(@CurrentUser() user: User, @Body('name') name: string, @Body() dto: Record<string, unknown>) {
+    return this.customerApiService.createApiKey(user.organizationId!, String(dto.name ?? name ?? 'Default Key'));
+  }
+
+  @Delete(':id')
+  revokeApiKey(@Param('id') id: string, @CurrentUser() user: User) {
+    return this.customerApiService.revokeApiKey(id, user.organizationId!);
+  }
+}
+
 // ---- Public API v1 (API key auth) ----
 @Controller('v1')
 @UseGuards(ApiKeyGuard)

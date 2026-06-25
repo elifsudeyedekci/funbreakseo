@@ -58,4 +58,14 @@ export class OutreachController {
   getWonLinks(@Param('id') id: string) {
     return this.outreachService.getWonLinks(id)
   }
+
+  @Get('projects/:id/backlinks')
+  getBacklinks(@Param('id') id: string) {
+    return this.outreachService.getBacklinks(id)
+  }
+
+  @Get('projects/:id/backlink-orders')
+  getBacklinkOrders(@Param('id') id: string) {
+    return this.outreachService.getBacklinkOrders(id)
+  }
 }

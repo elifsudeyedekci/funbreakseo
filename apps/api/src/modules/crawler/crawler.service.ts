@@ -39,6 +39,22 @@ export class CrawlerService {
     return crawlJob
   }
 
+  async getLatestAudit(projectId: string) {
+    const latest = await this.prisma.crawlJob.findFirst({
+      where: { projectId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        _count: { select: { issues: true, pages: true } },
+        issues: {
+          take: 20,
+          orderBy: { severity: 'asc' },
+          select: { id: true, severity: true, category: true, code: true, message: true, recommendation: true, crawledPage: { select: { url: true } } },
+        },
+      },
+    })
+    return latest ?? null
+  }
+
   async getCrawlHistory(projectId: string) {
     return this.prisma.crawlJob.findMany({
       where: { projectId },

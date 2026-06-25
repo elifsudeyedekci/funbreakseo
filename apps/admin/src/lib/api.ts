@@ -54,7 +54,7 @@ export const admin = {
 
   blogList: (p?: Record<string, unknown>) => adminApi.get('/admin/blog', { params: p }),
   createBlog: (d: Record<string, unknown>) => adminApi.post('/admin/blog', d),
-  updateBlog: (id: string, d: Record<string, unknown>) => adminApi.patch(`/admin/blog/${id}`, d),
+  updateBlog: (id: string, d: Record<string, unknown>) => adminApi.put(`/admin/blog/${id}`, d),
   deleteBlog: (id: string) => adminApi.delete(`/admin/blog/${id}`),
 
   tickets: (p?: Record<string, unknown>) => adminApi.get('/admin/support/tickets', { params: p }),
@@ -64,11 +64,13 @@ export const admin = {
 
   settings: () => adminApi.get('/admin/settings'),
   updateSetting: (key: string, value: string) => adminApi.patch(`/admin/settings/${key}`, { value }),
-  costLimits: () => adminApi.get('/admin/cost-limits'),
-  updateCostLimit: (key: string, value: number) => adminApi.patch(`/admin/cost-limits/${key}`, { value }),
+  costControl: () => adminApi.get('/admin/cost-control'),
+  updateCostControl: (id: string, limit: number, behavior: string) =>
+    adminApi.patch(`/admin/cost-control/${id}`, { limit, behavior }),
 
   affiliates: () => adminApi.get('/admin/affiliates'),
-  approvePayout: (id: string) => adminApi.post(`/admin/affiliates/${id}/payout/approve`),
+  affiliatePayouts: () => adminApi.get('/admin/affiliates/payouts'),
+  approvePayout: (id: string) => adminApi.post(`/admin/affiliates/payouts/${id}/approve`),
 
   marketListings: () => adminApi.get('/admin/market/listings'),
   approveListing: (id: string) => adminApi.post(`/admin/market/listings/${id}/approve`),
@@ -79,10 +81,18 @@ export const admin = {
 
   testimonials: () => adminApi.get('/admin/testimonials'),
   approveTestimonial: (id: string) => adminApi.post(`/admin/testimonials/${id}/approve`),
+  featureTestimonial: (id: string) => adminApi.post(`/admin/testimonials/${id}/feature`),
 
   legalDocs: () => adminApi.get('/admin/legal-docs'),
   updateLegal: (id: string, d: Record<string, unknown>) => adminApi.patch(`/admin/legal-docs/${id}`, d),
 
   autopilotStats: () => adminApi.get('/admin/autopilot/stats'),
   autopilotRuns: () => adminApi.get('/admin/autopilot/runs'),
+
+  subscriptions: (p?: Record<string, unknown>) => adminApi.get('/admin/subscriptions', { params: p }),
+  staff: () => adminApi.get('/admin/staff'),
+  createStaff: (d: Record<string, unknown>) => adminApi.post('/admin/staff', d),
+  updateStaff: (id: string, d: Record<string, unknown>) => adminApi.put(`/admin/staff/${id}`, d),
+
+  analytics: () => adminApi.get('/admin/analytics'),
 };
