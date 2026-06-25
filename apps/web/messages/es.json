@@ -159,7 +159,29 @@
       "top100": "Top 100"
     },
     "badge": "Precios",
-    "compareAll": "Comparar todas las funciones y el plan Empresarial →"
+    "compareAll": "Comparar todas las funciones y el plan Empresarial →",
+    "unlimited": "Ilimitado",
+    "firstPage": "Primera página",
+    "feature": "Función",
+    "project": "Proyectos",
+    "keywordTracking": "Rastreo de palabras clave",
+    "geoQuery": "Consultas GEO",
+    "teamMember": "Miembros del equipo",
+    "support": "Soporte",
+    "compareTitle": "Comparación de funciones",
+    "starterDesc": "Plan inicial ideal para sitios web pequeños y blogs.",
+    "growthDesc": "Plan completo para empresas en crecimiento y pequeñas agencias.",
+    "proDesc": "Funciones profesionales para actividades SEO intensivas.",
+    "enterpriseDesc": "Solución personalizada para grandes agencias y empresas.",
+    "customQuote": "Cotización personalizada",
+    "yearlyTotal": "anual",
+    "faqTitle": "Preguntas frecuentes sobre precios",
+    "faqs": [
+      { "q": "¿Está incluido el IVA?", "a": "Sí, todos los precios se muestran con IVA incluido (20%). Se emiten facturas separadas para contribuyentes corporativos." },
+      { "q": "¿Puedo cambiar al plan anual?", "a": "Sí, puedes cambiar del plan mensual al plan anual en cualquier momento. Ganas inmediatamente 2 meses gratis." },
+      { "q": "¿Qué sucede después de que termina el período de prueba?", "a": "Después del período de prueba de 14 días, tu cuenta queda suspendida. Tus datos se conservan durante 30 días." },
+      { "q": "¿Puedo obtener una factura corporativa?", "a": "Sí. Durante el pago, selecciona la opción de factura corporativa e ingresa los datos de tu empresa." }
+    ]
   },
   "auth": {
     "login": "Iniciar sesión",
@@ -1021,5 +1043,43 @@
   "marketShare": "Cuota de mercado IA",
   "cta": "Probar el rastreo GEO gratis",
   "ctaNote": "14 días gratis, sin tarjeta de crédito"
+},
+"hakkimizdaPage": {
+  "badge": "De Estambul al Mundo",
+  "title": "Construyendo el futuro del",
+  "titleHighlight": "SEO y GEO",
+  "subtitle": "FunBreak SEO es una empresa tecnológica que sirve al mundo desde Estambul para ayudar a las marcas a mantenerse visibles en Google y las búsquedas de IA.",
+  "mission": { "title": "Nuestra Misión", "desc": "Permitir que empresas de todos los tamaños logren un crecimiento visible, medible y sostenible en motores de búsqueda y el ecosistema de IA." },
+  "vision": { "title": "Nuestra Visión", "desc": "Convertirnos en la plataforma líder que moldea la identidad digital de las marcas en la era GEO." },
+  "values": { "title": "Nuestros Valores", "desc": "Transparencia, toma de decisiones basada en datos, innovación continua y enfoque en el éxito del cliente. Sin tarifas ocultas, sin sorpresas." },
+  "storyTitle": "Nuestra Historia",
+  "teamTitle": "Nuestro Equipo",
+  "teamSubtitle": "Un equipo dinámico de ingenieros de software equipados con tecnología de IA, expertos en SEO y científicos de datos.",
+  "companyTitle": "Información de la Empresa",
+  "companyNameLabel": "Nombre de la empresa",
+  "foundedLabel": "Fundada",
+  "foundedValue": "2024, Estambul",
+  "addressLabel": "Dirección",
+  "addressValue": "Armağanevler Mahallesi Ortanca Sokak 69/22 Ümraniye/Estambul",
+  "phoneLabel": "Teléfono",
+  "emailLabel": "Correo electrónico",
+  "serviceAreasLabel": "Áreas de servicio",
+  "serviceAreasValue": "Turquía, UE, MENA, Global",
+  "milestones": [
+    { "year": "2024", "title": "Fundación", "desc": "Fundada en Estambul, primera infraestructura técnica construida." },
+    { "year": "2024", "title": "Versión Beta", "desc": "Módulos de escaneo SEO y monitoreo GEO lanzados con los primeros 50 usuarios beta." },
+    { "year": "2025", "title": "Motor de contenido IA", "desc": "Integración de GPT-4o y lanzamiento de la función Autopilot." },
+    { "year": "2025", "title": "Crecimiento", "desc": "500+ proyectos activos, 1M+ palabras clave rastreadas." }
+  ],
+  "team": [
+    { "initial": "K", "name": "Fundador & CEO", "role": "Estrategia & Visión", "bio": "10+ años de experiencia en marketing digital y SEO. Fundó FunBreak SEO para asegurar que las marcas sigan siendo visibles no solo en Google sino también en las búsquedas de IA en la era GEO.", "skills": ["Estrategia SEO", "Desarrollo de producto", "GEO", "Crecimiento"] },
+    { "initial": "Y", "name": "Equipo de Software", "role": "Desarrollo & Ingeniería", "bio": "Nuestro equipo de ingeniería equipado con tecnología de IA y especializado en desarrollo web y backend moderno construye sistemas escalables, rápidos y confiables.", "skills": ["TypeScript", "Python", "Go", "PHP", "Java", "Rust", "Next.js", "NestJS", "PostgreSQL", "Redis"] },
+    { "initial": "I", "name": "Equipo de Contenido & SEO", "role": "Estrategia & Contenido", "bio": "Nuestro equipo experto gestionando estrategia SEO, optimización de contenido y procesos de publicación compatibles con GEO para Turquía y mercados globales.", "skills": ["Redacción SEO", "Estrategia GEO", "Palabras clave", "E-E-A-T", "Contenido multilingüe"] },
+    { "initial": "V", "name": "Equipo de Datos & IA", "role": "Inteligencia Artificial & Análisis", "bio": "Nuestro equipo de investigadores e ingenieros experimentados en grandes modelos de lenguaje, pipelines de datos y análisis SEO diseña la infraestructura de IA de la plataforma.", "skills": ["LLM", "Python", "TensorFlow", "RAG", "Ingeniería de datos", "NLP"] }
+  ],
+  "ctaTitle": "Crezcamos juntos",
+  "ctaSubtitle": "Prueba gratis durante 14 días, descubre el potencial SEO y GEO de tu sitio.",
+  "ctaButton": "Prueba gratis",
+  "ctaContactButton": "Contáctanos"
 }
 }

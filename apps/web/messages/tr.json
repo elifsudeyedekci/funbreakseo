@@ -160,7 +160,29 @@
       "top100": "Top 100"
     },
     "badge": "Fiyatlandırma",
-    "compareAll": "Tüm özellikleri ve Kurumsal planı karşılaştır →"
+    "compareAll": "Tüm özellikleri ve Kurumsal planı karşılaştır →",
+    "unlimited": "Sınırsız",
+    "firstPage": "İlk sayfa",
+    "feature": "Özellik",
+    "project": "Proje",
+    "keywordTracking": "Kelime takibi",
+    "geoQuery": "GEO sorgu",
+    "teamMember": "Ekip üyesi",
+    "support": "Destek",
+    "compareTitle": "Özellik Karşılaştırması",
+    "starterDesc": "Küçük web siteleri ve bloglar için ideal başlangıç paketi.",
+    "growthDesc": "Büyüyen işletmeler ve küçük ajanslar için kapsamlı paket.",
+    "proDesc": "Yoğun SEO faaliyetleri için profesyonel özellikler.",
+    "enterpriseDesc": "Büyük ajanslar ve kurumsal işletmeler için özel çözüm.",
+    "customQuote": "Özel Teklif",
+    "yearlyTotal": "yıllık",
+    "faqTitle": "Fiyatlandırma SSS",
+    "faqs": [
+      { "q": "KDV dahil mi?", "a": "Evet, tüm fiyatlar KDV (%20) dahil olarak gösterilmektedir. Kurumsal mükelleflere ayrıca fatura düzenlenmektedir." },
+      { "q": "Yıllık plana geçebilir miyim?", "a": "Evet, istediğiniz zaman aylık plandan yıllık plana geçebilirsiniz. Geçiş anında 2 ay bedava kazanırsınız." },
+      { "q": "Deneme süresi bittikten sonra ne olur?", "a": "14 günlük deneme süresi bittikten sonra hesabınız askıya alınır. Verileriniz 30 gün boyunca korunur." },
+      { "q": "Kurumsal fatura alabilir miyim?", "a": "Evet. Ödeme sırasında kurumsal fatura seçeneğini seçerek şirket bilgilerinizi girebilirsiniz." }
+    ]
   },
   "auth": {
     "login": "Giriş Yap",
@@ -1048,5 +1070,43 @@
   "marketShare": "AI Pazar Payı",
   "cta": "GEO Takibini Ücretsiz Dene",
   "ctaNote": "14 gün ücretsiz, kredi kartı gerekmez"
+},
+"hakkimizdaPage": {
+  "badge": "İstanbul'dan Dünyaya",
+  "title": "SEO ve GEO'nun",
+  "titleHighlight": "Geleceğini İnşa Ediyoruz",
+  "subtitle": "FunBreak SEO, markaların Google ve yapay zeka aramalarında görünür kalmasını sağlamak için İstanbul'dan dünyaya hizmet veren bir teknoloji şirketidir.",
+  "mission": { "title": "Misyonumuz", "desc": "Her ölçekteki işletmenin arama motoru ve yapay zeka ekosisteminde görünür, ölçülebilir ve sürdürülebilir büyüme elde etmesini sağlamak." },
+  "vision": { "title": "Vizyonumuz", "desc": "GEO çağında markaların dijital kimliğini oluşturan, Google'dan ChatGPT'ye kadar her platformda söz sahibi olmalarını sağlayan lider platform olmak." },
+  "values": { "title": "Değerlerimiz", "desc": "Şeffaflık, veriye dayalı karar alma, sürekli inovasyon ve müşteri başarısına odaklanma. Gizli ücret yok, sürpriz yok." },
+  "storyTitle": "Hikayemiz",
+  "teamTitle": "Ekibimiz",
+  "teamSubtitle": "Yapay zeka teknolojileriyle donatılmış yazılım mühendisleri, SEO uzmanları ve veri bilimcilerinden oluşan dinamik kadromuz.",
+  "companyTitle": "Şirket Bilgileri",
+  "companyNameLabel": "Şirket Ünvanı",
+  "foundedLabel": "Kuruluş",
+  "foundedValue": "2024, İstanbul",
+  "addressLabel": "Adres",
+  "addressValue": "Armağanevler Mahallesi Ortanca Sokak 69/22 Ümraniye/İstanbul",
+  "phoneLabel": "Telefon",
+  "emailLabel": "E-posta",
+  "serviceAreasLabel": "Hizmet Alanları",
+  "serviceAreasValue": "Türkiye, AB, MENA, Küresel",
+  "milestones": [
+    { "year": "2024", "title": "Kuruluş", "desc": "İstanbul'da kuruldu, ilk teknik altyapı inşa edildi." },
+    { "year": "2024", "title": "Beta Sürümü", "desc": "İlk 50 beta kullanıcısı ile SEO tarama ve GEO izleme modülleri yayına girdi." },
+    { "year": "2025", "title": "AI İçerik Motoru", "desc": "GPT-4o entegrasyonu ve Autopilot özelliği lansmanı." },
+    { "year": "2025", "title": "Büyüme", "desc": "500+ aktif proje, 1M+ takip edilen anahtar kelime." }
+  ],
+  "team": [
+    { "initial": "K", "name": "Kurucu & CEO", "role": "Strateji & Vizyon", "bio": "Dijital pazarlama ve SEO alanında 10+ yıl deneyim. FunBreak SEO'yu, GEO çağında markaların sadece Google'da değil yapay zeka aramalarında da görünür kalmasını sağlamak amacıyla kurdu.", "skills": ["SEO Stratejisi", "Ürün Geliştirme", "GEO", "Büyüme"] },
+    { "initial": "Y", "name": "Yazılım Ekibi", "role": "Geliştirme & Mühendislik", "bio": "Yapay zeka teknolojileriyle donatılmış, modern web ve backend geliştirme konusunda uzmanlaşmış mühendis kadromuz; ölçeklenebilir, hızlı ve güvenilir sistemler inşa eder.", "skills": ["TypeScript", "Python", "Go", "PHP", "Java", "Rust", "Next.js", "NestJS", "PostgreSQL", "Redis"] },
+    { "initial": "İ", "name": "İçerik & SEO Ekibi", "role": "Strateji & İçerik", "bio": "Türkiye ve global pazarlar için SEO stratejisi, içerik optimizasyonu ve GEO uyumlu yayın süreçlerini yürüten uzman kadromuz.", "skills": ["SEO Yazarlığı", "GEO Stratejisi", "Anahtar Kelime", "E-E-A-T", "Çok Dilli İçerik"] },
+    { "initial": "V", "name": "Veri & AI Ekibi", "role": "Yapay Zeka & Analitik", "bio": "Büyük dil modelleri, veri pipeline'ları ve SEO analitiği konusunda deneyimli araştırmacı ve mühendislerden oluşan ekibimiz platformun yapay zeka altyapısını tasarlar.", "skills": ["LLM", "Python", "TensorFlow", "RAG", "Veri Mühendisliği", "NLP"] }
+  ],
+  "ctaTitle": "Birlikte büyüyelim",
+  "ctaSubtitle": "14 gün ücretsiz deneyin, sitenizin SEO ve GEO potansiyelini keşfedin.",
+  "ctaButton": "Ücretsiz Dene",
+  "ctaContactButton": "Bizimle İletişime Geç"
 }
 }

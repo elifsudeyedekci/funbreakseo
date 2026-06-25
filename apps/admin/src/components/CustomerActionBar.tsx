@@ -51,8 +51,9 @@ export function CustomerActionBar({ customerId, status, onRefresh }: CustomerAct
       toast(successMsg, 'success');
       close();
       refresh();
-    } catch {
-      toast('İşlem başarısız oldu.', 'error');
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'İşlem başarısız oldu.';
+      toast(msg, 'error');
     } finally {
       setLoading(false);
     }
@@ -238,7 +239,16 @@ function PlanChangeModal({ open, onClose, onConfirm, loading }: {
       }
     >
       <form className="space-y-3">
-        <Input label="Plan ID" placeholder="plan-uuid..." {...register('planId')} />
+        <Select
+          label="Plan Seç"
+          options={[
+            { value: '3d5a5372-5c9d-47e1-8db7-5db492c2d3f7', label: 'Başlangıç (Starter)' },
+            { value: '04ebff65-ec92-4d1a-900b-6b54a188c16d', label: 'Büyüme (Growth)' },
+            { value: 'ae927a56-02cf-4f93-84d0-84965fefa30b', label: 'Pro' },
+            { value: 'c8b2901d-4b61-4976-8771-91b94e2571fe', label: 'Kurumsal (Enterprise)' },
+          ]}
+          {...register('planId')}
+        />
         <label className="flex items-center gap-2 cursor-pointer">
           <input type="checkbox" {...register('isComplimentary')} className="accent-indigo-500" />
           <span className="text-sm text-[var(--text-primary)]">Complimentary (Ücretsiz ver)</span>

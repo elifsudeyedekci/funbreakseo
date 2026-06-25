@@ -11,68 +11,18 @@ import { cn } from '@/lib/utils';
 
 type BillingCycle = 'monthly' | 'yearly';
 
-const PLANS: Array<{
-  key: string;
-  name: string;
-  desc: string;
-  color: string;
-  popular: boolean;
-  custom?: boolean;
-}> = [
-  {
-    key: 'starter',
-    name: 'Başlangıç',
-    desc: 'Küçük web siteleri ve bloglar için ideal başlangıç paketi.',
-    color: 'border-white/10',
-    popular: false,
-  },
-  {
-    key: 'growth',
-    name: 'Büyüme',
-    desc: 'Büyüyen işletmeler ve küçük ajanslar için kapsamlı paket.',
-    color: 'border-indigo-500/50',
-    popular: true,
-  },
-  {
-    key: 'pro',
-    name: 'Pro',
-    desc: 'Yoğun SEO faaliyetleri için profesyonel özellikler.',
-    color: 'border-purple-500/30',
-    popular: false,
-  },
-  {
-    key: 'enterprise',
-    name: 'Kurumsal',
-    desc: 'Büyük ajanslar ve kurumsal işletmeler için özel çözüm.',
-    color: 'border-white/10',
-    popular: false,
-    custom: true,
-  },
-];
-
-const COMPARISON_ROWS = [
-  { label: 'Proje (site)', key: 'projects' as const },
-  { label: 'Takip edilen kelime', key: 'keywords' as const },
-  { label: 'Aylık tarama', key: 'monthlyCrawls' as const },
-  { label: 'AI blog/içerik (proje başına)', key: 'aiBlogsPerProject' as const },
-  { label: 'GEO sorgusu', key: 'geoQueries' as const },
-  { label: 'Outreach kampanyası', key: 'outreachCampaigns' as const },
-  { label: 'Ekip üyesi', key: 'teamSeats' as const },
-  { label: 'White-label rapor', key: 'whitelabelReports' as const },
-  { label: 'Müşteri API erişimi', key: 'customerApi' as const },
-  { label: 'Öncelikli destek', key: 'prioritySupport' as const },
-  { label: 'Sıralama takip derinliği', key: 'trackingDepth' as const },
-];
-
-function formatLimitValue(value: number | boolean | string): React.ReactNode {
+function formatLimitValue(
+  value: number | boolean | string,
+  t: ReturnType<typeof useTranslations<'pricing'>>
+): React.ReactNode {
   if (typeof value === 'boolean') {
     return value ? <Check className="h-4 w-4 text-emerald-400 mx-auto" /> : <X className="h-4 w-4 text-white/20 mx-auto" />;
   }
   if (typeof value === 'number') {
-    if (value >= 999999) return <span className="text-emerald-400">Sınırsız</span>;
-    return value.toLocaleString('tr-TR');
+    if (value >= 999999) return <span className="text-emerald-400">{t('unlimited')}</span>;
+    return value.toLocaleString();
   }
-  if (value === 'FIRST_PAGE') return 'İlk sayfa';
+  if (value === 'FIRST_PAGE') return t('firstPage');
   if (value === 'TOP_100') return 'Top 100';
   return value;
 }
@@ -83,6 +33,34 @@ export default function PricingPage() {
   const [cycle, setCycle] = useState<BillingCycle>('monthly');
 
   const localePath = (path: string) => locale === 'tr' ? path : `/${locale}${path}`;
+
+  const PLANS: Array<{
+    key: string;
+    name: string;
+    desc: string;
+    color: string;
+    popular: boolean;
+    custom?: boolean;
+  }> = [
+    { key: 'starter', name: t('starter'), desc: t('starterDesc'), color: 'border-white/10', popular: false },
+    { key: 'growth', name: t('growth'), desc: t('growthDesc'), color: 'border-indigo-500/50', popular: true },
+    { key: 'pro', name: t('pro'), desc: t('proDesc'), color: 'border-purple-500/30', popular: false },
+    { key: 'enterprise', name: t('enterprise'), desc: t('enterpriseDesc'), color: 'border-white/10', popular: false, custom: true },
+  ];
+
+  const COMPARISON_ROWS = [
+    { label: t('features.projects'), key: 'projects' as const },
+    { label: t('features.keywords'), key: 'keywords' as const },
+    { label: t('features.crawls'), key: 'monthlyCrawls' as const },
+    { label: t('features.blogs'), key: 'aiBlogsPerProject' as const },
+    { label: t('features.geo'), key: 'geoQueries' as const },
+    { label: t('features.outreach'), key: 'outreachCampaigns' as const },
+    { label: t('features.seats'), key: 'teamSeats' as const },
+    { label: t('features.reports'), key: 'whitelabelReports' as const },
+    { label: t('features.api'), key: 'customerApi' as const },
+    { label: t('features.support'), key: 'prioritySupport' as const },
+    { label: t('features.tracking'), key: 'trackingDepth' as const },
+  ];
 
   function getPrice(planKey: string) {
     const prices = PLAN_PRICES_TRY[planKey as keyof typeof PLAN_PRICES_TRY];
@@ -152,7 +130,7 @@ export default function PricingPage() {
                     <p className="text-xs text-white/50 leading-relaxed mb-4">{plan.desc}</p>
 
                     {plan.custom ? (
-                      <div className="text-2xl font-bold text-white">Özel Teklif</div>
+                      <div className="text-2xl font-bold text-white">{t('customQuote')}</div>
                     ) : (
                       <>
                         <div className="flex items-end gap-1">
@@ -163,7 +141,7 @@ export default function PricingPage() {
                           {t('includedVat')}
                           {cycle === 'yearly' && (
                             <span className="ml-1 text-emerald-400">
-                              (yıllık ₺{PLAN_PRICES_TRY[plan.key as keyof typeof PLAN_PRICES_TRY]?.yearly?.toLocaleString('tr-TR')} ödeme)
+                              ({t('yearlyTotal')} ₺{PLAN_PRICES_TRY[plan.key as keyof typeof PLAN_PRICES_TRY]?.yearly?.toLocaleString('tr-TR')})
                             </span>
                           )}
                         </p>
@@ -174,33 +152,39 @@ export default function PricingPage() {
                   {/* Key limits */}
                   <ul className="space-y-2 mb-6 flex-1 text-sm">
                     <li className="flex justify-between">
-                      <span className="text-white/50">Proje</span>
+                      <span className="text-white/50">{t('project')}</span>
                       <span className="text-white font-medium">
-                        {limits?.projects >= 999999 ? 'Sınırsız' : limits?.projects}
+                        {limits?.projects >= 999999 ? t('unlimited') : limits?.projects}
                       </span>
                     </li>
                     <li className="flex justify-between">
-                      <span className="text-white/50">Kelime takibi</span>
+                      <span className="text-white/50">{t('keywordTracking')}</span>
                       <span className="text-white font-medium">
-                        {limits?.keywords >= 999999 ? 'Sınırsız' : limits?.keywords?.toLocaleString('tr-TR')}
+                        {limits?.keywords >= 999999 ? t('unlimited') : limits?.keywords?.toLocaleString()}
                       </span>
                     </li>
                     <li className="flex justify-between">
-                      <span className="text-white/50">GEO sorgu</span>
+                      <span className="text-white/50">{t('geoQuery')}</span>
                       <span className="text-white font-medium">
-                        {limits?.geoQueries >= 999999 ? 'Sınırsız' : limits?.geoQueries}
+                        {limits?.geoQueries >= 999999 ? t('unlimited') : limits?.geoQueries}
                       </span>
                     </li>
                     <li className="flex justify-between">
-                      <span className="text-white/50">Ekip üyesi</span>
+                      <span className="text-white/50">{t('teamMember')}</span>
                       <span className="text-white font-medium">
-                        {limits?.teamSeats >= 999999 ? 'Sınırsız' : limits?.teamSeats}
+                        {limits?.teamSeats >= 999999 ? t('unlimited') : limits?.teamSeats}
                       </span>
                     </li>
                     <li className="flex justify-between">
-                      <span className="text-white/50">Destek</span>
+                      <span className="text-white/50">{t('support')}</span>
                       <span className="text-white font-medium text-right text-xs">
-                        {plan.key === 'starter' ? 'E-posta' : plan.key === 'growth' ? 'E-posta + WhatsApp' : plan.key === 'pro' ? 'Öncelikli' : 'Özel Hesap Yöneticisi'}
+                        {plan.key === 'starter'
+                          ? t('features.email')
+                          : plan.key === 'growth'
+                          ? t('features.whatsapp')
+                          : plan.key === 'pro'
+                          ? t('features.priority')
+                          : t('features.dedicated')}
                       </span>
                     </li>
                   </ul>
@@ -223,12 +207,12 @@ export default function PricingPage() {
 
           {/* Full comparison table */}
           <div className="mb-20">
-            <h2 className="text-2xl font-bold text-white mb-8 text-center">Özellik Karşılaştırması</h2>
+            <h2 className="text-2xl font-bold text-white mb-8 text-center">{t('compareTitle')}</h2>
             <div className="overflow-x-auto rounded-2xl border border-white/10">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-white/10">
-                    <th className="text-left px-6 py-4 text-white/50 font-medium w-1/3">Özellik</th>
+                    <th className="text-left px-6 py-4 text-white/50 font-medium w-1/3">{t('feature')}</th>
                     {PLANS.map((p) => (
                       <th key={p.key} className={cn('px-4 py-4 text-center font-semibold', p.popular ? 'text-indigo-400' : 'text-white')}>
                         {p.name}
@@ -245,7 +229,7 @@ export default function PricingPage() {
                         const value = limits?.[row.key as keyof typeof limits];
                         return (
                           <td key={plan.key} className="px-4 py-3.5 text-center text-white/80">
-                            {value !== undefined ? formatLimitValue(value as never) : <Minus className="h-4 w-4 text-white/20 mx-auto" />}
+                            {value !== undefined ? formatLimitValue(value as never, t) : <Minus className="h-4 w-4 text-white/20 mx-auto" />}
                           </td>
                         );
                       })}
@@ -258,14 +242,9 @@ export default function PricingPage() {
 
           {/* FAQ */}
           <div className="max-w-3xl mx-auto">
-            <h2 className="text-2xl font-bold text-white mb-8 text-center">Fiyatlandırma SSS</h2>
+            <h2 className="text-2xl font-bold text-white mb-8 text-center">{t('faqTitle')}</h2>
             <div className="space-y-4">
-              {[
-                { q: 'KDV dahil mi?', a: 'Evet, tüm fiyatlar KDV (%20) dahil olarak gösterilmektedir. Kurumsal mükelleflere ayrıca fatura düzenlenmektedir.' },
-                { q: 'Yıllık plana geçebilir miyim?', a: 'Evet, istediğiniz zaman aylık plandan yıllık plana geçebilirsiniz. Geçiş anında 2 ay bedava kazanırsınız.' },
-                { q: 'Deneme süresi bittikten sonra ne olur?', a: '14 günlük deneme süresi bittikten sonra hesabınız askıya alınır. Ödeme bilgisi girmeden devam edemezsiniz. Verileriniz 30 gün boyunca korunur.' },
-                { q: 'Kurumsal fatura alabilir miyim?', a: 'Evet. Ödeme sırasında kurumsal fatura seçeneğini seçerek şirket bilgilerinizi girebilirsiniz. Faturanız e-posta ile gönderilir.' },
-              ].map((faq, i) => (
+              {(t.raw('faqs') as Array<{ q: string; a: string }>).map((faq, i) => (
                 <div key={i} className="rounded-xl border border-white/10 p-5">
                   <h3 className="text-sm font-semibold text-white mb-2">{faq.q}</h3>
                   <p className="text-sm text-white/60 leading-relaxed">{faq.a}</p>

@@ -145,7 +145,29 @@
       "top100": "Top 100"
     },
     "badge": "Pricing",
-    "compareAll": "Compare all features and Enterprise plan →"
+    "compareAll": "Compare all features and Enterprise plan →",
+    "unlimited": "Unlimited",
+    "firstPage": "First page",
+    "feature": "Feature",
+    "project": "Projects",
+    "keywordTracking": "Keyword tracking",
+    "geoQuery": "GEO queries",
+    "teamMember": "Team members",
+    "support": "Support",
+    "compareTitle": "Feature Comparison",
+    "starterDesc": "Ideal starter plan for small websites and blogs.",
+    "growthDesc": "Comprehensive plan for growing businesses and small agencies.",
+    "proDesc": "Professional features for intensive SEO activities.",
+    "enterpriseDesc": "Custom solution for large agencies and enterprise businesses.",
+    "customQuote": "Custom Quote",
+    "yearlyTotal": "yearly",
+    "faqTitle": "Pricing FAQ",
+    "faqs": [
+      { "q": "Is VAT included?", "a": "Yes, all prices are shown VAT inclusive (20%). Separate invoices are issued for corporate taxpayers." },
+      { "q": "Can I switch to the annual plan?", "a": "Yes, you can switch from a monthly plan to an annual plan at any time. You immediately earn 2 months free." },
+      { "q": "What happens after the trial period ends?", "a": "After the 14-day trial period, your account is suspended. Your data is kept for 30 days." },
+      { "q": "Can I get a corporate invoice?", "a": "Yes. During payment, select the corporate invoice option and enter your company details." }
+    ]
   },
   "auth": {
     "login": "Sign In",
@@ -1032,5 +1054,43 @@
   "marketShare": "AI Market Share",
   "cta": "Try GEO Tracking for Free",
   "ctaNote": "14 days free, no credit card required"
+},
+"hakkimizdaPage": {
+  "badge": "From Istanbul to the World",
+  "title": "Building the Future of",
+  "titleHighlight": "SEO and GEO",
+  "subtitle": "FunBreak SEO is a technology company serving the world from Istanbul to help brands stay visible in Google and AI searches.",
+  "mission": { "title": "Our Mission", "desc": "To enable businesses of all sizes to achieve visible, measurable, and sustainable growth in search engines and the AI ecosystem." },
+  "vision": { "title": "Our Vision", "desc": "To become the leading platform that shapes brands' digital identity in the GEO era, enabling them to have a say on every platform from Google to ChatGPT." },
+  "values": { "title": "Our Values", "desc": "Transparency, data-driven decision making, continuous innovation, and focus on customer success. No hidden fees, no surprises." },
+  "storyTitle": "Our Story",
+  "teamTitle": "Our Team",
+  "teamSubtitle": "A dynamic team of software engineers equipped with AI technology, SEO experts, and data scientists.",
+  "companyTitle": "Company Information",
+  "companyNameLabel": "Company Name",
+  "foundedLabel": "Founded",
+  "foundedValue": "2024, Istanbul",
+  "addressLabel": "Address",
+  "addressValue": "Armağanevler Mahallesi Ortanca Sokak 69/22 Ümraniye/Istanbul",
+  "phoneLabel": "Phone",
+  "emailLabel": "Email",
+  "serviceAreasLabel": "Service Areas",
+  "serviceAreasValue": "Turkey, EU, MENA, Global",
+  "milestones": [
+    { "year": "2024", "title": "Founded", "desc": "Founded in Istanbul, first technical infrastructure built." },
+    { "year": "2024", "title": "Beta Release", "desc": "SEO scanning and GEO monitoring modules launched with the first 50 beta users." },
+    { "year": "2025", "title": "AI Content Engine", "desc": "GPT-4o integration and Autopilot feature launch." },
+    { "year": "2025", "title": "Growth", "desc": "500+ active projects, 1M+ tracked keywords." }
+  ],
+  "team": [
+    { "initial": "K", "name": "Founder & CEO", "role": "Strategy & Vision", "bio": "10+ years of experience in digital marketing and SEO. Founded FunBreak SEO to ensure brands remain visible not only in Google but also in AI searches in the GEO era.", "skills": ["SEO Strategy", "Product Development", "GEO", "Growth"] },
+    { "initial": "Y", "name": "Software Team", "role": "Development & Engineering", "bio": "Our engineering team, equipped with AI technology and specialized in modern web and backend development, builds scalable, fast, and reliable systems.", "skills": ["TypeScript", "Python", "Go", "PHP", "Java", "Rust", "Next.js", "NestJS", "PostgreSQL", "Redis"] },
+    { "initial": "I", "name": "Content & SEO Team", "role": "Strategy & Content", "bio": "Our expert team managing SEO strategy, content optimization, and GEO-compatible publishing processes for Turkey and global markets.", "skills": ["SEO Writing", "GEO Strategy", "Keywords", "E-E-A-T", "Multilingual Content"] },
+    { "initial": "V", "name": "Data & AI Team", "role": "Artificial Intelligence & Analytics", "bio": "Our team of experienced researchers and engineers in large language models, data pipelines, and SEO analytics designs the AI infrastructure of the platform.", "skills": ["LLM", "Python", "TensorFlow", "RAG", "Data Engineering", "NLP"] }
+  ],
+  "ctaTitle": "Let's grow together",
+  "ctaSubtitle": "Try free for 14 days, discover your site's SEO and GEO potential.",
+  "ctaButton": "Try Free",
+  "ctaContactButton": "Contact Us"
 }
 }
