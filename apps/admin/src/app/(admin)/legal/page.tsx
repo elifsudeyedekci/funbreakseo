@@ -90,10 +90,12 @@ export default function LegalPage() {
   if (isLoading) return <PageSpinner />;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-bold text-[var(--text-primary)]">Yasal Belgeler</h1>
-        <p className="text-sm text-[var(--text-muted)] mt-0.5">Kullanım şartları, gizlilik politikaları ve diğer yasal metinler</p>
+    <div className="page-content">
+      <div className="page-header">
+        <div>
+          <h1>Yasal Belgeler</h1>
+          <p>Kullanım şartları, gizlilik politikaları ve diğer yasal metinler</p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4">

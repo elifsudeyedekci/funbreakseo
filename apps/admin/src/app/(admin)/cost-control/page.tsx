@@ -104,10 +104,12 @@ export default function CostControlPage() {
   if (isLoading) return <PageSpinner />;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-bold text-[var(--text-primary)]">Maliyet Kontrol Merkezi</h1>
-        <p className="text-sm text-[var(--text-muted)] mt-0.5">Bu ay toplam: ${totalSpend.toLocaleString()}</p>
+    <div className="page-content">
+      <div className="page-header">
+        <div>
+          <h1>Maliyet Kontrol Merkezi</h1>
+          <p>Bu ay toplam: ${totalSpend.toLocaleString()}</p>
+        </div>
       </div>
 
       {/* Global Kill Switch */}

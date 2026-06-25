@@ -76,6 +76,8 @@ export default function SupportPage() {
   });
 
   const tickets = (data ?? MOCK_TICKETS) as Ticket[];
+  const inProgressCount = tickets.filter((t) => t.status === 'IN_PROGRESS').length;
+  const resolvedCount = tickets.filter((t) => t.status === 'RESOLVED' || t.status === 'CLOSED').length;
   const openCount = tickets.filter((t) => t.status === 'OPEN').length;
   const urgentCount = tickets.filter((t) => t.priority === 'URGENT' && t.status !== 'CLOSED').length;
 
@@ -142,16 +144,38 @@ export default function SupportPage() {
   if (isLoading) return <PageSpinner />;
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-bold text-[var(--text-primary)]">Destek Ticket&apos;ları</h1>
-        <p className="text-sm text-[var(--text-muted)] mt-0.5">
-          {openCount} açık •{' '}
-          {urgentCount > 0 && <span className="text-red-400">{urgentCount} acil</span>}
-        </p>
+    <div className="page-content">
+      <div className="page-header">
+        <div>
+          <h1>Destek Ticket'ları</h1>
+          <p>Müşteri destek talepleri — {tickets.length} kayıt</p>
+        </div>
       </div>
 
-      <DataTable columns={columns} data={tickets} searchPlaceholder="Konu, müşteri ara..." emptyMessage="Ticket bulunamadı." />
+      <div className="kpi-grid">
+        {[
+          { label: 'Toplam', value: tickets.length, color: '#6366f1', bg: 'rgba(99,102,241,0.12)' },
+          { label: 'Açık', value: openCount, color: '#eab308', bg: 'rgba(234,179,8,0.12)' },
+          { label: 'İşlemde', value: inProgressCount, color: '#22c55e', bg: 'rgba(34,197,94,0.12)' },
+          { label: 'Acil', value: urgentCount, color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+        ].map((s) => (
+          <div key={s.label} className="stat-card">
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: s.bg, marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, display: 'block' }} />
+            </div>
+            <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: 4 }}>{s.label}</p>
+            <p style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1.1 }}>{s.value}</p>
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${s.color}80, transparent)`, borderRadius: '0 0 12px 12px' }} />
+          </div>
+        ))}
+      </div>
+
+      <div className="section-card">
+        <div className="section-card-header">
+          <span className="section-card-title">Ticket Listesi</span>
+        </div>
+        <DataTable columns={columns} data={tickets} searchPlaceholder="Konu, müşteri ara..." emptyMessage="Ticket bulunamadı." noBorder />
+      </div>
 
       {/* Reply Modal */}
       <Modal

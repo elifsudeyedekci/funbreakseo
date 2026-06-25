@@ -1,6 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
 
 export const api = axios.create({
   baseURL: API_URL,
@@ -38,7 +38,7 @@ api.interceptors.response.use(
       try {
         const refreshToken = typeof window !== 'undefined' ? localStorage.getItem('refresh_token') : null;
         if (!refreshToken) throw new Error('No refresh token');
-        const { data } = await axios.post(`${API_URL}/auth/refresh`, { refreshToken });
+        const { data } = await api.post('/auth/refresh', { refreshToken });
         const { accessToken, refreshToken: newRT } = data.data;
         localStorage.setItem('access_token', accessToken);
         localStorage.setItem('refresh_token', newRT);

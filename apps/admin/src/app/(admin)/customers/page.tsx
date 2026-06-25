@@ -47,7 +47,25 @@ export default function CustomersPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['admin-customers'],
     queryFn: async () => {
-      try { const r = await adminApi.get('/admin/customers', { params: { limit: 100 } }); return r.data?.data ?? MOCK_CUSTOMERS; }
+      try {
+        const r = await adminApi.get('/admin/customers', { params: { limit: 100 } });
+        const orgs = r.data?.data ?? [];
+        if (Array.isArray(orgs) && orgs.length > 0) {
+          return orgs.map((org: Record<string, unknown>) => ({
+            id: org.id,
+            fullName: (org.users as Array<{fullName?: string}>)?.[0]?.fullName ?? (org.name as string) ?? 'Bilinmiyor',
+            email: (org.users as Array<{email?: string}>)?.[0]?.email ?? '',
+            company: (org.name as string) ?? '',
+            plan: ((org.subscription as {plan?: {name?: string}})?.plan?.name) ?? 'FREE',
+            status: ((org.subscription as {status?: string})?.status) ?? 'ACTIVE',
+            createdAt: org.createdAt as string,
+            lastLoginAt: (org.users as Array<{lastLoginAt?: string}>)?.[0]?.lastLoginAt ?? null,
+            healthScore: (org.healthScore as number) ?? 50,
+            churnRisk: (org.churnRisk as string) ?? 'LOW',
+          }));
+        }
+        return MOCK_CUSTOMERS;
+      }
       catch { return MOCK_CUSTOMERS; }
     },
   });
@@ -120,18 +138,34 @@ export default function CustomersPage() {
 
   if (isLoading) return <PageSpinner />;
 
+  const activeCount = customers.filter((c) => c.status === 'ACTIVE').length;
+  const trialCount = customers.filter((c) => c.status === 'TRIALING').length;
+
   return (
-    <div className="space-y-4 p-4 md:p-6">
-      <div>
-        <h1 className="text-xl font-bold text-[var(--text-primary)]">Müşteriler</h1>
-        <p className="text-sm text-[var(--text-muted)] mt-0.5">
-          Toplam {customers.length} müşteri
-          {highRisk > 0 && (
-            <span className="ml-2 inline-flex items-center gap-1 text-red-400">
-              <AlertTriangle className="w-3.5 h-3.5" />{highRisk} yüksek risk
-            </span>
-          )}
-        </p>
+    <div className="page-content">
+      <div className="page-header">
+        <div>
+          <h1>Müşteriler</h1>
+          <p>Toplam {customers.length} kayıtlı kullanıcı</p>
+        </div>
+      </div>
+
+      <div className="kpi-grid">
+        {[
+          { label: 'Toplam',      value: customers.length, color: '#6C8EF5', bg: 'rgba(108,142,245,0.1)' },
+          { label: 'Aktif',       value: activeCount,       color: '#3DD68C', bg: 'rgba(61,214,140,0.1)' },
+          { label: 'Deneme',      value: trialCount,        color: '#F5A524', bg: 'rgba(245,165,36,0.1)' },
+          { label: 'Yüksek Risk', value: highRisk,          color: '#F54A3A', bg: 'rgba(245,74,58,0.1)' },
+        ].map((s) => (
+          <div key={s.label} className="stat-card">
+            <div style={{ width: 32, height: 32, borderRadius: 8, marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: s.bg }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, display: 'block' }} />
+            </div>
+            <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: 4 }}>{s.label}</p>
+            <p style={{ fontSize: 30, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>{s.value}</p>
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${s.color}60, transparent)`, borderRadius: '0 0 12px 12px' }} />
+          </div>
+        ))}
       </div>
 
       <DataTable

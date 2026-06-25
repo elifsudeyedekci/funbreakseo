@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, use } from 'react';
+import { useState } from 'react';
+import { useParams } from 'next/navigation';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Play, AlertCircle, AlertTriangle, Info, RefreshCw } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { Play, AlertCircle, AlertTriangle, Info, RefreshCw, Download } from 'lucide-react';
 import { auditApi } from '@/lib/api';
-import { cn } from '@/lib/utils';
+import { cn, exportToCSV } from '@/lib/utils';
 import type { IssueSeverity, IssueCategory } from '@funbreakseo/shared';
 
 interface AuditIssue {
@@ -30,20 +32,21 @@ interface AuditData {
   completedAt?: string;
 }
 
-const SEVERITY_CONFIG = {
-  CRITICAL: { icon: AlertCircle, color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20', label: 'Kritik' },
-  WARNING: { icon: AlertTriangle, color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/20', label: 'Uyarı' },
-  NOTICE: { icon: Info, color: 'text-yellow-400', bg: 'bg-yellow-500/10 border-yellow-500/20', label: 'Bilgi' },
-};
-
-export default function AuditPage({ params }: { params: Promise<{ projectId: string }> }) {
-  const { projectId } = use(params);
+export default function AuditPage() {
+  const { projectId } = useParams<{ projectId: string }>();
+  const t = useTranslations('auditPage');
   const [selectedIssue, setSelectedIssue] = useState<AuditIssue | null>(null);
   const [severityFilter, setSeverityFilter] = useState<IssueSeverity | 'ALL'>('ALL');
 
+  const SEVERITY_CONFIG = {
+    CRITICAL: { icon: AlertCircle, color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20', label: t('critical') },
+    WARNING: { icon: AlertTriangle, color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/20', label: t('warning') },
+    NOTICE: { icon: Info, color: 'text-yellow-400', bg: 'bg-yellow-500/10 border-yellow-500/20', label: t('notice') },
+  };
+
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['audit', projectId],
-    queryFn: () => auditApi.get(projectId).then((r) => r.data.data as AuditData),
+    queryFn: () => auditApi.get(projectId).then((r) => (r.data?.data ?? []) as AuditData),
     refetchInterval: (query) => {
       const status = query.state.data?.status;
       return status === 'RUNNING' || status === 'PENDING' ? 3000 : false;
@@ -72,11 +75,39 @@ export default function AuditPage({ params }: { params: Promise<{ projectId: str
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Teknik SEO Tarama</h1>
+          <h1 className="text-2xl font-bold text-white">{t('title')}</h1>
           <p className="text-white/50 text-sm mt-1">
-            {audit?.completedAt ? `Son tarama: ${new Date(audit.completedAt).toLocaleString('tr-TR')}` : 'Henüz tarama yapılmadı'}
+            {audit?.completedAt
+              ? t('lastScan', { date: new Date(audit.completedAt).toLocaleString() })
+              : t('noScan')}
           </p>
         </div>
+        <div className="flex items-center gap-2">
+          {(audit?.issues?.length ?? 0) > 0 && (
+            <button
+              onClick={() => exportToCSV(
+                (audit?.issues ?? []).map((i) => ({
+                  severity: i.severity,
+                  category: i.category,
+                  message: i.message,
+                  url: i.url ?? '',
+                  count: i.count,
+                })),
+                [
+                  { key: 'severity', label: 'Önem' },
+                  { key: 'category', label: 'Kategori' },
+                  { key: 'message', label: 'Sorun' },
+                  { key: 'url', label: 'URL' },
+                  { key: 'count', label: 'Sayı' },
+                ],
+                'seo-sorunlari.csv'
+              )}
+              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-white/70 hover:bg-white/10 transition-all"
+            >
+              <Download className="h-4 w-4" />
+              CSV
+            </button>
+          )}
         <button
           onClick={() => crawlMutation.mutate()}
           disabled={isRunning || crawlMutation.isPending}
@@ -85,15 +116,16 @@ export default function AuditPage({ params }: { params: Promise<{ projectId: str
           {isRunning ? (
             <>
               <RefreshCw className="h-4 w-4 animate-spin" />
-              Taranıyor...
+              {t('scanning')}
             </>
           ) : (
             <>
               <Play className="h-4 w-4" />
-              Yeni Tarama Başlat
+              {t('startScan')}
             </>
           )}
         </button>
+        </div>
       </div>
 
       {/* Score + summary */}
@@ -115,17 +147,17 @@ export default function AuditPage({ params }: { params: Promise<{ projectId: str
             </svg>
             <div className="text-center -mt-24">
               <div className="text-5xl font-bold text-white">{score}</div>
-              <div className="text-xs text-white/40 mt-1">Site Sağlık Skoru</div>
+              <div className="text-xs text-white/40 mt-1">{t('healthScore')}</div>
             </div>
           </div>
 
           {/* Stats */}
           <div className="md:col-span-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
-              { label: 'Taranan Sayfa', value: audit.crawledPages, color: 'indigo' },
-              { label: 'Toplam Sorun', value: audit.totalIssues, color: 'white' },
-              { label: 'Kritik', value: audit.criticalCount, color: 'red' },
-              { label: 'Uyarı', value: audit.warningCount, color: 'orange' },
+              { label: t('crawledPages'), value: audit.crawledPages, color: 'indigo' },
+              { label: t('totalIssues'), value: audit.totalIssues, color: 'white' },
+              { label: t('critical'), value: audit.criticalCount, color: 'red' },
+              { label: t('warning'), value: audit.warningCount, color: 'orange' },
             ].map((s) => (
               <div key={s.label} className="rounded-xl border border-white/10 bg-white/2 p-4 text-center">
                 <div className={`text-3xl font-bold ${
@@ -143,7 +175,7 @@ export default function AuditPage({ params }: { params: Promise<{ projectId: str
       {/* Issues list */}
       <div>
         <div className="flex items-center gap-3 mb-4">
-          <h2 className="text-lg font-semibold text-white">Tespit Edilen Sorunlar</h2>
+          <h2 className="text-lg font-semibold text-white">{t('issuesTitle')}</h2>
           <div className="flex gap-2 ml-auto">
             {(['ALL', 'CRITICAL', 'WARNING', 'NOTICE'] as const).map((f) => (
               <button
@@ -154,7 +186,7 @@ export default function AuditPage({ params }: { params: Promise<{ projectId: str
                   severityFilter === f ? 'bg-indigo-600 text-white' : 'border border-white/10 text-white/50 hover:text-white hover:bg-white/10'
                 )}
               >
-                {f === 'ALL' ? 'Tümü' : SEVERITY_CONFIG[f].label}
+                {f === 'ALL' ? t('allFilter') : SEVERITY_CONFIG[f].label}
               </button>
             ))}
           </div>
@@ -168,7 +200,7 @@ export default function AuditPage({ params }: { params: Promise<{ projectId: str
           </div>
         ) : filteredIssues.length === 0 ? (
           <div className="rounded-2xl border border-white/10 p-8 text-center text-white/30">
-            {audit ? 'Bu filtrede sorun bulunamadı' : 'Tarama başlatın'}
+            {audit ? t('noIssuesFilter') : t('startScanPrompt')}
           </div>
         ) : (
           <div className="space-y-2">
@@ -190,7 +222,7 @@ export default function AuditPage({ params }: { params: Promise<{ projectId: str
                       <span className="text-sm font-medium text-white">{issue.message}</span>
                       <span className="text-xs text-white/30 bg-white/5 px-2 py-0.5 rounded-full flex-shrink-0">{issue.category}</span>
                       {issue.count > 1 && (
-                        <span className="text-xs text-white/30 ml-auto flex-shrink-0">{issue.count} sayfa</span>
+                        <span className="text-xs text-white/30 ml-auto flex-shrink-0">{t('affectedPages', { count: issue.count })}</span>
                       )}
                     </div>
                     {issue.url && (
@@ -198,7 +230,7 @@ export default function AuditPage({ params }: { params: Promise<{ projectId: str
                     )}
                     {selectedIssue?.id === issue.id && issue.howToFix && (
                       <div className="mt-3 pt-3 border-t border-white/10">
-                        <p className="text-xs font-semibold text-white/60 mb-1">Nasıl Düzeltilir?</p>
+                        <p className="text-xs font-semibold text-white/60 mb-1">{t('howToFix')}</p>
                         <p className="text-xs text-white/50 leading-relaxed">{issue.howToFix}</p>
                       </div>
                     )}

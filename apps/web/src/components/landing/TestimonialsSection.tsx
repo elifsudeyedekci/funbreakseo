@@ -1,101 +1,88 @@
+'use client';
+import { useTranslations } from 'next-intl';
 import { Star } from 'lucide-react';
 
-const testimonials = [
-  {
-    name: 'Ahmet Yılmaz',
-    role: 'Dijital Pazarlama Müdürü',
-    company: 'TechStart A.Ş.',
-    text: 'FunBreak SEO sayesinde 3 ayda organik trafiğimiz %180 arttı. GEO özelliği sayesinde ChatGPT\'de rakiplerimizin önüne geçtik. Tek platform olması büyük avantaj.',
-    rating: 5,
-    avatar: 'AY',
-  },
-  {
-    name: 'Selin Kaya',
-    role: 'Kurucu',
-    company: 'SEO Ajans Kaya',
-    text: 'Ajans olarak 20+ müşteri yönetiyoruz. White-label raporlar ve multi-proje yönetimi mükemmel. AI içerik motoru zaman tasarrufunu inanılmaz artırdı.',
-    rating: 5,
-    avatar: 'SK',
-  },
-  {
-    name: 'Murat Demir',
-    role: 'E-ticaret Yöneticisi',
-    company: 'Moda Butik',
-    text: 'Backlink market ve outreach özellikleri çok değerli. Eskiden ayrı araçlar için 3x para ödüyorduk, şimdi hepsi tek yerde ve çok daha ucuz.',
-    rating: 5,
-    avatar: 'MD',
-  },
+const AVATAR_STYLES = [
+  { grad: 'from-indigo-500 to-purple-600', shadow: 'shadow-indigo-500/30' },
+  { grad: 'from-emerald-500 to-teal-600', shadow: 'shadow-emerald-500/30' },
+  { grad: 'from-orange-500 to-rose-600', shadow: 'shadow-orange-500/30' },
 ];
 
 export function TestimonialsSection() {
+  const t = useTranslations('testimonials');
+  const items = t.raw('items') as Array<{ name: string; role: string; company: string; text: string }>;
+
   return (
-    <section className="py-24 px-4 sm:px-6 lg:px-8 bg-white/2">
-      {/* JSON-LD schema for reviews */}
+    <section className="relative py-28 px-4 sm:px-6 lg:px-8">
+      {/* JSON-LD */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
           __html: JSON.stringify({
             '@context': 'https://schema.org',
             '@type': 'AggregateRating',
-            itemReviewed: {
-              '@type': 'SoftwareApplication',
-              name: 'FunBreak SEO',
-            },
+            itemReviewed: { '@type': 'SoftwareApplication', name: 'FunBreak SEO' },
             ratingValue: '4.9',
-            reviewCount: testimonials.length.toString(),
+            reviewCount: items.length.toString(),
             bestRating: '5',
             worstRating: '1',
           }),
         }}
       />
 
+      <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[200px] rounded-full bg-white/[0.02] blur-[80px]" />
+      </div>
+
       <div className="mx-auto max-w-7xl">
         <div className="text-center mb-16">
-          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-            Müşterilerimiz Ne Diyor?
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] backdrop-blur-sm px-4 py-1.5 mb-5">
+            <span className="text-xs font-medium text-white/50">{t('badge')}</span>
+          </div>
+          <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4 tracking-tight">
+            {t('title')}
           </h2>
           <div className="flex items-center justify-center gap-1 mb-2">
             {Array.from({ length: 5 }).map((_, i) => (
               <Star key={i} className="h-5 w-5 fill-yellow-400 text-yellow-400" />
             ))}
           </div>
-          <p className="text-white/50">4.9/5 ortalama puan, 200+ değerlendirme</p>
+          <p className="text-white/30 text-sm">{t('rating')}</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {testimonials.map((t, i) => (
-            <article
-              key={i}
-              className="rounded-2xl border border-white/10 bg-white/5 p-6"
-              itemScope
-              itemType="https://schema.org/Review"
-            >
-              <div className="flex items-center gap-1 mb-4">
-                {Array.from({ length: t.rating }).map((_, j) => (
-                  <Star key={j} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                ))}
-              </div>
-              <p
-                className="text-white/70 text-sm leading-relaxed mb-6"
-                itemProp="reviewBody"
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {items.map((item, i) => {
+            const av = AVATAR_STYLES[i % AVATAR_STYLES.length];
+            const initials = item.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+            return (
+              <article
+                key={i}
+                className="relative rounded-2xl border border-white/[0.07] bg-white/[0.025] backdrop-blur-sm p-7 flex flex-col hover:border-white/12 hover:bg-white/[0.035] transition-all duration-300 group overflow-hidden"
+                itemScope
+                itemType="https://schema.org/Review"
               >
-                &quot;{t.text}&quot;
-              </p>
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xs font-bold text-white">
-                  {t.avatar}
+                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/8 to-transparent" />
+                <div className="text-6xl font-serif text-white/6 leading-none mb-4 select-none" aria-hidden="true">&ldquo;</div>
+                <div className="flex items-center gap-0.5 mb-4">
+                  {Array.from({ length: 5 }).map((_, j) => (
+                    <Star key={j} className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+                  ))}
                 </div>
-                <div>
-                  <div className="text-sm font-semibold text-white" itemProp="author">
-                    {t.name}
+                <p className="text-white/50 text-sm leading-relaxed flex-1 mb-7" itemProp="reviewBody">
+                  {item.text}
+                </p>
+                <div className="flex items-center gap-3 pt-5 border-t border-white/[0.06]">
+                  <div className={`h-10 w-10 rounded-full bg-gradient-to-br ${av.grad} flex items-center justify-center text-xs font-bold text-white flex-shrink-0 shadow-lg ${av.shadow}`}>
+                    {initials}
                   </div>
-                  <div className="text-xs text-white/40">
-                    {t.role}, {t.company}
+                  <div>
+                    <div className="text-sm font-semibold text-white" itemProp="author">{item.name}</div>
+                    <div className="text-xs text-white/30">{item.role} · {item.company}</div>
                   </div>
                 </div>
-              </div>
-            </article>
-          ))}
+              </article>
+            );
+          })}
         </div>
       </div>
     </section>

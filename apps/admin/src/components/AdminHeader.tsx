@@ -150,7 +150,7 @@ export function AdminHeader({ title, breadcrumbs, actions }: AdminHeaderProps) {
   const alertCount = (queueHealth?.failed ?? 0);
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between gap-4 border-b border-[var(--border-subtle)] bg-[var(--bg-base)]/80 backdrop-blur-sm px-4 md:px-6 h-14">
+    <header className="sticky top-0 z-30 flex items-center justify-between gap-4 border-b border-[var(--border-subtle)] bg-[var(--bg-base)]/90 backdrop-blur-md px-4 md:px-6 h-14 shadow-[0_1px_0_0_rgba(255,255,255,0.03)]">
       {/* Left: breadcrumbs or title */}
       <div className="flex items-center gap-2 min-w-0">
         {breadcrumbs && breadcrumbs.length > 0 ? (

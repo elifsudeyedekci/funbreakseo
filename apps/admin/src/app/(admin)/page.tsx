@@ -76,10 +76,12 @@ export default function DashboardPage() {
   const totalApiCost = (d.apiCostThisMonth?.dataForSeo ?? 0) + (d.apiCostThisMonth?.llm ?? 0);
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
-      <div>
-        <h1 className="text-xl font-bold text-[var(--text-primary)]">Dashboard</h1>
-        <p className="text-sm text-[var(--text-muted)] mt-0.5">FunBreak SEO genel durum özeti</p>
+    <div className="page-content">
+      <div className="page-header">
+        <div>
+          <h1>Dashboard</h1>
+          <p>FunBreak SEO genel durum özeti</p>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

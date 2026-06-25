@@ -1,6 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
 
 export const adminApi = axios.create({
   baseURL: API_URL,
@@ -16,12 +16,46 @@ adminApi.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   return config;
 });
 
+let isRefreshing = false;
+let failedQueue: Array<{ resolve: (token: string) => void; reject: (err: unknown) => void }> = [];
+
+function processQueue(error: unknown, token: string | null) {
+  failedQueue.forEach(({ resolve, reject }) => { if (error) reject(error); else resolve(token!); });
+  failedQueue = [];
+}
+
 adminApi.interceptors.response.use(
   (r) => r,
   async (error: AxiosError) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('admin_access_token');
-      window.location.href = '/login';
+    const original = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    if (error.response?.status === 401 && !original._retry) {
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => { failedQueue.push({ resolve, reject }); })
+          .then((token) => { original.headers.Authorization = `Bearer ${token}`; return adminApi(original); });
+      }
+      original._retry = true;
+      isRefreshing = true;
+      try {
+        const refreshToken = typeof window !== 'undefined' ? localStorage.getItem('admin_refresh_token') : null;
+        if (!refreshToken) throw new Error('no refresh token');
+        const res = await adminApi.post('/auth/refresh', { refreshToken });
+        const { accessToken, refreshToken: newRefresh } = res.data.data.tokens ?? res.data.data;
+        localStorage.setItem('admin_access_token', accessToken);
+        if (newRefresh) localStorage.setItem('admin_refresh_token', newRefresh);
+        document.cookie = `admin_token=${accessToken}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+        processQueue(null, accessToken);
+        original.headers.Authorization = `Bearer ${accessToken}`;
+        return adminApi(original);
+      } catch {
+        processQueue(new Error('refresh failed'), null);
+        localStorage.removeItem('admin_access_token');
+        localStorage.removeItem('admin_refresh_token');
+        document.cookie = 'admin_token=; path=/; max-age=0; SameSite=Lax';
+        window.location.href = '/login';
+        return Promise.reject(error);
+      } finally {
+        isRefreshing = false;
+      }
     }
     return Promise.reject(error);
   }

@@ -5,6 +5,8 @@ import { Job, Queue } from 'bullmq'
 import { Cron } from '@nestjs/schedule'
 import axios from 'axios'
 import * as nodemailer from 'nodemailer'
+import { ImapFlow } from 'imapflow'
+import { simpleParser } from 'mailparser'
 import { PrismaService } from '../../prisma.service'
 
 @Injectable()
@@ -403,13 +405,96 @@ Respond with valid JSON only:
 
   @Cron('0 8 * * *')
   async fetchImapReplies(): Promise<void> {
-    // Use imap or nodemailer imap to connect
-    // Since imap library may not be available, simulate with a comment block
-    // In production: connect to IMAP, fetch unread from last 24h
-    // Match thread IDs to OutreachEmail.threadId
-    // For each matched reply, call Claude to classify
-    this.logger.log('IMAP reply fetch: checking inbox...')
-    // TODO: implement when imap package is installed
-    // For now, log that this runs
+    const host = process.env.IMAP_HOST
+    const user = process.env.IMAP_USER ?? process.env.SMTP_USER
+    const pass = process.env.IMAP_PASS ?? process.env.SMTP_PASS
+
+    if (!host || !user || !pass) {
+      this.logger.warn('IMAP credentials not configured — skipping reply fetch')
+      return
+    }
+
+    const client = new ImapFlow({
+      host,
+      port: parseInt(process.env.IMAP_PORT ?? '993', 10),
+      secure: (process.env.IMAP_PORT ?? '993') !== '143',
+      auth: { user, pass },
+      logger: false,
+    })
+
+    try {
+      await client.connect()
+      const lock = await client.getMailboxLock('INBOX')
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000)
+
+      try {
+        for await (const msg of client.fetch({ since }, { source: true })) {
+          if (!msg.source) continue
+          const parsed = await simpleParser(Buffer.from(msg.source))
+          const inReplyTo = String(parsed.headers?.get?.('in-reply-to') ?? '')
+          const references = String(parsed.headers?.get?.('references') ?? '')
+
+          const threadCandidates = [...inReplyTo.split(/\s+/), ...references.split(/\s+/)]
+            .map((s) => s.replace(/[<>]/g, ''))
+            .filter((s) => s.startsWith('funbreak-'))
+
+          if (threadCandidates.length === 0) continue
+
+          const match = await this.prisma.outreachEmail.findFirst({
+            where: { threadId: { in: threadCandidates } },
+            include: { prospect: true },
+          })
+
+          if (!match) continue
+
+          const bodyText = (parsed.text ?? '').substring(0, 5000)
+
+          let classification: 'INTERESTED' | 'NOT_INTERESTED' | 'QUESTION' | 'NEGOTIATION' | 'AUTO_REPLY' = 'QUESTION'
+          try {
+            const resp = await axios.post(
+              'https://api.anthropic.com/v1/messages',
+              {
+                model: 'claude-3-haiku-20240307',
+                max_tokens: 20,
+                messages: [{ role: 'user', content: `Classify this outreach reply as one of: INTERESTED, NOT_INTERESTED, QUESTION, NEGOTIATION, AUTO_REPLY. Reply with just one word.\n\n${bodyText.substring(0, 500)}` }],
+              },
+              { headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' } },
+            )
+            const text = (resp.data.content?.[0]?.text ?? '').trim().toUpperCase()
+            if (text.includes('NOT_INTERESTED')) classification = 'NOT_INTERESTED'
+            else if (text.includes('INTERESTED')) classification = 'INTERESTED'
+            else if (text.includes('NEGOTIATION')) classification = 'NEGOTIATION'
+            else if (text.includes('AUTO_REPLY')) classification = 'AUTO_REPLY'
+            else classification = 'QUESTION'
+          } catch { /* use QUESTION fallback */ }
+
+          const needsReview = classification === 'INTERESTED' || classification === 'NEGOTIATION'
+          const newStatus = needsReview ? 'REPLIED_POSITIVE' : 'REPLIED_NEGATIVE'
+
+          await this.prisma.outreachReply.create({
+            data: {
+              outreachEmailId: match.id,
+              rawText: bodyText,
+              classification,
+              needsHumanReview: needsReview,
+            },
+          })
+
+          await this.prisma.prospect.update({
+            where: { id: match.prospectId },
+            data: { status: newStatus },
+          })
+
+          this.logger.log(`Reply classified as ${classification} for prospect ${match.prospectId}`)
+        }
+      } finally {
+        lock.release()
+      }
+
+      await client.logout()
+    } catch (err) {
+      this.logger.error(`IMAP reply fetch failed: ${(err as Error).message}`)
+      try { await client.logout() } catch { /* ignore */ }
+    }
   }
 }

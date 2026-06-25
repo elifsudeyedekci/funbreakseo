@@ -15,7 +15,6 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { useToast } from '@/components/ui/Toaster';
 import { Plus, Edit3, Trash2 } from 'lucide-react';
@@ -118,10 +117,35 @@ export default function PlansPage() {
 
   if (plansLoading) return <PageSpinner />;
 
+  const planList = (plans ?? MOCK_PLANS) as Plan[];
+  const couponList = (coupons ?? MOCK_COUPONS) as Coupon[];
+  const activePlanCount = planList.filter((p) => p.isActive).length;
+  const activeCouponCount = couponList.filter((c) => c.isActive).length;
+
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-bold text-[var(--text-primary)]">Planlar & Kuponlar</h1>
+    <div className="page-content">
+      <div className="page-header">
+        <div>
+          <h1>Planlar & Kuponlar</h1>
+          <p>Abonelik planları ve indirim kuponları</p>
+        </div>
+      </div>
+
+      <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+        {[
+          { label: 'Toplam Plan', value: planList.length, color: '#6366f1', bg: 'rgba(99,102,241,0.12)' },
+          { label: 'Aktif Plan', value: activePlanCount, color: '#22c55e', bg: 'rgba(34,197,94,0.12)' },
+          { label: 'Aktif Kupon', value: activeCouponCount, color: '#eab308', bg: 'rgba(234,179,8,0.12)' },
+        ].map((s) => (
+          <div key={s.label} className="stat-card">
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: s.bg, marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, display: 'block' }} />
+            </div>
+            <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: 4 }}>{s.label}</p>
+            <p style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1.1 }}>{s.value}</p>
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${s.color}80, transparent)`, borderRadius: '0 0 12px 12px' }} />
+          </div>
+        ))}
       </div>
 
       <Tabs defaultValue="plans">
@@ -131,18 +155,22 @@ export default function PlansPage() {
         </TabsList>
 
         <TabsContent value="plans">
-          <DataTable columns={planCols} data={(plans ?? MOCK_PLANS) as Plan[]} searchPlaceholder="Plan ara..." emptyMessage="Plan bulunamadı." />
+          <div className="section-card" style={{ marginTop: 16 }}>
+            <div className="section-card-header"><span className="section-card-title">Abonelik Planları</span></div>
+            <DataTable columns={planCols} data={(plans ?? MOCK_PLANS) as Plan[]} searchPlaceholder="Plan ara..." emptyMessage="Plan bulunamadı." noBorder />
+          </div>
         </TabsContent>
 
         <TabsContent value="coupons">
-          <div className="space-y-3">
-            <div className="flex justify-end">
+          <div className="section-card" style={{ marginTop: 16 }}>
+            <div className="section-card-header">
+              <span className="section-card-title">İndirim Kuponları</span>
               <Button variant="primary" icon={<Plus className="w-4 h-4" />} onClick={() => setCouponModal(true)}>
                 Kupon Oluştur
               </Button>
             </div>
             {couponsLoading ? <PageSpinner /> : (
-              <DataTable columns={couponCols} data={(coupons ?? MOCK_COUPONS) as Coupon[]} searchPlaceholder="Kupon kodu ara..." emptyMessage="Kupon bulunamadı." />
+              <DataTable columns={couponCols} data={(coupons ?? MOCK_COUPONS) as Coupon[]} searchPlaceholder="Kupon kodu ara..." emptyMessage="Kupon bulunamadı." noBorder />
             )}
           </div>
         </TabsContent>

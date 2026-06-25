@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next';
+import path from 'path';
 import createNextIntlPlugin from 'next-intl/plugin';
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
@@ -7,6 +8,15 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   typescript: {
     ignoreBuildErrors: true,
+  },
+  webpack(config) {
+    // Force a single lucide-react instance across all packages to prevent
+    // SSR/client hydration mismatch from version split in pnpm workspace
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      'lucide-react': path.resolve(__dirname, 'node_modules/lucide-react'),
+    };
+    return config;
   },
   images: {
     formats: ['image/avif', 'image/webp'],

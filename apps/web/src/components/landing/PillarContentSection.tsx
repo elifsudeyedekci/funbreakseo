@@ -3,19 +3,27 @@
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useLocale } from 'next-intl';
 
 export function PillarContentSection() {
+  const locale = useLocale();
+  if (locale !== 'tr') return null;
   const [expanded, setExpanded] = useState(false);
 
   return (
     <section className="py-24 px-4 sm:px-6 lg:px-8 border-y border-white/5" id="seo-rehberi">
-      <div className="mx-auto max-w-4xl">
-        <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-          SEO ve GEO: Kapsamlı Başlangıç Rehberi
-        </h2>
-        <p className="text-white/50 mb-8 text-lg">
-          Google ve yapay zeka aramalarında nasıl görünür olunur? Temel kavramlar, stratejiler ve en iyi uygulamalar.
-        </p>
+      <div className="mx-auto max-w-7xl">
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] backdrop-blur-sm px-4 py-1.5 mb-5">
+            <span className="text-xs font-medium text-white/50">Kapsamlı Rehber</span>
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+            SEO ve GEO: Kapsamlı Başlangıç Rehberi
+          </h2>
+          <p className="text-white/45 text-lg max-w-2xl mx-auto">
+            Google ve yapay zeka aramalarında nasıl görünür olunur? Temel kavramlar, stratejiler ve en iyi uygulamalar.
+          </p>
+        </div>
 
         {/* Content — always in DOM, max-height collapsed via CSS */}
         <div

@@ -2,12 +2,12 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Globe, TrendingUp, Search, AlertCircle, X } from 'lucide-react';
+import { Plus, Globe, Search, AlertCircle, X } from 'lucide-react';
 import { projectApi } from '@/lib/api';
 import { cn, formatDate } from '@/lib/utils';
 
@@ -22,15 +22,6 @@ interface Project {
   lastCrawlDate: string | null;
   status: string;
 }
-
-const addProjectSchema = z.object({
-  domain: z.string().min(3, 'Geçerli bir domain girin').regex(/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, 'Örnek: example.com'),
-  country: z.string().min(1, 'Ülke seçin'),
-  language: z.string().min(1, 'Dil seçin'),
-  searchEngine: z.string().default('GOOGLE'),
-});
-
-type AddProjectForm = z.infer<typeof addProjectSchema>;
 
 function ScoreRing({ score, color }: { score: number; color: string }) {
   const r = 20;
@@ -62,21 +53,42 @@ export default function ProjectsPage() {
   const locale = useLocale();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const t = useTranslations('projectsList');
   const [showModal, setShowModal] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const localePath = (path: string) => locale === 'tr' ? path : `/${locale}${path}`;
 
+  const addProjectSchema = z.object({
+    domain: z.string().min(3, t('validDomain')).regex(/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, 'example.com'),
+    country: z.string().min(1, t('selectCountry')),
+    language: z.string().min(1, t('selectLang')),
+    searchEngine: z.string().default('GOOGLE'),
+  });
+
+  type AddProjectForm = z.infer<typeof addProjectSchema>;
+
   const { data, isLoading } = useQuery({
     queryKey: ['projects'],
-    queryFn: () => projectApi.list().then((r) => r.data.data as Project[]),
+    queryFn: () => projectApi.list().then((r) => (Array.isArray(r.data) ? r.data : (r.data?.data ?? [])) as Project[]),
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: AddProjectForm) => projectApi.create(data),
+    mutationFn: (data: AddProjectForm) => projectApi.create({ ...data, name: data.domain }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       setShowModal(false);
+      setCreateError(null);
       reset();
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? '';
+      if (msg.startsWith('PLAN_LIMIT_REACHED:')) {
+        const limit = msg.split(':')[1];
+        setCreateError(t('errorLimit', { limit }));
+      } else {
+        setCreateError(t('errorGeneric'));
+      }
     },
   });
 
@@ -96,15 +108,15 @@ export default function ProjectsPage() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-white">Projeler</h1>
-          <p className="text-white/50 text-sm mt-1">Tüm sitelerinizi yönetin</p>
+          <h1 className="text-2xl font-bold text-white">{t('title')}</h1>
+          <p className="text-white/50 text-sm mt-1">{t('subtitle')}</p>
         </div>
         <button
-          onClick={() => setShowModal(true)}
+          onClick={() => { setShowModal(true); setCreateError(null); }}
           className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-500/20"
         >
           <Plus className="h-4 w-4" />
-          Yeni Proje Ekle
+          {t('addNew')}
         </button>
       </div>
 
@@ -119,14 +131,14 @@ export default function ProjectsPage() {
           <div className="p-4 rounded-2xl bg-white/5 mb-4">
             <Globe className="h-10 w-10 text-white/30" />
           </div>
-          <h3 className="text-lg font-semibold text-white mb-2">Henüz proje yok</h3>
-          <p className="text-white/40 text-sm mb-6">İlk projenizi ekleyin ve SEO analizine başlayın</p>
+          <h3 className="text-lg font-semibold text-white mb-2">{t('empty')}</h3>
+          <p className="text-white/40 text-sm mb-6">{t('emptyDesc')}</p>
           <button
-            onClick={() => setShowModal(true)}
+            onClick={() => { setShowModal(true); setCreateError(null); }}
             className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 transition-all"
           >
             <Plus className="h-4 w-4" />
-            İlk Projeyi Ekle
+            {t('addFirst')}
           </button>
         </div>
       ) : (
@@ -151,7 +163,7 @@ export default function ProjectsPage() {
                   'text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ml-2',
                   project.status === 'ACTIVE' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/10 text-white/40'
                 )}>
-                  {project.status === 'ACTIVE' ? 'Aktif' : project.status}
+                  {project.status === 'ACTIVE' ? t('active') : project.status}
                 </span>
               </div>
 
@@ -167,9 +179,9 @@ export default function ProjectsPage() {
                 <div className="ml-auto text-right">
                   <div className="flex items-center gap-1 text-sm text-white/70">
                     <Search className="h-3.5 w-3.5" />
-                    <span>{(project.keywordsCount || 0).toLocaleString('tr-TR')}</span>
+                    <span>{(project.keywordsCount || 0).toLocaleString()}</span>
                   </div>
-                  <p className="text-[10px] text-white/30 mt-0.5">kelime</p>
+                  <p className="text-[10px] text-white/30 mt-0.5">{t('wordLabel')}</p>
                 </div>
               </div>
             </button>
@@ -183,20 +195,20 @@ export default function ProjectsPage() {
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowModal(false)} />
           <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-[#111118] p-6 shadow-2xl">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-semibold text-white">Yeni Proje Ekle</h2>
+              <h2 className="text-lg font-semibold text-white">{t('addModalTitle')}</h2>
               <button onClick={() => setShowModal(false)} className="p-1 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-colors">
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit((d) => createMutation.mutate(d))} className="space-y-4">
+            <form onSubmit={handleSubmit((d) => { setCreateError(null); createMutation.mutate(d); })} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-white/70 mb-1.5">Domain</label>
+                <label className="block text-sm font-medium text-white/70 mb-1.5">{t('domainLabel')}</label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-sm">https://</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium pointer-events-none select-none" style={{ color: 'rgba(99,102,241,0.7)' }}>https://</span>
                   <input
                     {...register('domain')}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 pl-16 pr-4 py-3 text-sm text-white placeholder-white/30 focus:border-indigo-500/50 focus:outline-none"
+                    className="w-full rounded-xl border border-white/10 bg-white/5 pl-[72px] pr-4 py-3 text-sm text-white placeholder-white/25 focus:border-indigo-500/50 focus:outline-none"
                     placeholder="example.com"
                   />
                 </div>
@@ -205,43 +217,45 @@ export default function ProjectsPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-white/70 mb-1.5">Ülke</label>
+                  <label className="block text-sm font-medium text-white/70 mb-1.5">{t('countryLabel')}</label>
                   <select
                     {...register('country')}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-white focus:border-indigo-500/50 focus:outline-none"
+                    className="w-full rounded-xl border border-white/10 px-3 py-3 text-sm text-white focus:border-indigo-500/50 focus:outline-none"
+                    style={{ background: '#1a1a24', colorScheme: 'dark' }}
                   >
-                    <option value="">Seç</option>
-                    <option value="TR">Türkiye</option>
-                    <option value="US">ABD</option>
-                    <option value="DE">Almanya</option>
-                    <option value="GB">İngiltere</option>
-                    <option value="FR">Fransa</option>
-                    <option value="SA">Suudi Arabistan</option>
-                    <option value="AE">BAE</option>
+                    <option value="">{t('selectPlaceholder')}</option>
+                    <option value="TR">{t('countryTR')}</option>
+                    <option value="US">{t('countryUS')}</option>
+                    <option value="DE">{t('countryDE')}</option>
+                    <option value="GB">{t('countryGB')}</option>
+                    <option value="FR">{t('countryFR')}</option>
+                    <option value="SA">{t('countrySA')}</option>
+                    <option value="AE">{t('countryAE')}</option>
                   </select>
                   {errors.country && <p className="mt-1 text-xs text-red-400">{errors.country.message}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-white/70 mb-1.5">Dil</label>
+                  <label className="block text-sm font-medium text-white/70 mb-1.5">{t('langLabel')}</label>
                   <select
                     {...register('language')}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-white focus:border-indigo-500/50 focus:outline-none"
+                    className="w-full rounded-xl border border-white/10 px-3 py-3 text-sm text-white focus:border-indigo-500/50 focus:outline-none"
+                    style={{ background: '#1a1a24', colorScheme: 'dark' }}
                   >
-                    <option value="">Seç</option>
-                    <option value="tr">Türkçe</option>
-                    <option value="en">İngilizce</option>
-                    <option value="de">Almanca</option>
-                    <option value="fr">Fransızca</option>
-                    <option value="ar">Arapça</option>
+                    <option value="">{t('selectPlaceholder')}</option>
+                    <option value="tr">{t('langTR')}</option>
+                    <option value="en">{t('langEN')}</option>
+                    <option value="de">{t('langDE')}</option>
+                    <option value="fr">{t('langFR')}</option>
+                    <option value="ar">{t('langAR')}</option>
                   </select>
                   {errors.language && <p className="mt-1 text-xs text-red-400">{errors.language.message}</p>}
                 </div>
               </div>
 
-              {createMutation.isError && (
-                <div className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2.5 text-sm text-red-400">
-                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                  Proje eklenemedi. Lütfen tekrar deneyin.
+              {createError && (
+                <div className="flex items-start gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2.5 text-sm text-red-400">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                  <span>{createError}</span>
                 </div>
               )}
 
@@ -251,14 +265,14 @@ export default function ProjectsPage() {
                   onClick={() => { setShowModal(false); reset(); }}
                   className="flex-1 rounded-xl border border-white/20 py-2.5 text-sm font-medium text-white/60 hover:bg-white/10 transition-colors"
                 >
-                  İptal
+                  {t('cancelBtn')}
                 </button>
                 <button
                   type="submit"
                   disabled={createMutation.isPending}
                   className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 transition-all"
                 >
-                  {createMutation.isPending ? 'Ekleniyor...' : 'Ekle ve Tara'}
+                  {createMutation.isPending ? t('submittingBtn') : t('submitBtn')}
                 </button>
               </div>
             </form>

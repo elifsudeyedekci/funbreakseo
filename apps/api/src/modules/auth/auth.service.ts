@@ -66,7 +66,7 @@ export class AuthService {
   }
 
   // ─── Register ───────────────────────────────────────────────────────────────
-  async register(dto: RegisterDto): Promise<{ message: string }> {
+  async register(dto: RegisterDto): Promise<{ data: { requiresEmailVerification: boolean; message: string } }> {
     const exists = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
@@ -160,20 +160,29 @@ export class AuthService {
       }
     }
 
-    // Send verify email
-    const baseUrl = this.config.get<string>(
-      'APP_BASE_URL',
-      'https://app.funbreakseo.com',
-    );
-    await this.mailer.sendMail({
-      from: `"FunBreak SEO" <${this.config.get('SMTP_FROM', 'noreply@funbreakseo.com')}>`,
-      to: user.email,
-      subject: 'E-posta adresinizi doğrulayın',
-      html: `<p>Merhaba ${user.fullName},</p>
-             <p><a href="${baseUrl}/auth/verify-email?token=${emailVerifyToken}">E-postanızı doğrulamak için tıklayın</a></p>`,
-    });
+    // Send verify email — non-fatal so registration succeeds even without SMTP locally
+    try {
+      const baseUrl = this.config.get<string>(
+        'APP_BASE_URL',
+        'https://app.funbreakseo.com',
+      );
+      await this.mailer.sendMail({
+        from: `"FunBreak SEO" <${this.config.get('SMTP_FROM', 'noreply@funbreakseo.com')}>`,
+        to: user.email,
+        subject: 'E-posta adresinizi doğrulayın',
+        html: `<p>Merhaba ${user.fullName},</p>
+               <p><a href="${baseUrl}/auth/verify-email?token=${emailVerifyToken}">E-postanızı doğrulamak için tıklayın</a></p>`,
+      });
+    } catch {
+      // SMTP not configured (local dev) — registration still succeeds
+    }
 
-    return { message: 'Registration successful. Please verify your email.' };
+    return {
+      data: {
+        requiresEmailVerification: true,
+        message: 'Registration successful. Please verify your email.',
+      },
+    };
   }
 
   // ─── Login ──────────────────────────────────────────────────────────────────
@@ -500,7 +509,7 @@ export class AuthService {
     };
 
     const accessToken = this.jwt.sign(payload, {
-      expiresIn: this.config.get<string>('JWT_EXPIRES_IN', '15m'),
+      expiresIn: this.config.get<string>('JWT_EXPIRES_IN', '1h'),
     });
 
     const rawRefresh = crypto.randomBytes(40).toString('hex');

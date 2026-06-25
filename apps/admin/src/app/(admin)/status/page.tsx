@@ -59,11 +59,11 @@ export default function StatusPage() {
   if (isLoading) return <PageSpinner />;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="page-content">
+      <div className="page-header">
         <div>
-          <h1 className="text-xl font-bold text-[var(--text-primary)]">Sistem Sağlığı</h1>
-          <p className="text-sm text-[var(--text-muted)] mt-0.5">Tüm servisler gerçek zamanlı izleniyor</p>
+          <h1>Sistem Sağlığı</h1>
+          <p>Tüm servisler gerçek zamanlı izleniyor</p>
         </div>
         <Button
           variant="secondary"

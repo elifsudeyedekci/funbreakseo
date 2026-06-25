@@ -342,9 +342,20 @@ export class AdminController {
     return this.adminService.getSystemSettings();
   }
 
+  // Must be BEFORE /:key to avoid NestJS treating "api-keys" as a :key param
+  @Get('admin/settings/api-keys')
+  getApiKeys() {
+    return this.adminService.getApiKeyStatus();
+  }
+
   @Patch('admin/settings/:key')
   updateSettings(@Param('key') key: string, @Body('value') value: string) {
     return this.adminService.updateSystemSetting(key, value);
+  }
+
+  @Post('admin/integrations/:provider/test')
+  testIntegration(@Param('provider') provider: string) {
+    return this.adminService.testIntegration(provider);
   }
 
   @Get('admin/api-usage')

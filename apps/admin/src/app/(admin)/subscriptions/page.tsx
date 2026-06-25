@@ -111,20 +111,41 @@ export default function SubscriptionsPage() {
 
   if (isLoading) return <PageSpinner />;
 
+  const activeCount = subs.filter((s) => s.status === 'ACTIVE').length;
+  const trialCount = subs.filter((s) => s.status === 'TRIALING').length;
+
   return (
-    <div className="space-y-4 p-4 md:p-6">
-      <div>
-        <h1 className="text-xl font-bold text-[var(--text-primary)]">Abonelikler</h1>
-        <p className="text-sm text-[var(--text-muted)] mt-0.5">{subs.length} toplam{pastDue.length > 0 && <span className="text-red-400 ml-2">{pastDue.length} gecikmiş</span>}</p>
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2">
-          <DataTable columns={columns} data={subs} searchPlaceholder="Organizasyon ara..." emptyMessage="Abonelik bulunamadı." />
+    <div className="page-content">
+      <div className="page-header">
+        <div>
+          <h1>Abonelikler</h1>
+          <p>Platform abonelik durumu — {subs.length} kayıt</p>
         </div>
-        <Card>
-          <CardHeader><CardTitle className="text-sm">Plan Dağılımı</CardTitle></CardHeader>
-          <CardContent><PieChart data={planCounts} /></CardContent>
-        </Card>
+      </div>
+
+      <div className="kpi-grid">
+        {[
+          { label: 'Toplam', value: subs.length, color: '#6366f1', bg: 'rgba(99,102,241,0.12)' },
+          { label: 'Aktif', value: activeCount, color: '#22c55e', bg: 'rgba(34,197,94,0.12)' },
+          { label: 'Deneme', value: trialCount, color: '#eab308', bg: 'rgba(234,179,8,0.12)' },
+          { label: 'Gecikmiş', value: pastDue.length, color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+        ].map((s) => (
+          <div key={s.label} className="stat-card">
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: s.bg, marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, display: 'block' }} />
+            </div>
+            <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: 4 }}>{s.label}</p>
+            <p style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1.1 }}>{s.value}</p>
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${s.color}80, transparent)`, borderRadius: '0 0 12px 12px' }} />
+          </div>
+        ))}
+      </div>
+
+      <div className="section-card">
+        <div className="section-card-header">
+          <span className="section-card-title">Abonelik Listesi</span>
+        </div>
+        <DataTable columns={columns} data={subs} searchPlaceholder="Organizasyon ara..." emptyMessage="Abonelik bulunamadı." noBorder />
       </div>
     </div>
   );

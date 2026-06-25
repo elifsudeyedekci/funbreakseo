@@ -138,11 +138,11 @@ export default function ConsentsPage() {
   if (isLoading) return <PageSpinner />;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="page-content">
+      <div className="page-header">
         <div>
-          <h1 className="text-xl font-bold text-[var(--text-primary)]">Yasal Onay Kayıtları</h1>
-          <p className="text-sm text-[var(--text-muted)] mt-0.5">{consents.length} toplam onay kaydı</p>
+          <h1>Yasal Onay Kayıtları</h1>
+          <p>{consents.length} toplam onay kaydı</p>
         </div>
         <Button
           variant="secondary"
@@ -153,19 +153,23 @@ export default function ConsentsPage() {
         </Button>
       </div>
 
-      <DataTable
-        columns={columns}
-        data={filtered}
-        searchPlaceholder="Müşteri, sözleşme ara..."
-        toolbar={
-          <Select
-            options={[{ value: '', label: 'Tüm Tipler' }, ...CONSENT_TYPES.map((t) => ({ value: t, label: t }))]}
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-          />
-        }
-        emptyMessage="Onay kaydı bulunamadı."
-      />
+      <div className="section-card">
+        <div className="section-card-header"><span className="section-card-title">Onay Kayıtları</span></div>
+        <DataTable
+          columns={columns}
+          data={filtered}
+          searchPlaceholder="Müşteri, sözleşme ara..."
+          toolbar={
+            <Select
+              options={[{ value: '', label: 'Tüm Tipler' }, ...CONSENT_TYPES.map((t) => ({ value: t, label: t }))]}
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+            />
+          }
+          emptyMessage="Onay kaydı bulunamadı."
+          noBorder
+        />
+      </div>
 
       {selectedConsent && (
         <ConsentViewer

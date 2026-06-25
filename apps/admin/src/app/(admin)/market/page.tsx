@@ -147,25 +147,29 @@ export default function MarketPage() {
   const activeListings = (listings as MarketListing[]).filter((l) => l.status === 'ACTIVE').length;
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-bold text-[var(--text-primary)]">Backlink Market</h1>
-        <p className="text-sm text-[var(--text-muted)] mt-0.5">Yayıncı teklifleri, ilanlar ve siparişler</p>
+    <div className="page-content">
+      <div className="page-header">
+        <div>
+          <h1>Backlink Market</h1>
+          <p>Yayıncı teklifleri, ilanlar ve siparişler</p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        <Card className="flex items-center gap-3 p-3">
-          <div className="p-2 rounded-lg bg-yellow-500/15"><DollarSign className="w-4 h-4 text-yellow-400" /></div>
-          <div><p className="text-xs text-[var(--text-muted)]">Bekleyen Teklifler</p><p className="text-xl font-bold">{(offers as PublisherOffer[]).length}</p></div>
-        </Card>
-        <Card className="flex items-center gap-3 p-3">
-          <div className="p-2 rounded-lg bg-emerald-500/15"><CheckCircle className="w-4 h-4 text-emerald-400" /></div>
-          <div><p className="text-xs text-[var(--text-muted)]">Aktif İlanlar</p><p className="text-xl font-bold">{activeListings}</p></div>
-        </Card>
-        <Card className="flex items-center gap-3 p-3">
-          <div className="p-2 rounded-lg bg-indigo-500/15"><TrendingUp className="w-4 h-4 text-indigo-400" /></div>
-          <div><p className="text-xs text-[var(--text-muted)]">Toplam Kâr Marjı</p><p className="text-xl font-bold">${totalMargin.toLocaleString()}</p></div>
-        </Card>
+      <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(3,1fr)' }}>
+        {[
+          { label: 'Bekleyen Teklifler', value: (offers as PublisherOffer[]).length, color: '#eab308', bg: 'rgba(234,179,8,0.12)' },
+          { label: 'Aktif İlanlar', value: activeListings, color: '#22c55e', bg: 'rgba(34,197,94,0.12)' },
+          { label: 'Toplam Kâr Marjı', value: `$${totalMargin.toLocaleString()}`, color: '#6366f1', bg: 'rgba(99,102,241,0.12)' },
+        ].map((s) => (
+          <div key={s.label} className="stat-card">
+            <div style={{ width:32, height:32, borderRadius:8, background:s.bg, marginBottom:14, display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <span style={{ width:8, height:8, borderRadius:'50%', background:s.color, display:'block' }} />
+            </div>
+            <p style={{ fontSize:11, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.1em', color:'var(--text-muted)', marginBottom:4 }}>{s.label}</p>
+            <p style={{ fontSize:typeof s.value==='string'?20:28, fontWeight:700, color:'var(--text-primary)', letterSpacing:'-0.02em', lineHeight:1.1 }}>{s.value}</p>
+            <div style={{ position:'absolute', bottom:0, left:0, right:0, height:2, background:`linear-gradient(90deg,transparent,${s.color}80,transparent)`, borderRadius:'0 0 12px 12px' }} />
+          </div>
+        ))}
       </div>
 
       <Tabs defaultValue="offers">

@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { useTranslations } from 'next-intl';
+import { affiliateApi } from '@/lib/api';
 
 interface AffiliateMe {
   referralCode: string;
@@ -28,16 +29,17 @@ const referralStatusStyles: Record<string, string> = {
 };
 
 export default function AffiliatePage() {
+  const t = useTranslations('affiliatePage');
   const [copied, setCopied] = useState(false);
 
   const { data: me, isLoading: meLoading } = useQuery<AffiliateMe>({
     queryKey: ['affiliate-me'],
-    queryFn: () => api.get('/affiliate/me').then((r: any) => r.data?.data ?? r.data),
+    queryFn: () => affiliateApi.me().then((r) => r.data?.data ?? r.data),
   });
 
   const { data: referrals, isLoading: refLoading } = useQuery<Referral[]>({
     queryKey: ['affiliate-referrals'],
-    queryFn: () => api.get('/affiliate/referrals').then((r: any) => r.data?.data ?? r.data ?? []),
+    queryFn: () => affiliateApi.referrals().then((r) => r.data?.data ?? r.data ?? []),
   });
 
   const referralLink = me?.referralCode
@@ -52,27 +54,36 @@ export default function AffiliatePage() {
     });
   };
 
+  const referralStatusLabel = (status: string) => {
+    const map: Record<string, string> = {
+      SIGNED_UP: t('statusSignedUp'),
+      CONVERTED: t('statusConverted'),
+      CHURNED: t('statusChurned'),
+    };
+    return map[status] ?? status;
+  };
+
   const stats = [
-    { label: 'Referrals', value: me?.referralCount ?? 0, format: (v: number) => v.toLocaleString() },
-    { label: 'Conversions', value: me?.conversions ?? 0, format: (v: number) => v.toLocaleString() },
-    { label: 'Total Commission', value: me?.totalCommission ?? 0, format: (v: number) => `$${v.toFixed(2)}` },
-    { label: 'Paid Out', value: me?.paidOut ?? 0, format: (v: number) => `$${v.toFixed(2)}` },
-    { label: 'Pending', value: me?.pending ?? 0, format: (v: number) => `$${v.toFixed(2)}` },
+    { label: t('labelReferrals'), value: me?.referralCount ?? 0, format: (v: number) => v.toLocaleString() },
+    { label: t('labelConversions'), value: me?.conversions ?? 0, format: (v: number) => v.toLocaleString() },
+    { label: t('labelTotalCommission'), value: me?.totalCommission ?? 0, format: (v: number) => `$${v.toFixed(2)}`, accent: true },
+    { label: t('labelPaidOut'), value: me?.paidOut ?? 0, format: (v: number) => `$${v.toFixed(2)}` },
+    { label: t('labelPending'), value: me?.pending ?? 0, format: (v: number) => `$${v.toFixed(2)}`, accent: true },
   ];
 
   return (
     <div className="min-h-screen p-6 space-y-6" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)' }}>
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold">Affiliate Program</h1>
+        <h1 className="text-2xl font-bold">{t('title')}</h1>
         <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-          Earn commission by referring new users to FunBreakSEO.
+          {t('subtitle')}
         </p>
       </div>
 
       {/* Referral Link */}
       <div className="rounded-xl p-6 space-y-3" style={{ background: 'var(--bg-surface)', border: '1px solid rgba(255,255,255,0.06)' }}>
-        <h2 className="text-sm font-semibold">Your Referral Link</h2>
+        <h2 className="text-sm font-semibold">{t('yourLink')}</h2>
         {meLoading ? (
           <div className="h-10 rounded-lg bg-white/5 animate-pulse" />
         ) : (
@@ -80,6 +91,7 @@ export default function AffiliatePage() {
             <input
               readOnly
               value={referralLink}
+              placeholder={t('noLink')}
               className="flex-1 px-4 py-2 rounded-lg text-sm font-mono outline-none"
               style={{ background: 'var(--bg-elevated)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-secondary)' }}
             />
@@ -89,12 +101,12 @@ export default function AffiliatePage() {
               className="px-4 py-2 rounded-lg text-sm font-medium transition hover:opacity-90 disabled:opacity-40 whitespace-nowrap"
               style={{ background: 'var(--accent)', color: '#fff' }}
             >
-              {copied ? 'Copied!' : 'Copy Link'}
+              {copied ? t('copied') : t('copyBtn')}
             </button>
           </div>
         )}
         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-          Share this link to earn commission on every conversion. Commission is paid out monthly.
+          {t('commissionInfo')}
         </p>
       </div>
 
@@ -106,7 +118,7 @@ export default function AffiliatePage() {
             {meLoading ? (
               <div className="h-7 w-16 rounded bg-white/5 animate-pulse" />
             ) : (
-              <p className="text-xl font-bold" style={{ color: s.label.includes('Commission') || s.label === 'Pending' ? 'var(--accent)' : 'var(--text-primary)' }}>
+              <p className="text-xl font-bold" style={{ color: s.accent ? 'var(--accent)' : 'var(--text-primary)' }}>
                 {s.format(s.value)}
               </p>
             )}
@@ -117,7 +129,7 @@ export default function AffiliatePage() {
       {/* Referrals Table */}
       <div className="rounded-xl overflow-hidden" style={{ background: 'var(--bg-surface)', border: '1px solid rgba(255,255,255,0.06)' }}>
         <div className="px-4 py-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-          <h2 className="text-sm font-semibold">Referrals</h2>
+          <h2 className="text-sm font-semibold">{t('referralsTitle')}</h2>
         </div>
         {refLoading ? (
           <div className="p-6 space-y-3">
@@ -129,7 +141,7 @@ export default function AffiliatePage() {
           <table className="w-full text-sm">
             <thead>
               <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                {['Email', 'Status', 'Commission', 'Joined'].map((h) => (
+                {[t('colEmail'), t('colStatus'), t('colCommission'), t('colJoined')].map((h) => (
                   <th key={h} className="text-left px-4 py-3 font-medium" style={{ color: 'var(--text-muted)' }}>{h}</th>
                 ))}
               </tr>
@@ -138,7 +150,7 @@ export default function AffiliatePage() {
               {(referrals ?? []).length === 0 && (
                 <tr>
                   <td colSpan={4} className="px-4 py-12 text-center" style={{ color: 'var(--text-muted)' }}>
-                    No referrals yet. Share your link to get started.
+                    {t('empty')}
                   </td>
                 </tr>
               )}
@@ -147,7 +159,7 @@ export default function AffiliatePage() {
                   <td className="px-4 py-3 font-medium">{ref.email}</td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${referralStatusStyles[ref.status] ?? ''}`}>
-                      {ref.status.replace('_', ' ')}
+                      {referralStatusLabel(ref.status)}
                     </span>
                   </td>
                   <td className="px-4 py-3 font-medium" style={{ color: 'var(--accent)' }}>

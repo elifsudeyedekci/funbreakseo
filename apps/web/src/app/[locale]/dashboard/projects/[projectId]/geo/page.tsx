@@ -1,7 +1,9 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { use } from 'react';
+;
+import { useTranslations } from 'next-intl'
+import { useParams } from 'next/navigation';
 import { Brain, TrendingUp, Quote, AlertTriangle } from 'lucide-react';
 import { geoApi } from '@/lib/api';
 import type { GeoVisibilityData, GeoPlatform } from '@funbreakseo/shared';
@@ -29,17 +31,19 @@ interface GeoData {
   recommendations: Array<{ id: string; title: string; priority: string; description: string }>;
 }
 
-export default function GeoPage({ params }: { params: Promise<{ projectId: string }> }) {
-  const { projectId } = use(params);
+export default function GeoPage() {
+  const { projectId } = useParams<{ projectId: string }>();
+  const t = useTranslations('geoPage');
   const { data, isLoading } = useQuery({
     queryKey: ['geo', projectId],
-    queryFn: () => geoApi.overview(projectId).then((r) => r.data.data as GeoData),
+    queryFn: () => geoApi.overview(projectId).then((r) => (r.data?.data ?? null) as GeoData),
   });
 
   const visibility = data?.visibility;
   const recommendations: Array<{ id: string; title: string; priority: string; description: string }> = data?.recommendations || [];
 
   const platforms = Object.entries(PLATFORM_LABELS) as Array<[GeoPlatform, string]>;
+  const ratio = visibility?.citationToMentionRatio ?? 0;
 
   return (
     <div className="p-6 space-y-6">
@@ -49,8 +53,8 @@ export default function GeoPage({ params }: { params: Promise<{ projectId: strin
           <Brain className="h-5 w-5 text-purple-400" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-white">GEO / AI Görünürlük</h1>
-          <p className="text-white/50 text-sm">ChatGPT, Gemini, Perplexity ve diğer AI platformlarında görünürlüğünüz</p>
+          <h1 className="text-2xl font-bold text-white">{t('title')}</h1>
+          <p className="text-white/50 text-sm">{t('subtitle')}</p>
         </div>
       </div>
 
@@ -62,7 +66,7 @@ export default function GeoPage({ params }: { params: Promise<{ projectId: strin
             <span className="text-xs text-white/50">AI Mention</span>
           </div>
           <div className="text-4xl font-bold gradient-text-geo">{visibility?.mentionCount ?? '—'}</div>
-          <p className="text-xs text-white/30 mt-1">AI cevaplarında adınız geçti</p>
+          <p className="text-xs text-white/30 mt-1">{t('aiMentionDesc')}</p>
         </div>
 
         <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-5">
@@ -71,34 +75,32 @@ export default function GeoPage({ params }: { params: Promise<{ projectId: strin
             <span className="text-xs text-white/50">AI Citation</span>
           </div>
           <div className="text-4xl font-bold text-indigo-400">{visibility?.citationCount ?? '—'}</div>
-          <p className="text-xs text-white/30 mt-1">Siteniz kaynak gösterildi</p>
+          <p className="text-xs text-white/30 mt-1">{t('aiCitationDesc')}</p>
         </div>
 
         <div className={`rounded-2xl border p-5 ${
-          (visibility?.citationToMentionRatio ?? 0) < 0.1
+          ratio < 0.1
             ? 'border-orange-500/30 bg-orange-500/5'
             : 'border-emerald-500/30 bg-emerald-500/5'
         }`}>
           <div className="flex items-center gap-2 mb-3">
             <AlertTriangle className="h-4 w-4 text-orange-400" />
-            <span className="text-xs text-white/50">Citation/Mention Oranı</span>
+            <span className="text-xs text-white/50">{t('citationRatio')}</span>
           </div>
-          <div className={`text-4xl font-bold ${
-            (visibility?.citationToMentionRatio ?? 0) < 0.1 ? 'text-orange-400' : 'text-emerald-400'
-          }`}>
+          <div className={`text-4xl font-bold ${ratio < 0.1 ? 'text-orange-400' : 'text-emerald-400'}`}>
             {visibility?.citationToMentionRatio !== undefined
               ? `${(visibility.citationToMentionRatio * 100).toFixed(0)}%`
               : '—'}
           </div>
           <p className="text-xs text-white/30 mt-1">
-            {(visibility?.citationToMentionRatio ?? 0) < 0.1 ? '%10 altı → içerik yapısı sorunu' : 'İyi seviye'}
+            {ratio < 0.1 ? t('lowRatioWarning') : t('goodLevel')}
           </p>
         </div>
       </div>
 
       {/* Platform breakdown */}
       <div>
-        <h2 className="text-lg font-semibold text-white mb-4">Platform Dağılımı</h2>
+        <h2 className="text-lg font-semibold text-white mb-4">{t('platformBreakdown')}</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {platforms.map(([platform, label]) => {
             const stats = visibility?.byPlatform?.[platform];
@@ -127,7 +129,7 @@ export default function GeoPage({ params }: { params: Promise<{ projectId: strin
       {/* Recommendations */}
       {recommendations.length > 0 && (
         <div>
-          <h2 className="text-lg font-semibold text-white mb-4">GEO Önerileri</h2>
+          <h2 className="text-lg font-semibold text-white mb-4">{t('recommendations')}</h2>
           <div className="space-y-3">
             {recommendations.map((rec) => (
               <div
@@ -140,7 +142,7 @@ export default function GeoPage({ params }: { params: Promise<{ projectId: strin
                     rec.priority === 'MEDIUM' ? 'bg-orange-500/20 text-orange-400' :
                     'bg-yellow-500/20 text-yellow-400'
                   }`}>
-                    {rec.priority === 'HIGH' ? 'Yüksek Öncelik' : rec.priority === 'MEDIUM' ? 'Orta' : 'Düşük'}
+                    {rec.priority === 'HIGH' ? t('priorityHigh') : rec.priority === 'MEDIUM' ? t('priorityMedium') : t('priorityLow')}
                   </span>
                   <h3 className="text-sm font-semibold text-white">{rec.title}</h3>
                 </div>
@@ -148,6 +150,14 @@ export default function GeoPage({ params }: { params: Promise<{ projectId: strin
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {isLoading && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="rounded-2xl border border-white/10 h-32 animate-pulse" />
+          ))}
         </div>
       )}
     </div>

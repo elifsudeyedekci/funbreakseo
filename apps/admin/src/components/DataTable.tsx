@@ -12,31 +12,30 @@ import {
   type ColumnFiltersState,
 } from '@tanstack/react-table';
 import { useState } from 'react';
-import { ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { cn } from '@/lib/cn';
-import { Input } from '@/components/ui/Input';
-import { Button } from '@/components/ui/Button';
 
 interface DataTableProps<T> {
   columns: ColumnDef<T>[];
   data: T[];
   searchPlaceholder?: string;
-  searchColumn?: string;
   pageSize?: number;
   toolbar?: React.ReactNode;
   onRowClick?: (row: T) => void;
   emptyMessage?: string;
+  /** Remove outer border — use when DataTable is already inside a section-card */
+  noBorder?: boolean;
 }
 
 export function DataTable<T>({
   columns,
   data,
   searchPlaceholder = 'Ara...',
-  searchColumn,
   pageSize = 20,
   toolbar,
   onRowClick,
   emptyMessage = 'Kayıt bulunamadı.',
+  noBorder = false,
 }: DataTableProps<T>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -56,116 +55,113 @@ export function DataTable<T>({
     initialState: { pagination: { pageSize } },
   });
 
+  const wrapper = noBorder ? 'flex flex-col' : 'rounded-[14px] border border-[var(--border-subtle)] overflow-hidden bg-[rgba(16,16,22,0.82)] flex flex-col';
+
   return (
-    <div className="flex flex-col gap-3">
+    <div className={wrapper}>
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-2">
-        <Input
-          placeholder={searchPlaceholder}
-          value={globalFilter}
-          onChange={(e) => setGlobalFilter(e.target.value)}
-          className="w-56"
-        />
+      <div className="dt-toolbar">
+        <div className="dt-search">
+          <Search className="dt-search-icon" />
+          <input
+            type="text"
+            placeholder={searchPlaceholder}
+            value={globalFilter}
+            onChange={(e) => setGlobalFilter(e.target.value)}
+            className="dt-search-input"
+          />
+        </div>
         {toolbar}
       </div>
 
       {/* Table */}
-      <div className="rounded-xl border border-[var(--border-subtle)] overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              {table.getHeaderGroups().map((hg) => (
-                <tr key={hg.id} className="border-b border-[var(--border-subtle)] bg-[var(--bg-elevated)]">
-                  {hg.headers.map((header) => (
-                    <th
-                      key={header.id}
-                      className="px-3 py-2.5 text-left text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider whitespace-nowrap"
-                    >
-                      {header.isPlaceholder ? null : (
-                        <div
-                          className={cn(
-                            'flex items-center gap-1',
-                            header.column.getCanSort() && 'cursor-pointer select-none hover:text-[var(--text-secondary)]'
-                          )}
-                          onClick={header.column.getToggleSortingHandler()}
-                        >
-                          {flexRender(header.column.columnDef.header, header.getContext())}
-                          {header.column.getCanSort() && (
-                            <span className="text-[var(--text-muted)]">
-                              {header.column.getIsSorted() === 'asc' ? (
-                                <ChevronUp className="w-3 h-3" />
-                              ) : header.column.getIsSorted() === 'desc' ? (
-                                <ChevronDown className="w-3 h-3" />
-                              ) : (
-                                <ChevronsUpDown className="w-3 h-3 opacity-40" />
-                              )}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </th>
+      <div className="overflow-x-auto flex-1">
+        <table className="dt-table">
+          <thead className="dt-thead">
+            {table.getHeaderGroups().map((hg) => (
+              <tr key={hg.id}>
+                {hg.headers.map((header) => (
+                  <th
+                    key={header.id}
+                    className={cn('dt-th', header.column.getCanSort() && 'dt-th-sortable')}
+                    onClick={header.column.getToggleSortingHandler()}
+                  >
+                    {header.isPlaceholder ? null : (
+                      <div className="flex items-center gap-1.5">
+                        {flexRender(header.column.columnDef.header, header.getContext())}
+                        {header.column.getCanSort() && (
+                          <span style={{ opacity: header.column.getIsSorted() ? 1 : 0.35 }}>
+                            {header.column.getIsSorted() === 'asc' ? (
+                              <ChevronUp className="w-3 h-3" />
+                            ) : header.column.getIsSorted() === 'desc' ? (
+                              <ChevronDown className="w-3 h-3" />
+                            ) : (
+                              <ChevronsUpDown className="w-3 h-3" />
+                            )}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </th>
+                ))}
+              </tr>
+            ))}
+          </thead>
+          <tbody className="dt-tbody">
+            {table.getRowModel().rows.length === 0 ? (
+              <tr>
+                <td colSpan={columns.length}>
+                  <div className="dt-empty">
+                    <div className="empty-state-icon">
+                      <Search style={{ width: 18, height: 18, color: 'var(--text-muted)' }} />
+                    </div>
+                    <span>{emptyMessage}</span>
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              table.getRowModel().rows.map((row) => (
+                <tr
+                  key={row.id}
+                  onClick={() => onRowClick?.(row.original)}
+                  className={onRowClick ? 'clickable' : ''}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <td key={cell.id} className="dt-td">
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
                   ))}
                 </tr>
-              ))}
-            </thead>
-            <tbody>
-              {table.getRowModel().rows.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={columns.length}
-                    className="px-3 py-12 text-center text-[var(--text-muted)] text-sm"
-                  >
-                    {emptyMessage}
-                  </td>
-                </tr>
-              ) : (
-                table.getRowModel().rows.map((row) => (
-                  <tr
-                    key={row.id}
-                    onClick={() => onRowClick?.(row.original)}
-                    className={cn(
-                      'border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-[var(--bg-elevated)] transition-colors',
-                      onRowClick && 'cursor-pointer'
-                    )}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id} className="px-3 py-2.5 text-[var(--text-primary)] whitespace-nowrap">
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </td>
-                    ))}
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
 
       {/* Pagination */}
-      <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-        <p className="text-[var(--text-muted)]">
-          Toplam{' '}
-          <span className="font-medium text-[var(--text-secondary)]">{table.getFilteredRowModel().rows.length}</span>{' '}
-          kayıt — Sayfa{' '}
-          <span className="font-medium text-[var(--text-secondary)]">{table.getState().pagination.pageIndex + 1}</span>{' '}
-          /{' '}
-          <span className="font-medium text-[var(--text-secondary)]">{table.getPageCount() || 1}</span>
+      <div className="dt-pagination">
+        <p className="dt-page-info">
+          <strong>{table.getFilteredRowModel().rows.length}</strong> kayıt
+          {' · '}Sayfa{' '}
+          <strong>{table.getState().pagination.pageIndex + 1}</strong>
+          {' / '}
+          <strong>{table.getPageCount() || 1}</strong>
         </p>
-        <div className="flex items-center gap-1">
-          <Button
-            size="xs"
-            variant="ghost"
+        <div className="dt-page-btns">
+          <button
+            className="dt-page-btn"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
-            icon={<ChevronLeft className="w-3.5 h-3.5" />}
-          />
-          <Button
-            size="xs"
-            variant="ghost"
+          >
+            <ChevronLeft style={{ width: 14, height: 14 }} />
+          </button>
+          <button
+            className="dt-page-btn"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
-            icon={<ChevronRight className="w-3.5 h-3.5" />}
-          />
+          >
+            <ChevronRight style={{ width: 14, height: 14 }} />
+          </button>
         </div>
       </div>
     </div>

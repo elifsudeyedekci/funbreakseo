@@ -1,7 +1,8 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { use } from 'react';
+import { useParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar
 } from 'recharts';
@@ -58,15 +59,12 @@ function StatCard({
   );
 }
 
-export default function ProjectDashboardPage({
-  params,
-}: {
-  params: Promise<{ projectId: string }>;
-}) {
-  const { projectId } = use(params);
+export default function ProjectDashboardPage() {
+  const { projectId } = useParams<{ projectId: string }>();
+  const t = useTranslations('projectDashboard');
   const { data, isLoading } = useQuery({
     queryKey: ['project-dashboard', projectId],
-    queryFn: () => projectApi.dashboard(projectId).then((r) => r.data.data as DashboardData),
+    queryFn: () => projectApi.dashboard(projectId).then((r) => (r.data?.data ?? null) as DashboardData),
   });
 
   if (isLoading) {
@@ -90,86 +88,55 @@ export default function ProjectDashboardPage({
     <div className="p-6 space-y-6">
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          label="Ort. Pozisyon"
-          value={summary?.avgPosition?.toFixed(1) ?? '—'}
-          icon={Search}
-          color="indigo"
-        />
-        <StatCard
-          label="GEO Görünürlük"
-          value={`${summary?.geoVisibilityScore ?? 0}%`}
-          icon={Brain}
-          color="purple"
-        />
-        <StatCard
-          label="İlk Sayfada"
-          value={summary?.firstPageKeywords ?? 0}
-          icon={TrendingUp}
-          color="emerald"
-        />
-        <StatCard
-          label="Site Sağlık"
-          value={summary?.healthScore ?? 0}
-          icon={AlertCircle}
-          color="orange"
-        />
+        <StatCard label={t('avgPos')} value={summary?.avgPosition?.toFixed(1) ?? '—'} icon={Search} color="indigo" />
+        <StatCard label={t('geoVisibility')} value={`${summary?.geoVisibilityScore ?? 0}%`} icon={Brain} color="purple" />
+        <StatCard label={t('firstPage')} value={summary?.firstPageKeywords ?? 0} icon={TrendingUp} color="emerald" />
+        <StatCard label={t('siteHealth')} value={summary?.healthScore ?? 0} icon={AlertCircle} color="orange" />
       </div>
 
       {/* Charts */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {/* Rank trend */}
         <div className="rounded-2xl border border-white/10 bg-white/2 p-5">
-          <h2 className="text-sm font-semibold text-white mb-4">Sıralama Trendi (30 gün)</h2>
+          <h2 className="text-sm font-semibold text-white mb-4">{t('rankTrend')}</h2>
           {trend.length > 0 ? (
             <ResponsiveContainer width="100%" height={200}>
               <LineChart data={trend}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                 <XAxis dataKey="date" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} tickFormatter={(v) => v.slice(5)} />
                 <YAxis reversed tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} />
-                <Tooltip
-                  contentStyle={{ background: '#111118', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', fontSize: 12 }}
-                />
-                <Line type="monotone" dataKey="avgPosition" stroke="#6366f1" strokeWidth={2} dot={false} name="Ort. Pozisyon" />
+                <Tooltip contentStyle={{ background: '#111118', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', fontSize: 12 }} />
+                <Line type="monotone" dataKey="avgPosition" stroke="#6366f1" strokeWidth={2} dot={false} name={t('avgPosition')} />
               </LineChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-48 flex items-center justify-center text-white/30 text-sm">
-              Henüz veri yok — ilk taramanın tamamlanmasını bekleyin
-            </div>
+            <div className="h-48 flex items-center justify-center text-white/30 text-sm">{t('noData')}</div>
           )}
         </div>
 
-        {/* GEO trend */}
         <div className="rounded-2xl border border-purple-500/20 bg-purple-500/5 p-5">
-          <h2 className="text-sm font-semibold text-white mb-4">GEO Görünürlük Trendi</h2>
+          <h2 className="text-sm font-semibold text-white mb-4">{t('geoTrend')}</h2>
           {trend.length > 0 ? (
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={trend}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                 <XAxis dataKey="date" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} tickFormatter={(v) => v.slice(5)} />
                 <YAxis tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} />
-                <Tooltip
-                  contentStyle={{ background: '#111118', border: '1px solid rgba(168,85,247,0.2)', borderRadius: '8px', color: '#fff', fontSize: 12 }}
-                />
-                <Bar dataKey="geoScore" fill="#a855f7" radius={[4, 4, 0, 0]} name="GEO Skor" />
+                <Tooltip contentStyle={{ background: '#111118', border: '1px solid rgba(168,85,247,0.2)', borderRadius: '8px', color: '#fff', fontSize: 12 }} />
+                <Bar dataKey="geoScore" fill="#a855f7" radius={[4, 4, 0, 0]} name={t('geoScore')} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-48 flex items-center justify-center text-white/30 text-sm">
-              GEO izleme için prompt ekleyin
-            </div>
+            <div className="h-48 flex items-center justify-center text-white/30 text-sm">{t('addGeoPrompt')}</div>
           )}
         </div>
       </div>
 
       {/* Bottom row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent activity */}
         <div className="rounded-2xl border border-white/10 bg-white/2 p-5">
-          <h2 className="text-sm font-semibold text-white mb-4">Son Aktiviteler</h2>
+          <h2 className="text-sm font-semibold text-white mb-4">{t('recentActivity')}</h2>
           {activities.length === 0 ? (
-            <p className="text-sm text-white/30">Henüz aktivite yok</p>
+            <p className="text-sm text-white/30">{t('noActivity')}</p>
           ) : (
             <div className="space-y-3">
               {activities.slice(0, 6).map((a) => (
@@ -185,11 +152,10 @@ export default function ProjectDashboardPage({
           )}
         </div>
 
-        {/* Todo items */}
         <div className="rounded-2xl border border-white/10 bg-white/2 p-5">
-          <h2 className="text-sm font-semibold text-white mb-4">Yapılacaklar</h2>
+          <h2 className="text-sm font-semibold text-white mb-4">{t('todos')}</h2>
           {todos.length === 0 ? (
-            <p className="text-sm text-white/30">Bekleyen görev yok — harika!</p>
+            <p className="text-sm text-white/30">{t('noPending')}</p>
           ) : (
             <div className="space-y-2.5">
               {todos.slice(0, 5).map((item) => (

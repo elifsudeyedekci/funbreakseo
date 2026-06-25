@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter, useParams, usePathname } from 'next/navigation';
-import { useLocale } from 'next-intl';
+import { useState } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import { useLocale, useTranslations } from 'next-intl';
 import { Menu, LogOut, User } from 'lucide-react';
 import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
 import { NotificationBell } from '@/components/dashboard/NotificationBell';
@@ -15,8 +15,8 @@ import { cn } from '@/lib/utils';
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const locale = useLocale();
   const router = useRouter();
-  const pathname = usePathname();
   const params = useParams();
+  const t = useTranslations('dashNav');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
@@ -49,9 +49,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Past due warning */}
         {isPastDue && (
           <div className="bg-red-900/80 border-b border-red-700/50 px-4 py-2 text-center text-xs text-red-200">
-            Ödemeniz alınamadı. Hesabınızın askıya alınmaması için lütfen faturalama bilgilerinizi güncelleyin.{' '}
+            {t('pastDue')}{' '}
             <a href={localePath('/dashboard/billing')} className="underline font-semibold text-white hover:text-red-100">
-              Şimdi güncelle
+              {t('updateNow')}
             </a>
           </div>
         )}
@@ -62,7 +62,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <button
             className="md:hidden flex-shrink-0 p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors"
             onClick={() => setSidebarOpen(true)}
-            aria-label="Menüyü aç"
+            aria-label={t('openMenu')}
           >
             <Menu className="h-5 w-5" />
           </button>
@@ -85,7 +85,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 {user?.fullName?.[0]?.toUpperCase() || 'U'}
               </div>
               <span className="hidden sm:block text-sm font-medium text-white/80 max-w-[120px] truncate">
-                {user?.fullName || 'Kullanıcı'}
+                {user?.fullName || t('user')}
               </span>
             </button>
 
@@ -104,14 +104,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       onClick={() => setProfileOpen(false)}
                     >
                       <User className="h-4 w-4" />
-                      Hesabım
+                      {t('myAccount')}
                     </a>
                     <button
                       onClick={handleLogout}
                       className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
                     >
                       <LogOut className="h-4 w-4" />
-                      Çıkış Yap
+                      {t('logout')}
                     </button>
                   </div>
                 </div>

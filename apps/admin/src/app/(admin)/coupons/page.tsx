@@ -14,7 +14,6 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { useToast } from '@/components/ui/Toaster';
 import { Plus, Trash2, Tag, Percent, DollarSign, Gift } from 'lucide-react';
@@ -165,39 +164,38 @@ export default function CouponsPage() {
   const totalUsage = coupons?.reduce((s, c) => s + c.usageCount, 0) ?? 0;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="page-content">
+      <div className="page-header">
         <div>
-          <h1 className="text-xl font-bold text-[var(--text-primary)]">Kupon Yönetimi</h1>
-          <p className="text-sm text-[var(--text-muted)] mt-0.5">İndirim kuponları oluştur ve yönet</p>
+          <h1>Kupon Yönetimi</h1>
+          <p>İndirim kuponları oluştur ve yönet</p>
         </div>
         <Button variant="primary" icon={<Plus className="w-4 h-4" />} onClick={() => setModal(true)}>
           Yeni Kupon
         </Button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
-        <Card className="p-3">
-          <p className="text-xs text-[var(--text-muted)]">Toplam Kupon</p>
-          <p className="text-2xl font-bold text-[var(--text-primary)]">{coupons?.length ?? 0}</p>
-        </Card>
-        <Card className="p-3">
-          <p className="text-xs text-[var(--text-muted)]">Aktif Kupon</p>
-          <p className="text-2xl font-bold text-emerald-400">{active}</p>
-        </Card>
-        <Card className="p-3">
-          <p className="text-xs text-[var(--text-muted)]">Toplam Kullanım</p>
-          <p className="text-2xl font-bold text-[var(--accent)]">{totalUsage}</p>
-        </Card>
+      <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(3,1fr)' }}>
+        {[
+          { label: 'Toplam Kupon', value: coupons?.length ?? 0, color: '#6366f1', bg: 'rgba(99,102,241,0.12)' },
+          { label: 'Aktif Kupon', value: active, color: '#22c55e', bg: 'rgba(34,197,94,0.12)' },
+          { label: 'Toplam Kullanım', value: totalUsage, color: '#a855f7', bg: 'rgba(168,85,247,0.12)' },
+        ].map((s) => (
+          <div key={s.label} className="stat-card">
+            <div style={{ width:32, height:32, borderRadius:8, background:s.bg, marginBottom:14, display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <span style={{ width:8, height:8, borderRadius:'50%', background:s.color, display:'block' }} />
+            </div>
+            <p style={{ fontSize:11, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.1em', color:'var(--text-muted)', marginBottom:4 }}>{s.label}</p>
+            <p style={{ fontSize:28, fontWeight:700, color:'var(--text-primary)', letterSpacing:'-0.02em', lineHeight:1.1 }}>{s.value}</p>
+            <div style={{ position:'absolute', bottom:0, left:0, right:0, height:2, background:`linear-gradient(90deg,transparent,${s.color}80,transparent)`, borderRadius:'0 0 12px 12px' }} />
+          </div>
+        ))}
       </div>
 
-      <Card>
-        <CardHeader><CardTitle>Kuponlar</CardTitle></CardHeader>
-        <CardContent className="p-0">
-          <DataTable columns={columns} data={coupons ?? []} />
-        </CardContent>
-      </Card>
+      <div className="section-card">
+        <div className="section-card-header"><span className="section-card-title">Kuponlar</span></div>
+        <DataTable columns={columns} data={coupons ?? []} noBorder />
+      </div>
 
       {/* Create modal */}
       <Modal open={modal} onClose={() => { setModal(false); reset(); }} title="Yeni Kupon Oluştur">

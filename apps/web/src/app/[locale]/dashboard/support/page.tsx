@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { supportApi } from '@/lib/api';
 
 const ticketStatusStyles: Record<string, string> = {
@@ -12,6 +13,7 @@ const ticketStatusStyles: Record<string, string> = {
 };
 
 export default function SupportPage() {
+  const t = useTranslations('supportPage');
   const [showCreate, setShowCreate] = useState(false);
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
@@ -43,14 +45,24 @@ export default function SupportPage() {
     },
   });
 
+  const statusLabel = (status: string) => {
+    const map: Record<string, string> = {
+      OPEN: t('statusOpen'),
+      PENDING: t('statusPending'),
+      ON_HOLD: t('statusOnHold'),
+      CLOSED: t('statusClosed'),
+    };
+    return map[status] ?? status;
+  };
+
   return (
     <div className="min-h-screen p-6 space-y-6" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)' }}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Support</h1>
+          <h1 className="text-2xl font-bold">{t('title')}</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-            Submit and track your support tickets.
+            {t('subtitle')}
           </p>
         </div>
         <button
@@ -58,7 +70,7 @@ export default function SupportPage() {
           className="px-4 py-2 rounded-lg text-sm font-medium transition hover:opacity-90"
           style={{ background: 'var(--accent)', color: '#fff' }}
         >
-          + New Ticket
+          + {t('newTicketBtn')}
         </button>
       </div>
 
@@ -66,10 +78,10 @@ export default function SupportPage() {
       {!isLoading && (tickets ?? []).length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {(['OPEN', 'PENDING', 'ON_HOLD', 'CLOSED'] as const).map((status) => {
-            const count = (tickets ?? []).filter((t) => t.status === status).length;
+            const count = (tickets ?? []).filter((ticket) => ticket.status === status).length;
             return (
               <div key={status} className="rounded-xl p-4" style={{ background: 'var(--bg-surface)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>{status.replace('_', ' ')}</p>
+                <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>{statusLabel(status)}</p>
                 <p className="text-2xl font-bold">{count}</p>
               </div>
             );
@@ -89,7 +101,7 @@ export default function SupportPage() {
           <table className="w-full text-sm">
             <thead>
               <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                {['#', 'Subject', 'Status', 'Last Reply', 'Created'].map((h) => (
+                {[t('colNum'), t('colSubject'), t('colStatus'), t('colLastReply'), t('colCreated')].map((h) => (
                   <th key={h} className="text-left px-4 py-3 font-medium" style={{ color: 'var(--text-muted)' }}>{h}</th>
                 ))}
               </tr>
@@ -98,7 +110,7 @@ export default function SupportPage() {
               {(tickets ?? []).length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-4 py-12 text-center" style={{ color: 'var(--text-muted)' }}>
-                    No tickets yet. Create one if you need help.
+                    {t('empty')}
                   </td>
                 </tr>
               )}
@@ -119,7 +131,7 @@ export default function SupportPage() {
                   </td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${ticketStatusStyles[ticket.status] ?? ''}`}>
-                      {ticket.status?.replace('_', ' ')}
+                      {statusLabel(ticket.status)}
                     </span>
                   </td>
                   <td className="px-4 py-3" style={{ color: 'var(--text-secondary)' }}>
@@ -139,36 +151,36 @@ export default function SupportPage() {
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="w-full max-w-lg rounded-2xl p-6 space-y-4" style={{ background: 'var(--bg-elevated)', border: '1px solid rgba(255,255,255,0.1)' }}>
-            <h2 className="text-lg font-semibold">Create Support Ticket</h2>
+            <h2 className="text-lg font-semibold">{t('modalTitle')}</h2>
             <div className="space-y-3">
               <div>
-                <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>Subject</label>
+                <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>{t('subjectLabel')}</label>
                 <input
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
-                  placeholder="Brief description of your issue"
+                  placeholder={t('subjectPlaceholder')}
                   className="w-full px-4 py-2 rounded-lg outline-none text-sm"
                   style={{ background: 'var(--bg-base)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-primary)' }}
                 />
               </div>
               <div>
-                <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>Message</label>
+                <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>{t('messageLabel')}</label>
                 <textarea
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   rows={5}
-                  placeholder="Describe your issue in detail..."
+                  placeholder={t('messagePlaceholder')}
                   className="w-full px-4 py-2 rounded-lg outline-none text-sm resize-none"
                   style={{ background: 'var(--bg-base)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-primary)' }}
                 />
               </div>
             </div>
             {createMutation.isError && (
-              <p className="text-xs text-red-400">Failed to create ticket. Please try again.</p>
+              <p className="text-xs text-red-400">{t('errorFailed')}</p>
             )}
             <div className="flex gap-2 justify-end">
               <button onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm rounded-lg" style={{ color: 'var(--text-secondary)' }}>
-                Cancel
+                {t('cancelBtn')}
               </button>
               <button
                 onClick={() => createMutation.mutate({ subject, message })}
@@ -176,7 +188,7 @@ export default function SupportPage() {
                 className="px-4 py-2 text-sm rounded-lg font-medium disabled:opacity-50"
                 style={{ background: 'var(--accent)', color: '#fff' }}
               >
-                {createMutation.isPending ? 'Submitting…' : 'Submit Ticket'}
+                {createMutation.isPending ? t('submittingBtn') : t('submitBtn')}
               </button>
             </div>
           </div>

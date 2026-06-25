@@ -13,11 +13,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <QueryClientProvider client={queryClient}>
       <Toaster>
-        <div className="flex min-h-screen">
+        <div className="admin-layout">
           <AdminSidebar />
           <div className="admin-content">
             <AdminHeader />
-            <main className="flex-1 p-6">
+            <main className="flex-1">
               {children}
             </main>
           </div>

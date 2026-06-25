@@ -155,9 +155,12 @@ export default function MarketingPage() {
   ];
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-bold text-[var(--text-primary)]">Pazarlama</h1>
+    <div className="page-content">
+      <div className="page-header">
+        <div>
+          <h1>Pazarlama</h1>
+          <p>Kullanıcı yorumları, vaka çalışmaları ve kampanyalar</p>
+        </div>
       </div>
 
       <Tabs defaultValue="testimonials">

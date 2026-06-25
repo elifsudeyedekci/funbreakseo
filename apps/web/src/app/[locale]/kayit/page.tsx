@@ -14,7 +14,8 @@ import { useAuthStore } from '@/store/auth.store';
 const registerSchema = z
   .object({
     fullName: z.string().min(2, 'Ad soyad en az 2 karakter olmalıdır'),
-    companyName: z.string().optional(),
+    organizationName: z.string().min(2, 'Şirket/marka adı en az 2 karakter olmalıdır'),
+    phone: z.string().min(1, 'Telefon numarası gereklidir'),
     email: z.string().email('Geçerli bir e-posta adresi girin'),
     password: z.string().min(8, 'Şifre en az 8 karakter olmalıdır'),
     confirmPassword: z.string(),
@@ -63,20 +64,18 @@ export default function RegisterPage() {
         email: data.email,
         password: data.password,
         fullName: data.fullName,
-        companyName: data.companyName,
-        consents: [
-          { type: 'TERMS', version: '1.0' },
-          { type: 'KVKK', version: '1.0' },
-        ],
+        organizationName: data.organizationName,
+        phone: data.phone,
       });
-      const payload = res.data.data;
+      // API may return { data: { ... } } or { message: '...' } — handle both
+      const payload = res.data?.data ?? res.data;
 
-      if (payload.requiresEmailVerification) {
+      if (payload?.requiresEmailVerification || (payload?.message && String(payload.message).toLowerCase().includes('success'))) {
         setSuccess(true);
         return;
       }
 
-      if (payload.tokens) {
+      if (payload?.tokens) {
         setAuth({
           user: payload.user,
           organization: payload.organization,
@@ -85,10 +84,13 @@ export default function RegisterPage() {
           refreshToken: payload.tokens.refreshToken,
         });
         router.push(localePath('/dashboard'));
+      } else {
+        setSuccess(true);
       }
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } } };
-      setServerError(e?.response?.data?.message || 'Kayıt işlemi başarısız. Lütfen tekrar deneyin.');
+      const e = err as { response?: { data?: { message?: string | string[] } } };
+      const msg = e?.response?.data?.message;
+      setServerError(Array.isArray(msg) ? msg[0] : (msg || 'Kayıt işlemi başarısız. Lütfen tekrar deneyin.'));
     }
   }
 
@@ -146,17 +148,30 @@ export default function RegisterPage() {
               {errors.fullName && <p className="mt-1.5 text-xs text-red-400">{errors.fullName.message}</p>}
             </div>
 
-            {/* Company */}
+            {/* Organization Name */}
             <div>
-              <label className="block text-sm font-medium text-white/80 mb-1.5">
-                {t('companyName')} <span className="text-white/30 text-xs">({t('optional') ?? 'opsiyonel'})</span>
-              </label>
+              <label className="block text-sm font-medium text-white/80 mb-1.5">{t('companyName')}</label>
               <input
-                {...register('companyName')}
+                {...register('organizationName')}
                 type="text"
+                autoComplete="organization"
                 className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-white/30 focus:border-indigo-500/50 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 transition-all"
                 placeholder="Şirket veya marka adı"
               />
+              {errors.organizationName && <p className="mt-1.5 text-xs text-red-400">{errors.organizationName.message}</p>}
+            </div>
+
+            {/* Phone */}
+            <div>
+              <label className="block text-sm font-medium text-white/80 mb-1.5">Telefon</label>
+              <input
+                {...register('phone')}
+                type="tel"
+                autoComplete="tel"
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-white/30 focus:border-indigo-500/50 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 transition-all"
+                placeholder="+90 5XX XXX XX XX"
+              />
+              {errors.phone && <p className="mt-1.5 text-xs text-red-400">{errors.phone.message}</p>}
             </div>
 
             {/* Email */}

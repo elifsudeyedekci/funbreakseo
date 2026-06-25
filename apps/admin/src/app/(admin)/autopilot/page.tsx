@@ -135,11 +135,11 @@ export default function AutopilotPage() {
   ];
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="page-content">
+      <div className="page-header">
         <div>
-          <h1 className="text-xl font-bold text-[var(--text-primary)]">Autopilot Kontrol Merkezi</h1>
-          <p className="text-sm text-[var(--text-muted)] mt-0.5">Otomatik içerik üretim ve yayın sistemi</p>
+          <h1>Autopilot Kontrol Merkezi</h1>
+          <p>Otomatik içerik üretim ve yayın sistemi</p>
         </div>
         <div className="flex gap-2">
           <Button variant="secondary" icon={<Search className="w-4 h-4" />} loading={discoverMutation.isPending}

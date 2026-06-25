@@ -47,7 +47,28 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
   const { data: customer, isLoading, refetch } = useQuery({
     queryKey: ['customer', id],
     queryFn: async () => {
-      try { const r = await adminApi.get(`/admin/customers/${id}`); return r.data?.data ?? MOCK_CUSTOMER; }
+      try {
+        const r = await adminApi.get(`/admin/customers/${id}`);
+        const raw = r.data?.data ?? r.data;
+        if (!raw?.id) return MOCK_CUSTOMER;
+        return {
+          id: raw.id,
+          fullName: raw.users?.[0]?.fullName ?? raw.name ?? 'Bilinmiyor',
+          email: raw.users?.[0]?.email ?? '',
+          phone: raw.users?.[0]?.phone ?? raw.phone ?? '',
+          company: raw.name ?? '',
+          taxNumber: raw.taxNumber ?? '',
+          address: raw.address ?? '',
+          city: raw.city ?? '',
+          country: raw.country ?? 'TR',
+          plan: raw.subscription?.plan?.name ?? 'FREE',
+          status: raw.subscription?.status ?? 'ACTIVE',
+          healthScore: raw.healthScore ?? 50,
+          churnRisk: raw.churnRisk ?? 'LOW',
+          createdAt: raw.createdAt,
+          lastLoginAt: raw.users?.[0]?.lastLoginAt ?? null,
+        };
+      }
       catch { return MOCK_CUSTOMER; }
     },
   });
@@ -134,15 +155,15 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
   ];
 
   return (
-    <div className="space-y-4 p-4 md:p-6">
+    <div className="page-content">
       {/* Header */}
-      <div className="flex flex-wrap items-start gap-4 justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-[var(--accent)]/20 border border-[var(--accent)]/30 flex items-center justify-center">
-            <span className="text-lg font-bold text-[var(--accent)]">{c.fullName?.[0]}</span>
+      <div className="page-header">
+        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+          <div style={{ width:44, height:44, borderRadius:'50%', background:'rgba(99,102,241,0.2)', border:'1px solid rgba(99,102,241,0.3)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, fontWeight:700, color:'#6366f1', flexShrink:0 }}>
+            {c.fullName?.[0]}
           </div>
           <div>
-            <h1 className="text-xl font-bold text-[var(--text-primary)]">{c.fullName}</h1>
+            <h1>{c.fullName}</h1>
             <div className="flex items-center gap-2 mt-0.5">
               <Badge variant="info">{c.plan}</Badge>
               <Badge variant={c.status === 'ACTIVE' ? 'success' : 'danger'}>{c.status}</Badge>

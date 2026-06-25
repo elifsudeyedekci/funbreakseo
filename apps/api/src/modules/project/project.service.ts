@@ -87,16 +87,14 @@ export class ProjectService {
         },
       });
 
-      await this.mailer.sendMail({
+      this.mailer.sendMail({
         from: `"FunBreak SEO" <${this.config.get('SMTP_FROM', 'noreply@funbreakseo.com')}>`,
         to: this.config.get<string>('ADMIN_EMAIL', 'admin@funbreakseo.com'),
         subject: `Plan Limiti Aşıldı: ${org.name}`,
         html: `<p>${org.name} organizasyonu proje limitini aşmaya çalıştı.<br>Domain: ${dto.domain}<br>PendingProject ID: ${pending.id}</p>`,
-      });
+      }).catch((err: Error) => this.logger.warn(`Admin email failed: ${err.message}`));
 
-      throw new ForbiddenException(
-        `Project limit (${projectLimit}) reached for your plan. A pending request has been created.`,
-      );
+      throw new ForbiddenException(`PLAN_LIMIT_REACHED:${projectLimit}`);
     }
 
     return this.prisma.project.create({

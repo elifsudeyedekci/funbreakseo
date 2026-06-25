@@ -34,6 +34,10 @@ export default async function LocaleLayout({
   return (
     <html lang={locale} dir={isRTL ? 'rtl' : 'ltr'} className="dark" suppressHydrationWarning>
       <body className={`${inter.variable} ${jetbrainsMono.variable} antialiased min-h-screen`}>
+        {/* Top accent line */}
+        <div className="fixed top-0 left-0 right-0 h-px z-[200] bg-gradient-to-r from-transparent via-indigo-500/60 to-transparent" />
+        {/* Noise texture overlay */}
+        <div className="noise-overlay" aria-hidden="true" />
         <NextIntlClientProvider messages={messages} locale={locale}>
           <Providers>
             {children}

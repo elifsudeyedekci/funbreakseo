@@ -139,11 +139,11 @@ export default function ContentReviewPage() {
   if (isLoading) return <PageSpinner />;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="page-content">
+      <div className="page-header">
         <div>
-          <h1 className="text-xl font-bold text-[var(--text-primary)]">İçerik İnceleme</h1>
-          <p className="text-sm text-[var(--text-muted)] mt-0.5">{content.length} içerik onay bekliyor</p>
+          <h1>İçerik İnceleme</h1>
+          <p>{content.length} içerik onay bekliyor</p>
         </div>
         {selected.length > 0 && (
           <div className="flex gap-2">
@@ -154,7 +154,10 @@ export default function ContentReviewPage() {
         )}
       </div>
 
-      <DataTable columns={columns} data={content} searchPlaceholder="Başlık, müşteri, KW ara..." emptyMessage="İncelenecek içerik yok." />
+      <div className="section-card">
+        <div className="section-card-header"><span className="section-card-title">Onay Kuyruğu</span></div>
+        <DataTable columns={columns} data={content} searchPlaceholder="Başlık, müşteri, KW ara..." emptyMessage="İncelenecek içerik yok." noBorder />
+      </div>
 
       {/* Preview Drawer */}
       <Modal open={!!preview} onClose={() => setPreview(null)} title={preview?.title ?? ''} size="xl">

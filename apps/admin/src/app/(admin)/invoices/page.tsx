@@ -138,14 +138,44 @@ export default function InvoicesPage() {
 
   if (isLoading) return <PageSpinner />;
 
+  const paidCount = invoices.filter((i) => i.status === 'PAID').length;
+  const unpaidCount = invoices.filter((i) => i.status === 'UNPAID').length;
+  const refundedCount = invoices.filter((i) => i.status === 'REFUNDED' || i.status === 'PARTIAL_REFUND').length;
+  const totalRevenue = invoices.filter((i) => i.status === 'PAID').reduce((sum, i) => sum + i.amount, 0);
+
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-bold text-[var(--text-primary)]">Faturalar</h1>
-        <p className="text-sm text-[var(--text-muted)] mt-0.5">{invoices.length} fatura</p>
+    <div className="page-content">
+      <div className="page-header">
+        <div>
+          <h1>Faturalar</h1>
+          <p>Tüm fatura ve ödemeler — {invoices.length} kayıt</p>
+        </div>
       </div>
 
-      <DataTable columns={columns} data={invoices} searchPlaceholder="Müşteri, fatura ara..." emptyMessage="Fatura bulunamadı." />
+      <div className="kpi-grid">
+        {[
+          { label: 'Toplam', value: invoices.length, color: '#6366f1', bg: 'rgba(99,102,241,0.12)' },
+          { label: 'Ödendi', value: paidCount, color: '#22c55e', bg: 'rgba(34,197,94,0.12)' },
+          { label: 'Bekliyor', value: unpaidCount, color: '#eab308', bg: 'rgba(234,179,8,0.12)' },
+          { label: 'Bu Ay Gelir', value: `₺${totalRevenue.toLocaleString('tr-TR')}`, color: '#a855f7', bg: 'rgba(168,85,247,0.12)' },
+        ].map((s) => (
+          <div key={s.label} className="stat-card">
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: s.bg, marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, display: 'block' }} />
+            </div>
+            <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: 4 }}>{s.label}</p>
+            <p style={{ fontSize: typeof s.value === 'string' ? 22 : 28, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1.1 }}>{s.value}</p>
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${s.color}80, transparent)`, borderRadius: '0 0 12px 12px' }} />
+          </div>
+        ))}
+      </div>
+
+      <div className="section-card">
+        <div className="section-card-header">
+          <span className="section-card-title">Fatura Listesi</span>
+        </div>
+        <DataTable columns={columns} data={invoices} searchPlaceholder="Müşteri, fatura ara..." emptyMessage="Fatura bulunamadı." noBorder />
+      </div>
 
       {/* Refund Modal */}
       <Modal

@@ -99,3 +99,30 @@ export function getDomainFromUrl(url: string): string {
     return url;
   }
 }
+
+export function exportToCSV(
+  rows: Record<string, unknown>[],
+  headers: Array<{ key: string; label: string }>,
+  filename: string
+): void {
+  const header = headers.map((h) => `"${h.label}"`).join(',');
+  const body = rows.map((row) =>
+    headers
+      .map((h) => {
+        const val = row[h.key];
+        const str = val == null ? '' : String(val);
+        return `"${str.replace(/"/g, '""')}"`;
+      })
+      .join(',')
+  );
+  const csv = [header, ...body].join('\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename.endsWith('.csv') ? filename : `${filename}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}

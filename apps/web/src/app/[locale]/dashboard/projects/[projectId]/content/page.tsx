@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, use } from 'react';
+import { useState } from 'react';
+import { useParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { Plus, FileText, Sparkles, X } from 'lucide-react';
 import { contentApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -18,25 +20,26 @@ interface Content {
   createdAt: string;
 }
 
-const STATUS_CONFIG: Record<ContentStatus, { label: string; color: string }> = {
-  DRAFT: { label: 'Taslak', color: 'bg-white/10 text-white/50' },
-  GENERATING: { label: 'Üretiliyor...', color: 'bg-blue-500/20 text-blue-400' },
-  REVIEW: { label: 'İnceleme', color: 'bg-yellow-500/20 text-yellow-400' },
-  APPROVED: { label: 'Onaylı', color: 'bg-emerald-500/20 text-emerald-400' },
-  PUBLISHED: { label: 'Yayınlandı', color: 'bg-green-500/20 text-green-400' },
-  REJECTED: { label: 'Reddedildi', color: 'bg-red-500/20 text-red-400' },
-};
-
-export default function ContentPage({ params }: { params: Promise<{ projectId: string }> }) {
-  const { projectId } = use(params);
+export default function ContentPage() {
+  const { projectId } = useParams<{ projectId: string }>();
+  const t = useTranslations('contentPage');
   const queryClient = useQueryClient();
+
+  const STATUS_CONFIG: Record<ContentStatus, { label: string; color: string }> = {
+    DRAFT: { label: t('statusDraft'), color: 'bg-white/10 text-white/50' },
+    GENERATING: { label: t('statusGenerating'), color: 'bg-blue-500/20 text-blue-400' },
+    REVIEW: { label: t('statusReview'), color: 'bg-yellow-500/20 text-yellow-400' },
+    APPROVED: { label: t('statusApproved'), color: 'bg-emerald-500/20 text-emerald-400' },
+    PUBLISHED: { label: t('statusPublished'), color: 'bg-green-500/20 text-green-400' },
+    REJECTED: { label: t('statusRejected'), color: 'bg-red-500/20 text-red-400' },
+  };
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ keyword: '', contentType: 'BLOG', language: 'tr', tone: 'professional' });
   const [filterStatus, setFilterStatus] = useState<ContentStatus | 'ALL'>('ALL');
 
   const { data, isLoading } = useQuery({
     queryKey: ['content', projectId],
-    queryFn: () => contentApi.list(projectId).then((r) => r.data.data as Content[]),
+    queryFn: () => contentApi.list(projectId).then((r) => (r.data?.data ?? []) as Content[]),
     refetchInterval: (query) => {
       const items = query.state.data as Content[] | undefined;
       return items?.some((c) => c.status === 'GENERATING') ? 5000 : false;
@@ -58,15 +61,15 @@ export default function ContentPage({ params }: { params: Promise<{ projectId: s
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">İçerik</h1>
-          <p className="text-white/50 text-sm mt-1">AI destekli SEO ve GEO uyumlu içerik üretimi</p>
+          <h1 className="text-2xl font-bold text-white">{t('title')}</h1>
+          <p className="text-white/50 text-sm mt-1">{t('subtitle')}</p>
         </div>
         <button
           onClick={() => setShowModal(true)}
           className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 transition-all"
         >
           <Sparkles className="h-4 w-4" />
-          Yeni İçerik Üret
+          {t('generateBtn')}
         </button>
       </div>
 
@@ -81,7 +84,7 @@ export default function ContentPage({ params }: { params: Promise<{ projectId: s
               filterStatus === s ? 'bg-indigo-600 text-white' : 'border border-white/10 text-white/50 hover:text-white hover:bg-white/10'
             )}
           >
-            {s === 'ALL' ? 'Tümü' : STATUS_CONFIG[s].label}
+            {s === 'ALL' ? t('allFilter') : STATUS_CONFIG[s].label}
           </button>
         ))}
       </div>
@@ -96,13 +99,13 @@ export default function ContentPage({ params }: { params: Promise<{ projectId: s
       ) : items.length === 0 ? (
         <div className="rounded-2xl border border-white/10 p-12 text-center">
           <FileText className="h-10 w-10 text-white/20 mx-auto mb-3" />
-          <p className="text-white/50 mb-4">Henüz içerik yok</p>
+          <p className="text-white/50 mb-4">{t('empty')}</p>
           <button
             onClick={() => setShowModal(true)}
             className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 transition-all"
           >
             <Plus className="h-4 w-4" />
-            İlk İçeriği Üret
+            {t('addFirstBtn')}
           </button>
         </div>
       ) : (
@@ -119,7 +122,7 @@ export default function ContentPage({ params }: { params: Promise<{ projectId: s
                     {item.wordCount > 0 && (
                       <>
                         <span className="text-xs text-white/30">·</span>
-                        <span className="text-xs text-white/40">{item.wordCount.toLocaleString('tr-TR')} kelime</span>
+                        <span className="text-xs text-white/40">{t('wordCount', { count: item.wordCount.toLocaleString() })}</span>
                       </>
                     )}
                   </div>
@@ -149,7 +152,7 @@ export default function ContentPage({ params }: { params: Promise<{ projectId: s
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowModal(false)} />
           <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-[#111118] p-6 shadow-2xl">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-semibold text-white">İçerik Üret</h2>
+              <h2 className="text-lg font-semibold text-white">{t('modalTitle')}</h2>
               <button onClick={() => setShowModal(false)} className="p-1 rounded-lg text-white/50 hover:text-white hover:bg-white/10">
                 <X className="h-4 w-4" />
               </button>
@@ -157,39 +160,39 @@ export default function ContentPage({ params }: { params: Promise<{ projectId: s
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-white/70 mb-1.5">Hedef Anahtar Kelime</label>
+                <label className="block text-sm font-medium text-white/70 mb-1.5">{t('keywordLabel')}</label>
                 <input
                   value={form.keyword}
                   onChange={(e) => setForm((p) => ({ ...p, keyword: e.target.value }))}
                   className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-white/30 focus:border-indigo-500/50 focus:outline-none"
-                  placeholder="örn: seo nasıl yapılır"
+                  placeholder={t('keywordPlaceholder')}
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-white/70 mb-1.5">İçerik Türü</label>
+                  <label className="block text-sm font-medium text-white/70 mb-1.5">{t('typeLabel')}</label>
                   <select
                     value={form.contentType}
                     onChange={(e) => setForm((p) => ({ ...p, contentType: e.target.value }))}
                     className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-white focus:border-indigo-500/50 focus:outline-none"
                   >
-                    <option value="BLOG">Blog Yazısı</option>
-                    <option value="PRODUCT">Ürün Açıklaması</option>
-                    <option value="LANDING">Landing Page</option>
-                    <option value="FAQ">SSS Bölümü</option>
+                    <option value="BLOG">{t('typeBlog')}</option>
+                    <option value="PRODUCT">{t('typeProduct')}</option>
+                    <option value="LANDING">{t('typeLanding')}</option>
+                    <option value="FAQ">{t('typeFaq')}</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-white/70 mb-1.5">Dil</label>
+                  <label className="block text-sm font-medium text-white/70 mb-1.5">{t('langLabel')}</label>
                   <select
                     value={form.language}
                     onChange={(e) => setForm((p) => ({ ...p, language: e.target.value }))}
                     className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-white focus:border-indigo-500/50 focus:outline-none"
                   >
-                    <option value="tr">Türkçe</option>
-                    <option value="en">İngilizce</option>
-                    <option value="de">Almanca</option>
-                    <option value="fr">Fransızca</option>
+                    <option value="tr">{t('langTR')}</option>
+                    <option value="en">{t('langEN')}</option>
+                    <option value="de">{t('langDE')}</option>
+                    <option value="fr">{t('langFR')}</option>
                   </select>
                 </div>
               </div>
@@ -198,7 +201,7 @@ export default function ContentPage({ params }: { params: Promise<{ projectId: s
                   onClick={() => setShowModal(false)}
                   className="flex-1 rounded-xl border border-white/20 py-2.5 text-sm font-medium text-white/60 hover:bg-white/10 transition-colors"
                 >
-                  İptal
+                  {t('cancelBtn')}
                 </button>
                 <button
                   onClick={() => generateMutation.mutate()}
@@ -206,9 +209,9 @@ export default function ContentPage({ params }: { params: Promise<{ projectId: s
                   className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
                 >
                   {generateMutation.isPending ? (
-                    <><span className="inline-block h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Üretiliyor...</>
+                    <><span className="inline-block h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> {t('generatingBtn')}</>
                   ) : (
-                    <><Sparkles className="h-4 w-4" /> Üret</>
+                    <><Sparkles className="h-4 w-4" /> {t('generateModalBtn')}</>
                   )}
                 </button>
               </div>

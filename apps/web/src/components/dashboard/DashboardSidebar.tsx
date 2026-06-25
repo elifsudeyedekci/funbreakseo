@@ -1,9 +1,8 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import {
   LayoutDashboard,
   FolderOpen,
@@ -21,28 +20,9 @@ import {
   Users,
   X,
   Zap,
+  ArrowUpRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-const NAV_ITEMS = [
-  { icon: FolderOpen, label: 'Projeler', path: '/dashboard/projects' },
-  { icon: Search, label: 'Anahtar Kelimeler', path: '/dashboard/keywords', projectScoped: true },
-  { icon: LayoutDashboard, label: 'Teknik SEO', path: '/dashboard/audit', projectScoped: true },
-  { icon: FileText, label: 'İçerik', path: '/dashboard/content', projectScoped: true },
-  { icon: Brain, label: 'GEO', path: '/dashboard/geo', projectScoped: true, geo: true },
-  { icon: Link2, label: 'Backlinkler', path: '/dashboard/backlinks', projectScoped: true },
-  { icon: Mail, label: 'Outreach', path: '/dashboard/outreach', projectScoped: true },
-  { icon: BarChart2, label: 'Raporlar', path: '/dashboard/reports', projectScoped: true },
-];
-
-const ACCOUNT_ITEMS = [
-  { icon: CreditCard, label: 'Faturalama', path: '/dashboard/billing' },
-  { icon: User, label: 'Hesabım', path: '/dashboard/account' },
-  { icon: Bell, label: 'Bildirimler', path: '/dashboard/notifications' },
-  { icon: Code, label: 'Developer', path: '/dashboard/developer' },
-  { icon: HelpCircle, label: 'Destek', path: '/dashboard/support' },
-  { icon: Users, label: 'Affiliate', path: '/dashboard/affiliate' },
-];
 
 interface SidebarProps {
   mobileOpen: boolean;
@@ -53,12 +33,32 @@ interface SidebarProps {
 export function DashboardSidebar({ mobileOpen, onClose, currentProjectId }: SidebarProps) {
   const locale = useLocale();
   const pathname = usePathname();
+  const t = useTranslations('dashNav');
 
   const localePath = (path: string) => locale === 'tr' ? path : `/${locale}${path}`;
 
+  const NAV_ITEMS = [
+    { icon: FolderOpen, label: t('projects'), path: '/dashboard/projects' },
+    { icon: Search, label: t('keywords'), path: '/dashboard/keywords', projectScoped: true },
+    { icon: LayoutDashboard, label: t('audit'), path: '/dashboard/audit', projectScoped: true },
+    { icon: FileText, label: t('content'), path: '/dashboard/content', projectScoped: true },
+    { icon: Brain, label: t('geo'), path: '/dashboard/geo', projectScoped: true, geo: true },
+    { icon: Link2, label: t('backlinks'), path: '/dashboard/backlinks', projectScoped: true },
+    { icon: Mail, label: t('outreach'), path: '/dashboard/outreach', projectScoped: true },
+    { icon: BarChart2, label: t('reports'), path: '/dashboard/reports', projectScoped: true },
+  ];
+
+  const ACCOUNT_ITEMS = [
+    { icon: CreditCard, label: t('billing'), path: '/dashboard/billing' },
+    { icon: User, label: t('myAccount'), path: '/dashboard/account' },
+    { icon: Bell, label: t('notifications'), path: '/dashboard/notifications' },
+    { icon: Code, label: t('developer'), path: '/dashboard/developer' },
+    { icon: HelpCircle, label: t('support'), path: '/dashboard/support' },
+    { icon: Users, label: t('affiliate'), path: '/dashboard/affiliate' },
+  ];
+
   function getNavHref(item: typeof NAV_ITEMS[0]): string {
     if (item.projectScoped && currentProjectId) {
-      // Route to project-scoped version
       const suffix = item.path.replace('/dashboard/', '');
       return localePath(`/dashboard/projects/${currentProjectId}/${suffix}`);
     }
@@ -120,7 +120,7 @@ export function DashboardSidebar({ mobileOpen, onClose, currentProjectId }: Side
         })}
 
         <div className="pt-4 pb-1">
-          <p className="px-3 text-xs font-medium text-white/25 uppercase tracking-wider">Hesap</p>
+          <p className="px-3 text-xs font-medium text-white/25 uppercase tracking-wider">{t('accountSection')}</p>
         </div>
 
         {ACCOUNT_ITEMS.map((item) => {
@@ -143,6 +143,17 @@ export function DashboardSidebar({ mobileOpen, onClose, currentProjectId }: Side
             </Link>
           );
         })}
+
+        <div className="pt-3 mt-2 border-t border-white/8">
+          <Link
+            href={localePath('/')}
+            onClick={onClose}
+            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-white/35 hover:text-white/70 hover:bg-white/5 transition-all group"
+          >
+            <ArrowUpRight className="h-3.5 w-3.5 flex-shrink-0 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+            {t('backToHome')}
+          </Link>
+        </div>
       </nav>
     </div>
   );

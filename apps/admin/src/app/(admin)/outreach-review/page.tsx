@@ -125,13 +125,18 @@ export default function OutreachReviewPage() {
   if (isLoading) return <PageSpinner />;
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-bold text-[var(--text-primary)]">Outreach İnceleme</h1>
-        <p className="text-sm text-[var(--text-muted)] mt-0.5">{replies.length} yanıt insan incelemesi bekliyor</p>
+    <div className="page-content">
+      <div className="page-header">
+        <div>
+          <h1>Outreach İnceleme</h1>
+          <p>{replies.length} yanıt insan incelemesi bekliyor</p>
+        </div>
       </div>
 
-      <DataTable columns={columns} data={replies} searchPlaceholder="Domain, kampanya ara..." emptyMessage="İncelenecek yanıt yok." />
+      <div className="section-card">
+        <div className="section-card-header"><span className="section-card-title">Yanıt Listesi</span></div>
+        <DataTable columns={columns} data={replies} searchPlaceholder="Domain, kampanya ara..." emptyMessage="İncelenecek yanıt yok." noBorder />
+      </div>
 
       <Modal open={!!detail} onClose={() => setDetail(null)} title={`Yanıt — ${detail?.prospectDomain}`} size="xl"
         footer={

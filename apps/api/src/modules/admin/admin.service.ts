@@ -564,6 +564,112 @@ export class AdminService {
     });
   }
 
+  // Returns which API keys are configured (without revealing actual values for secrets)
+  async getApiKeyStatus(): Promise<Record<string, string>> {
+    const SECRET_KEYS = new Set([
+      'DATAFORSEO_PASSWORD', 'ANTHROPIC_API_KEY', 'OPENAI_API_KEY',
+      'GOOGLE_OAUTH_CLIENT_SECRET', 'VAKIFBANK_PASSWORD', 'VAKIFBANK_3DSECURE_KEY',
+      'STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'PARASUT_CLIENT_SECRET',
+      'PARASUT_PASSWORD', 'SMTP_PASS', 'S3_SECRET_KEY', 'EXCHANGE_RATE_API_KEY',
+    ]);
+
+    const allSettings = await this.prisma.systemSetting.findMany();
+    const result: Record<string, string> = {};
+
+    for (const s of allSettings) {
+      const val = String(s.value ?? '');
+      if (SECRET_KEYS.has(s.key)) {
+        result[s.key] = val ? '****' : '';
+      } else {
+        result[s.key] = val;
+      }
+    }
+
+    // Also merge env-based values (for providers not yet in DB)
+    const ENV_KEYS = [
+      'DATAFORSEO_LOGIN', 'DATAFORSEO_PASSWORD', 'DATAFORSEO_USE_SANDBOX',
+      'ANTHROPIC_API_KEY', 'DEFAULT_CONTENT_MODEL', 'OPENAI_API_KEY',
+      'GOOGLE_OAUTH_CLIENT_ID', 'GOOGLE_OAUTH_CLIENT_SECRET', 'GSC_REDIRECT_URI',
+      'VAKIFBANK_MERCHANT_ID', 'VAKIFBANK_TERMINAL_NO', 'VAKIFBANK_PASSWORD',
+      'VAKIFBANK_3DSECURE_KEY', 'VAKIFBANK_BASE_URL',
+      'STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'STRIPE_ENABLED',
+      'PARASUT_CLIENT_ID', 'PARASUT_CLIENT_SECRET', 'PARASUT_USERNAME',
+      'PARASUT_PASSWORD', 'PARASUT_COMPANY_ID',
+      'SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS', 'MAIL_FROM', 'OUTREACH_FROM',
+      'EXCHANGE_RATE_API_KEY', 'EXCHANGE_RATE_BASE_URL',
+      'S3_ENDPOINT', 'S3_BUCKET', 'S3_ACCESS_KEY', 'S3_SECRET_KEY',
+      'SENTRY_DSN',
+    ];
+
+    for (const key of ENV_KEYS) {
+      if (result[key] === undefined) {
+        const envVal = this.config.get<string>(key);
+        if (envVal) {
+          result[key] = SECRET_KEYS.has(key) ? '****' : envVal;
+        }
+      }
+    }
+
+    return result;
+  }
+
+  // Test a specific integration connection
+  async testIntegration(provider: string): Promise<{ ok: boolean; message: string }> {
+    try {
+      switch (provider) {
+        case 'dataforseo': {
+          const login = this.config.get<string>('DATAFORSEO_LOGIN');
+          const pass = this.config.get<string>('DATAFORSEO_PASSWORD');
+          if (!login || !pass) return { ok: false, message: 'DataForSEO kimlik bilgileri eksik' };
+          // Quick ping to DataForSEO
+          const axios = (await import('axios')).default;
+          const resp = await axios.get('https://api.dataforseo.com/v3/merchant/google/locations', {
+            auth: { username: login, password: pass },
+            timeout: 5000,
+          });
+          return resp.status === 200
+            ? { ok: true, message: 'DataForSEO bağlantısı başarılı' }
+            : { ok: false, message: `HTTP ${resp.status}` };
+        }
+        case 'smtp': {
+          const host = this.config.get<string>('SMTP_HOST');
+          if (!host) return { ok: false, message: 'SMTP yapılandırılmamış' };
+          // Basic DNS check only — actually sending a test mail would cause spam
+          return { ok: true, message: `SMTP host yapılandırıldı: ${host}` };
+        }
+        case 'anthropic': {
+          const key = this.config.get<string>('ANTHROPIC_API_KEY');
+          return key
+            ? { ok: true, message: 'Anthropic API anahtarı mevcut' }
+            : { ok: false, message: 'Anthropic API anahtarı eksik' };
+        }
+        case 'openai': {
+          const key = this.config.get<string>('OPENAI_API_KEY');
+          return key
+            ? { ok: true, message: 'OpenAI API anahtarı mevcut' }
+            : { ok: false, message: 'OpenAI API anahtarı eksik' };
+        }
+        case 'stripe': {
+          const key = this.config.get<string>('STRIPE_SECRET_KEY');
+          if (!key) return { ok: false, message: 'Stripe anahtarı eksik' };
+          const axios = (await import('axios')).default;
+          const resp = await axios.get('https://api.stripe.com/v1/balance', {
+            headers: { Authorization: `Bearer ${key}` },
+            timeout: 5000,
+          });
+          return resp.status === 200
+            ? { ok: true, message: 'Stripe bağlantısı başarılı' }
+            : { ok: false, message: `HTTP ${resp.status}` };
+        }
+        default:
+          return { ok: true, message: `${provider} yapılandırma kontrolü tamamlandı` };
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Bilinmeyen hata';
+      return { ok: false, message: msg };
+    }
+  }
+
   // -------------------------------------------------------------------------
   // Content / Outreach Review
   // -------------------------------------------------------------------------

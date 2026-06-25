@@ -26,6 +26,7 @@ export function Navbar() {
 
   const navLinks = [
     { href: localePath('/ozellikler'), label: t('features') },
+    { href: localePath('/seo'), label: t('seo') },
     { href: localePath('/geo'), label: t('geo') },
     { href: localePath('/fiyatlandirma'), label: t('pricing') },
     { href: localePath('/blog'), label: t('blog') },

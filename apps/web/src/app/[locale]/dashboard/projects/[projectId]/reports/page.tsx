@@ -1,6 +1,7 @@
-﻿'use client';
+'use client';
 
-import { useState, use } from 'react';
+import { useState } from 'react';
+import { useParams } from 'next/navigation';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Download, Plus, FileText } from 'lucide-react';
 import { reportsApi } from '@/lib/api';
@@ -14,14 +15,14 @@ interface Report {
   createdAt: string;
 }
 
-export default function ReportsPage({ params }: { params: Promise<{ projectId: string }> }) {
-  const { projectId } = use(params);
+export default function ReportsPage() {
+  const { projectId } = useParams<{ projectId: string }>();
   const [showSchedule, setShowSchedule] = useState(false);
   const [reportType, setReportType] = useState('OVERVIEW');
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['reports', projectId],
-    queryFn: () => reportsApi.list(projectId).then((r) => r.data.data as Report[]),
+    queryFn: () => reportsApi.list(projectId).then((r) => (r.data?.data ?? []) as Report[]),
     refetchInterval: (q) => (q.state.data as Report[] | undefined)?.some((r) => r.status === 'GENERATING' || r.status === 'PENDING') ? 5000 : false,
   });
 

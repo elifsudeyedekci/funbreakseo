@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -111,7 +111,7 @@ export default function ContentPage() {
 
   const { data: content, isLoading } = useQuery({
     queryKey: ['content', PROJECT_ID],
-    queryFn: () => contentApi.list(PROJECT_ID).then((r) => r.data.data as Record<string, unknown>[]),
+    queryFn: () => contentApi.list(PROJECT_ID).then((r) => (r.data?.data ?? []) as Record<string, unknown>[]),
   });
 
   const generateMutation = useMutation({

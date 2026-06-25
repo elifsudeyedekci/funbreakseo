@@ -7,10 +7,9 @@ import { type ColumnDef } from '@tanstack/react-table';
 import { DataTable } from '@/components/DataTable';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { useToast } from '@/components/ui/Toaster';
-import { CheckCircle, TrendingUp, Users, DollarSign } from 'lucide-react';
+import { CheckCircle } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 
@@ -124,36 +123,40 @@ export default function AffiliatePage() {
   if (isLoading) return <PageSpinner />;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-bold text-[var(--text-primary)]">Affiliate Programı</h1>
-        <p className="text-sm text-[var(--text-muted)] mt-0.5">{affList.length} aktif affiliate</p>
+    <div className="page-content">
+      <div className="page-header">
+        <div>
+          <h1>Affiliate Programı</h1>
+          <p>{affList.length} affiliate · ${totalPending.toLocaleString()} bekleyen ödeme</p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        <Card className="p-3 flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-indigo-500/15"><Users className="w-4 h-4 text-indigo-400" /></div>
-          <div><p className="text-xs text-[var(--text-muted)]">Toplam Yönlendirme</p><p className="text-xl font-bold">{totalReferrals}</p></div>
-        </Card>
-        <Card className="p-3 flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-yellow-500/15"><DollarSign className="w-4 h-4 text-yellow-400" /></div>
-          <div><p className="text-xs text-[var(--text-muted)]">Bekleyen Ödemeler</p><p className="text-xl font-bold">${totalPending}</p></div>
-        </Card>
-        <Card className="p-3 flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-emerald-500/15"><TrendingUp className="w-4 h-4 text-emerald-400" /></div>
-          <div><p className="text-xs text-[var(--text-muted)]">Toplam Ödenen</p><p className="text-xl font-bold">${totalPaid.toLocaleString()}</p></div>
-        </Card>
+      <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+        {[
+          { label: 'Toplam Affiliate', value: affList.length, color: '#6366f1', bg: 'rgba(99,102,241,0.12)' },
+          { label: 'Toplam Yönlendirme', value: totalReferrals, color: '#a855f7', bg: 'rgba(168,85,247,0.12)' },
+          { label: 'Bekleyen Ödeme', value: `$${totalPending.toLocaleString()}`, color: '#eab308', bg: 'rgba(234,179,8,0.12)' },
+          { label: 'Toplam Ödenen', value: `$${totalPaid.toLocaleString()}`, color: '#22c55e', bg: 'rgba(34,197,94,0.12)' },
+        ].map((s) => (
+          <div key={s.label} className="stat-card">
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: s.bg, marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, display: 'block' }} />
+            </div>
+            <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: 4 }}>{s.label}</p>
+            <p style={{ fontSize: typeof s.value === 'string' ? 20 : 28, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1.1 }}>{s.value}</p>
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${s.color}80, transparent)`, borderRadius: '0 0 12px 12px' }} />
+          </div>
+        ))}
       </div>
 
-      <div className="space-y-6">
-        <div>
-          <h2 className="text-base font-semibold text-[var(--text-primary)] mb-3">Affiliateler</h2>
-          <DataTable columns={affCols} data={affList} searchPlaceholder="Ad, email, kod ara..." emptyMessage="Affiliate bulunamadı." />
-        </div>
-        <div>
-          <h2 className="text-base font-semibold text-[var(--text-primary)] mb-3">Ödeme Talepleri</h2>
-          <DataTable columns={payoutCols} data={payList} searchPlaceholder="Affiliate ara..." emptyMessage="Ödeme talebi bulunamadı." />
-        </div>
+      <div className="section-card">
+        <div className="section-card-header"><span className="section-card-title">Affiliateler</span></div>
+        <DataTable columns={affCols} data={affList} searchPlaceholder="Ad, email, kod ara..." emptyMessage="Affiliate bulunamadı." noBorder />
+      </div>
+
+      <div className="section-card">
+        <div className="section-card-header"><span className="section-card-title">Ödeme Talepleri</span></div>
+        <DataTable columns={payoutCols} data={payList} searchPlaceholder="Affiliate ara..." emptyMessage="Ödeme talebi bulunamadı." noBorder />
       </div>
     </div>
   );

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { ChevronDown, Plus, Globe } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { projectApi } from '@/lib/api';
@@ -19,6 +19,7 @@ export function ProjectSelector({ currentProjectId }: { currentProjectId?: strin
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
+  const t = useTranslations('dashNav');
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -26,7 +27,7 @@ export function ProjectSelector({ currentProjectId }: { currentProjectId?: strin
 
   const { data } = useQuery({
     queryKey: ['projects'],
-    queryFn: () => projectApi.list().then((r) => r.data.data as Project[]),
+    queryFn: () => projectApi.list().then((r) => (Array.isArray(r.data) ? r.data : (r.data?.data ?? [])) as Project[]),
   });
 
   const projects = data || [];
@@ -61,7 +62,7 @@ export function ProjectSelector({ currentProjectId }: { currentProjectId?: strin
       >
         <Globe className="h-3.5 w-3.5 text-white/40 flex-shrink-0" />
         <span className="truncate text-xs font-medium">
-          {current?.domain || 'Proje Seç'}
+          {current?.domain || t('selectProject')}
         </span>
         <ChevronDown className="h-3.5 w-3.5 text-white/40 flex-shrink-0 ml-auto" />
       </button>
@@ -84,7 +85,7 @@ export function ProjectSelector({ currentProjectId }: { currentProjectId?: strin
                 <div className="min-w-0">
                   <p className="text-xs font-medium truncate">{project.domain}</p>
                   {project.healthScore !== undefined && (
-                    <p className="text-[10px] text-white/30">Sağlık: {project.healthScore}</p>
+                    <p className="text-[10px] text-white/30">{t('health')}: {project.healthScore}</p>
                   )}
                 </div>
                 {project.id === currentProjectId && (
@@ -104,7 +105,7 @@ export function ProjectSelector({ currentProjectId }: { currentProjectId?: strin
                 className="w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-white/50 hover:text-white hover:bg-white/10 transition-colors"
               >
                 <Plus className="h-4 w-4" />
-                Yeni Proje Ekle
+                {t('addProject')}
               </button>
             </div>
           </div>

@@ -162,19 +162,44 @@ export default function StaffPage() {
 
   if (isLoading) return <PageSpinner />;
 
+  const adminCount = staff.filter((s) => s.role === 'ADMIN').length;
+  const activeCount = staff.filter((s) => s.status === 'ACTIVE').length;
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="page-content">
+      <div className="page-header">
         <div>
-          <h1 className="text-xl font-bold text-[var(--text-primary)]">Staff Yönetimi</h1>
-          <p className="text-sm text-[var(--text-muted)] mt-0.5">{staff.length} staff üyesi</p>
+          <h1>Staff Yönetimi</h1>
+          <p>{staff.length} staff üyesi</p>
         </div>
         <Button variant="primary" icon={<Plus className="w-4 h-4" />} onClick={() => setModal(true)}>
           Staff Ekle
         </Button>
       </div>
 
-      <DataTable columns={columns} data={staff} searchPlaceholder="Ad, email ara..." emptyMessage="Staff bulunamadı." />
+      <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+        {[
+          { label: 'Toplam', value: staff.length, color: '#6366f1', bg: 'rgba(99,102,241,0.12)' },
+          { label: 'Admin', value: adminCount, color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+          { label: 'Aktif', value: activeCount, color: '#22c55e', bg: 'rgba(34,197,94,0.12)' },
+        ].map((s) => (
+          <div key={s.label} className="stat-card">
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: s.bg, marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, display: 'block' }} />
+            </div>
+            <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: 4 }}>{s.label}</p>
+            <p style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1.1 }}>{s.value}</p>
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${s.color}80, transparent)`, borderRadius: '0 0 12px 12px' }} />
+          </div>
+        ))}
+      </div>
+
+      <div className="section-card">
+        <div className="section-card-header">
+          <span className="section-card-title">Personel Listesi</span>
+        </div>
+        <DataTable columns={columns} data={staff} searchPlaceholder="Ad, email ara..." emptyMessage="Staff bulunamadı." noBorder />
+      </div>
 
       <Modal open={isModalOpen} onClose={closeModal} title={isEditing ? 'Staff Düzenle' : 'Staff Ekle'} size="md"
         footer={

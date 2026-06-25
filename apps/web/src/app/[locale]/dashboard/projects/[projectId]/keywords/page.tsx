@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, use } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl'
+import { useParams } from 'next/navigation';
 import {
   createColumnHelper,
   flexRender,
@@ -10,9 +12,9 @@ import {
   getSortedRowModel,
   type SortingState,
 } from '@tanstack/react-table';
-import { Plus, TrendingUp, TrendingDown, Minus, Search, X, ChevronUp, ChevronDown } from 'lucide-react';
+import { Plus, TrendingUp, TrendingDown, Minus, Search, X, ChevronUp, ChevronDown, Download } from 'lucide-react';
 import { keywordApi } from '@/lib/api';
-import { cn } from '@/lib/utils';
+import { cn, exportToCSV } from '@/lib/utils';
 import type { KeywordIntent } from '@funbreakseo/shared';
 
 interface Keyword {
@@ -34,18 +36,12 @@ const INTENT_COLORS: Record<KeywordIntent, string> = {
   COMMERCIAL: 'bg-purple-500/20 text-purple-400',
 };
 
-const INTENT_LABELS: Record<KeywordIntent, string> = {
-  INFORMATIONAL: 'Bilgi',
-  NAVIGATIONAL: 'Gezinti',
-  TRANSACTIONAL: 'İşlem',
-  COMMERCIAL: 'Ticari',
-};
-
 const columnHelper = createColumnHelper<Keyword>();
 
-export default function KeywordsPage({ params }: { params: Promise<{ projectId: string }> }) {
-  const { projectId } = use(params);
+export default function KeywordsPage() {
+  const { projectId } = useParams<{ projectId: string }>();
   const queryClient = useQueryClient();
+  const t = useTranslations('keywordsPage');
   const [sorting, setSorting] = useState<SortingState>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [keywordInput, setKeywordInput] = useState('');
@@ -53,7 +49,7 @@ export default function KeywordsPage({ params }: { params: Promise<{ projectId: 
 
   const { data, isLoading } = useQuery({
     queryKey: ['keywords', projectId],
-    queryFn: () => keywordApi.list(projectId).then((r) => r.data.data as Keyword[]),
+    queryFn: () => keywordApi.list(projectId).then((r) => (r.data?.data ?? []) as Keyword[]),
   });
 
   const addMutation = useMutation({
@@ -63,12 +59,11 @@ export default function KeywordsPage({ params }: { params: Promise<{ projectId: 
       setShowAddModal(false);
       setKeywordInput('');
     },
-    onError: () => setAddError('Kelimeler eklenemedi. Lütfen tekrar deneyin.'),
+    onError: () => setAddError(t('addModalErrorFailed')),
   });
 
   const keywords = data || [];
 
-  // Summary stats
   const firstPageCount = keywords.filter((k) => k.position !== null && k.position <= 10).length;
   const top3Count = keywords.filter((k) => k.position !== null && k.position <= 3).length;
   const avgPos = keywords.length > 0
@@ -80,11 +75,11 @@ export default function KeywordsPage({ params }: { params: Promise<{ projectId: 
 
   const columns = [
     columnHelper.accessor('keyword', {
-      header: 'Anahtar Kelime',
+      header: t('colKeyword'),
       cell: (info) => <span className="font-medium text-white">{info.getValue()}</span>,
     }),
     columnHelper.accessor('position', {
-      header: 'Pozisyon',
+      header: t('colPosition'),
       cell: (info) => {
         const pos = info.getValue();
         const delta = info.row.original.positionDelta;
@@ -102,11 +97,11 @@ export default function KeywordsPage({ params }: { params: Promise<{ projectId: 
       },
     }),
     columnHelper.accessor('searchVolume', {
-      header: 'Hacim',
-      cell: (info) => info.getValue()?.toLocaleString('tr-TR') ?? '—',
+      header: t('colVolume'),
+      cell: (info) => info.getValue()?.toLocaleString() ?? '—',
     }),
     columnHelper.accessor('difficulty', {
-      header: 'Zorluk',
+      header: t('colDifficulty'),
       cell: (info) => {
         const v = info.getValue();
         return (
@@ -123,9 +118,15 @@ export default function KeywordsPage({ params }: { params: Promise<{ projectId: 
       },
     }),
     columnHelper.accessor('intent', {
-      header: 'İniyet',
+      header: t('colIntent'),
       cell: (info) => {
         const intent = info.getValue();
+        const INTENT_LABELS: Record<KeywordIntent, string> = {
+          INFORMATIONAL: t('intentInfo'),
+          NAVIGATIONAL: t('intentNav'),
+          TRANSACTIONAL: t('intentTrans'),
+          COMMERCIAL: t('intentComm'),
+        };
         return (
           <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', INTENT_COLORS[intent])}>
             {INTENT_LABELS[intent]}
@@ -151,7 +152,7 @@ export default function KeywordsPage({ params }: { params: Promise<{ projectId: 
       .map((w) => w.trim())
       .filter(Boolean);
     if (words.length === 0) {
-      setAddError('En az bir anahtar kelime girin.');
+      setAddError(t('addModalErrorEmpty'));
       return;
     }
     addMutation.mutate(words);
@@ -161,25 +162,54 @@ export default function KeywordsPage({ params }: { params: Promise<{ projectId: 
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">Anahtar Kelimeler</h1>
-          <p className="text-white/50 text-sm mt-1">{keywords.length} kelime takip ediliyor</p>
+          <h1 className="text-2xl font-bold text-white">{t('title')}</h1>
+          <p className="text-white/50 text-sm mt-1">{t('trackedCount', { count: keywords.length })}</p>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 transition-all"
-        >
-          <Plus className="h-4 w-4" />
-          Kelime Ekle
-        </button>
+        <div className="flex items-center gap-2">
+          {keywords.length > 0 && (
+            <button
+              onClick={() => exportToCSV(
+                keywords.map((k) => ({
+                  keyword: k.keyword,
+                  position: k.position ?? '',
+                  searchVolume: k.searchVolume,
+                  difficulty: k.difficulty,
+                  intent: k.intent,
+                  updatedAt: k.updatedAt,
+                })),
+                [
+                  { key: 'keyword', label: 'Kelime' },
+                  { key: 'position', label: 'Pozisyon' },
+                  { key: 'searchVolume', label: 'Arama Hacmi' },
+                  { key: 'difficulty', label: 'Zorluk' },
+                  { key: 'intent', label: 'Niyet' },
+                  { key: 'updatedAt', label: 'Güncelleme' },
+                ],
+                'anahtar-kelimeler.csv'
+              )}
+              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-white/70 hover:bg-white/10 transition-all"
+            >
+              <Download className="h-4 w-4" />
+              CSV
+            </button>
+          )}
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 transition-all"
+          >
+            <Plus className="h-4 w-4" />
+            {t('addBtn')}
+          </button>
+        </div>
       </div>
 
       {/* Summary strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         {[
-          { label: 'Toplam', value: keywords.length },
-          { label: 'İlk Sayfada', value: firstPageCount },
-          { label: 'İlk 3', value: top3Count },
-          { label: 'Ort. Pozisyon', value: avgPos !== null ? avgPos.toFixed(1) : '—' },
+          { label: t('total'), value: keywords.length },
+          { label: t('firstPage'), value: firstPageCount },
+          { label: t('top3'), value: top3Count },
+          { label: t('avgPos'), value: avgPos !== null ? avgPos.toFixed(1) : '—' },
         ].map((s) => (
           <div key={s.label} className="rounded-xl border border-white/10 bg-white/2 p-3 text-center">
             <div className="text-2xl font-bold text-white">{s.value}</div>
@@ -191,17 +221,17 @@ export default function KeywordsPage({ params }: { params: Promise<{ projectId: 
       {/* Table */}
       <div className="rounded-2xl border border-white/10 overflow-hidden">
         {isLoading ? (
-          <div className="p-8 text-center text-white/30">Yükleniyor...</div>
+          <div className="p-8 text-center text-white/30">{t('loading')}</div>
         ) : keywords.length === 0 ? (
           <div className="p-12 text-center">
             <Search className="h-10 w-10 text-white/20 mx-auto mb-3" />
-            <p className="text-white/50 mb-4">Henüz anahtar kelime yok</p>
+            <p className="text-white/50 mb-4">{t('empty')}</p>
             <button
               onClick={() => setShowAddModal(true)}
               className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 transition-all"
             >
               <Plus className="h-4 w-4" />
-              İlk Kelimeleri Ekle
+              {t('addFirstBtn')}
             </button>
           </div>
         ) : (
@@ -248,17 +278,17 @@ export default function KeywordsPage({ params }: { params: Promise<{ projectId: 
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowAddModal(false)} />
           <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-[#111118] p-6 shadow-2xl">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-white">Anahtar Kelime Ekle</h2>
+              <h2 className="text-lg font-semibold text-white">{t('addModalTitle')}</h2>
               <button onClick={() => setShowAddModal(false)} className="p-1 rounded-lg text-white/50 hover:text-white hover:bg-white/10">
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <p className="text-xs text-white/40 mb-3">Her satıra bir kelime girin (maksimum 50 kelime)</p>
+            <p className="text-xs text-white/40 mb-3">{t('addModalHint')}</p>
             <textarea
               value={keywordInput}
               onChange={(e) => setKeywordInput(e.target.value)}
               className="w-full h-40 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-white/30 resize-none focus:border-indigo-500/50 focus:outline-none"
-              placeholder={"seo aracı\nanahtar kelime takibi\ngeo görünürlük"}
+              placeholder={t('addModalPlaceholder')}
             />
             {addError && <p className="mt-2 text-xs text-red-400">{addError}</p>}
             <div className="flex gap-3 mt-4">
@@ -266,14 +296,14 @@ export default function KeywordsPage({ params }: { params: Promise<{ projectId: 
                 onClick={() => setShowAddModal(false)}
                 className="flex-1 rounded-xl border border-white/20 py-2.5 text-sm font-medium text-white/60 hover:bg-white/10 transition-colors"
               >
-                İptal
+                {t('addModalCancel')}
               </button>
               <button
                 onClick={handleAddKeywords}
                 disabled={addMutation.isPending}
                 className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 transition-all"
               >
-                {addMutation.isPending ? 'Ekleniyor...' : 'Ekle'}
+                {addMutation.isPending ? t('addModalSubmitting') : t('addModalSubmit')}
               </button>
             </div>
           </div>

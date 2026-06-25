@@ -3,10 +3,8 @@ export const dynamic = 'force-dynamic';
 
 import { useQuery } from '@tanstack/react-query';
 import { adminApi } from '@/lib/api';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { LineChart } from '@/components/charts/LineChart';
-import { BarChart3, Users, Globe, TrendingUp, Eye, MousePointer } from 'lucide-react';
 
 const MOCK_ANALYTICS = {
   summary: {
@@ -41,6 +39,7 @@ const MOCK_ANALYTICS = {
   ],
 };
 
+
 export default function AnalyticsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['admin-analytics'],
@@ -57,93 +56,87 @@ export default function AnalyticsPage() {
   if (isLoading) return <PageSpinner />;
   const d = (data ?? MOCK_ANALYTICS) as typeof MOCK_ANALYTICS;
 
-  const kpis = [
-    { label: 'Toplam Kullanıcı', value: d.summary.totalUsers.toLocaleString('tr-TR'), icon: Users, color: 'indigo' },
-    { label: 'Aktif Kullanıcı', value: d.summary.activeUsers.toLocaleString('tr-TR'), icon: Eye, color: 'emerald' },
-    { label: 'Bu Ay Yeni', value: `+${d.summary.newUsersThisMonth}`, icon: TrendingUp, color: 'blue' },
-    { label: 'Sayfa Görüntüleme', value: d.summary.pageViews.toLocaleString('tr-TR'), icon: Globe, color: 'purple' },
-    { label: 'Ort. Oturum Süresi', value: d.summary.avgSessionDuration, icon: MousePointer, color: 'amber' },
-    { label: 'Hemen Çıkma', value: d.summary.bounceRate, icon: BarChart3, color: 'red' },
-  ];
-
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-bold text-[var(--text-primary)]">Platform Analitiği</h1>
-        <p className="text-sm text-[var(--text-muted)] mt-0.5">Kullanıcı trafiği ve platform kullanım istatistikleri</p>
+    <div className="page-content">
+      <div className="page-header">
+        <div>
+          <h1>Platform Analitiği</h1>
+          <p>Kullanıcı trafiği ve platform kullanım istatistikleri</p>
+        </div>
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        {kpis.map((k) => (
-          <Card key={k.label} className="p-3">
-            <div className={`w-7 h-7 rounded-lg bg-${k.color}-500/15 flex items-center justify-center mb-2`}>
-              <k.icon className={`w-3.5 h-3.5 text-${k.color}-400`} />
+      <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
+        {[
+          { label: 'Toplam Kullanıcı', value: d.summary.totalUsers.toLocaleString('tr-TR'), color: '#6366f1', bg: 'rgba(99,102,241,0.12)' },
+          { label: 'Aktif Kullanıcı', value: d.summary.activeUsers.toLocaleString('tr-TR'), color: '#22c55e', bg: 'rgba(34,197,94,0.12)' },
+          { label: 'Bu Ay Yeni', value: `+${d.summary.newUsersThisMonth}`, color: '#6366f1', bg: 'rgba(99,102,241,0.12)' },
+          { label: 'Sayfa Görüntüleme', value: d.summary.pageViews.toLocaleString('tr-TR'), color: '#a855f7', bg: 'rgba(168,85,247,0.12)' },
+          { label: 'Ort. Oturum', value: d.summary.avgSessionDuration, color: '#eab308', bg: 'rgba(234,179,8,0.12)' },
+          { label: 'Hemen Çıkma', value: d.summary.bounceRate, color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+        ].map((k) => (
+          <div key={k.label} className="stat-card">
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: k.bg, marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: k.color, display: 'block' }} />
             </div>
-            <p className="text-[11px] text-[var(--text-muted)] mb-0.5">{k.label}</p>
-            <p className="text-lg font-bold text-[var(--text-primary)]">{k.value}</p>
-          </Card>
+            <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: 4 }}>{k.label}</p>
+            <p style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1.1 }}>{k.value}</p>
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${k.color}80, transparent)`, borderRadius: '0 0 12px 12px' }} />
+          </div>
         ))}
       </div>
 
       {/* Traffic trend */}
-      <Card>
-        <CardHeader><CardTitle>Trafik Trendi (6 Ay)</CardTitle></CardHeader>
-        <CardContent>
+      <div className="section-card">
+        <div className="section-card-header"><span className="section-card-title">Trafik Trendi (6 Ay)</span></div>
+        <div style={{ padding: 20 }}>
           <LineChart
             data={d.trafficTrend}
             lines={[
               { key: 'users', color: '#6366f1', label: 'Kullanıcı' },
-              { key: 'pageViews', color: '#10b981', label: 'Sayfa Görüntüleme' },
+              { key: 'pageViews', color: '#22c55e', label: 'Sayfa Görüntüleme' },
             ]}
             xKey="date"
             yFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}K` : String(v)}
           />
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
         {/* Top pages */}
-        <Card>
-          <CardHeader><CardTitle>En Çok Ziyaret Edilen Sayfalar</CardTitle></CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {d.topPages.map((p, i) => (
-                <div key={p.path} className="flex items-center gap-3">
-                  <span className="text-xs font-bold text-[var(--text-muted)] w-4">{i + 1}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-[var(--text-primary)] truncate">{p.label}</p>
-                    <p className="text-xs text-[var(--text-muted)] truncate">{p.path}</p>
-                  </div>
-                  <span className="text-sm font-semibold text-[var(--text-primary)]">{p.views.toLocaleString('tr-TR')}</span>
+        <div className="section-card">
+          <div className="section-card-header"><span className="section-card-title">En Çok Ziyaret Edilen Sayfalar</span></div>
+          <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {d.topPages.map((p, i) => (
+              <div key={p.path} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', width: 16, flexShrink: 0 }}>{i + 1}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 13, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.label}</p>
+                  <p style={{ fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'monospace' }}>{p.path}</p>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', flexShrink: 0 }}>{p.views.toLocaleString('tr-TR')}</span>
+              </div>
+            ))}
+          </div>
+        </div>
 
         {/* Traffic sources */}
-        <Card>
-          <CardHeader><CardTitle>Trafik Kaynakları</CardTitle></CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {d.trafficSources.map((s) => (
-                <div key={s.source}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="text-[var(--text-secondary)]">{s.source}</span>
-                    <span className="font-medium text-[var(--text-primary)]">{s.pct}%</span>
-                  </div>
-                  <div className="h-1.5 bg-[var(--bg-elevated)] rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-[var(--accent)] rounded-full transition-all"
-                      style={{ width: `${s.pct}%` }}
-                    />
-                  </div>
+        <div className="section-card">
+          <div className="section-card-header"><span className="section-card-title">Trafik Kaynakları</span></div>
+          <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {d.trafficSources.map((s) => (
+              <div key={s.source}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>{s.source}</span>
+                  <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{s.pct}%</span>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                <div style={{ height: 6, background: 'var(--bg-elevated)', borderRadius: 3, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${s.pct}%`, background: 'var(--accent)', borderRadius: 3, transition: 'width 0.3s' }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

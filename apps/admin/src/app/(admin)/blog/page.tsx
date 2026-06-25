@@ -132,31 +132,57 @@ export default function BlogPage() {
     else { createMutation.mutate(d); }
   });
 
+  const publishedCount = posts.filter((p) => p.status === 'PUBLISHED').length;
+  const draftCount = posts.filter((p) => p.status === 'DRAFT').length;
+  const totalViews = posts.reduce((a, p) => a + p.viewCount, 0);
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="page-content">
+      <div className="page-header">
         <div>
-          <h1 className="text-xl font-bold text-[var(--text-primary)]">Blog Yönetimi</h1>
-          <p className="text-sm text-[var(--text-muted)] mt-0.5">{posts.length} yazı</p>
+          <h1>Blog Yönetimi</h1>
+          <p>{posts.length} yazı · {publishedCount} yayında · {draftCount} taslak</p>
         </div>
         <Button variant="primary" icon={<Plus className="w-4 h-4" />} onClick={() => setModalOpen(true)}>
           Yeni Yazı
         </Button>
       </div>
 
-      <DataTable
-        columns={columns}
-        data={filtered}
-        searchPlaceholder="Başlık, slug ara..."
-        emptyMessage="Blog yazısı bulunamadı."
-        toolbar={
+      <div className="kpi-grid">
+        {[
+          { label: 'Toplam', value: posts.length, color: '#6366f1', bg: 'rgba(99,102,241,0.12)' },
+          { label: 'Yayında', value: publishedCount, color: '#22c55e', bg: 'rgba(34,197,94,0.12)' },
+          { label: 'Taslak', value: draftCount, color: '#eab308', bg: 'rgba(234,179,8,0.12)' },
+          { label: 'Görüntüleme', value: totalViews.toLocaleString('tr-TR'), color: '#a855f7', bg: 'rgba(168,85,247,0.12)' },
+        ].map((s) => (
+          <div key={s.label} className="stat-card">
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: s.bg, marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, display: 'block' }} />
+            </div>
+            <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: 4 }}>{s.label}</p>
+            <p style={{ fontSize: typeof s.value === 'string' ? 20 : 28, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1.1 }}>{s.value}</p>
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${s.color}80, transparent)`, borderRadius: '0 0 12px 12px' }} />
+          </div>
+        ))}
+      </div>
+
+      <div className="section-card">
+        <div className="section-card-header">
+          <span className="section-card-title">Blog Yazıları</span>
           <Select
             options={[{ value: '', label: 'Tüm Diller' }, ...LOCALES.map((l) => ({ value: l, label: l.toUpperCase() }))]}
             value={localeFilter}
             onChange={(e) => setLocaleFilter(e.target.value)}
           />
-        }
-      />
+        </div>
+        <DataTable
+          columns={columns}
+          data={filtered}
+          searchPlaceholder="Başlık, slug ara..."
+          emptyMessage="Blog yazısı bulunamadı."
+          noBorder
+        />
+      </div>
 
       <Modal open={isModalOpen} onClose={closeModal} title={modalTitle} size="xl"
         footer={
