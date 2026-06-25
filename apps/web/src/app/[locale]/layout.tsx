@@ -6,6 +6,7 @@ import { SUPPORTED_LOCALES, RTL_LOCALES, type Locale } from '@funbreakseo/shared
 import { Providers } from '@/components/Providers';
 import { WhatsAppFab } from '@/components/WhatsAppFab';
 import { CookieConsentBanner } from '@/components/CookieConsentBanner';
+import '@/app/globals.css';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
 const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains-mono', display: 'swap' });

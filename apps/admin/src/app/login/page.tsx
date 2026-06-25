@@ -18,12 +18,14 @@ export default function AdminLoginPage() {
     setError('');
     try {
       const res = await adminApi.post('/auth/login', { email, password });
-      const { user, accessToken } = res.data.data;
+      const payload = res.data.data;
+      const { user, tokens } = payload as { user: { role: string }, tokens: { accessToken: string; refreshToken: string } };
       if (!['ADMIN', 'SUPER_ADMIN', 'STAFF'].includes(user.role)) {
         setError('Bu panele erişim yetkiniz yok.');
         return;
       }
-      setAuth(user, accessToken);
+      if (tokens.refreshToken) localStorage.setItem('admin_refresh_token', tokens.refreshToken);
+      setAuth(user, tokens.accessToken);
       router.push('/dashboard');
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;

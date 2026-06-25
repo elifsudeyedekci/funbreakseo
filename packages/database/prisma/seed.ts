@@ -4,7 +4,7 @@ import * as crypto from 'crypto';
 const prisma = new PrismaClient();
 
 // bcrypt hash of "Admin123!" — pre-computed (cost 10)
-const ADMIN_PASSWORD_HASH = '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi';
+const ADMIN_PASSWORD_HASH = '$2b$10$dFYdtM3xIA.yPysXW5E72.ZatreS5BKjdDdjDAn4yNRjrforyEtnS';
 
 async function main() {
   console.log('Seeding database...');

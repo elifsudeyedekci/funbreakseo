@@ -177,13 +177,34 @@ export class AuthService {
   }
 
   // ─── Login ──────────────────────────────────────────────────────────────────
-  async login(user: User): Promise<AuthTokens> {
+  async login(user: User) {
     const tokens = await this.generateTokens(user);
+    const fullUser = await this.prisma.user.findUniqueOrThrow({
+      where: { id: user.id },
+      include: {
+        organization: {
+          include: { subscription: { include: { plan: true } } },
+        },
+      },
+    });
     await this.prisma.user.update({
       where: { id: user.id },
       data: { lastLoginAt: new Date() },
     });
-    return tokens;
+    const { passwordHash, emailVerifyToken, twoFactorSecret, ...safeUser } = fullUser;
+    return {
+      data: {
+        user: safeUser,
+        organization: safeUser.organization,
+        subscription: safeUser.organization?.subscription ?? null,
+        pendingConsents: [],
+        requiresTwoFactor: false,
+        tokens: {
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+        },
+      },
+    };
   }
 
   // ─── Refresh Token ──────────────────────────────────────────────────────────
