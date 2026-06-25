@@ -55,7 +55,29 @@
     "trustedBy": "कंपनियाँ हम पर भरोसा करती हैं",
     "freeAudit": "अपनी वेबसाइट का मुफ़्त विश्लेषण करें",
     "freeAuditPlaceholder": "domain.com",
-    "freeAuditBtn": "विश्लेषण करें"
+    "freeAuditBtn": "विश्लेषण करें",
+    "statProjects": "सक्रिय प्रोजेक्ट",
+    "statKeywords": "ट्रैक किए गए कीवर्ड",
+    "statPages": "विश्लेषित पेज",
+    "metricOrganicLabel": "ऑर्गेनिक ट्रैफिक",
+    "metricOrganicSub": "पिछले 3 महीने",
+    "metricRankingLabel": "रैंकिंग",
+    "metricRankingValue": "#1 स्थान",
+    "metricRankingSub": "\"seo टूल\" — Google IN",
+    "metricAILabel": "AI Mentions",
+    "metricAIValue": "247 पाए गए",
+    "dashBadgeOrganic": "ऑर्गेनिक ट्रैफिक",
+    "dashNavScan": "SEO स्कैन",
+    "dashNavKeywords": "कीवर्ड",
+    "dashNavContent": "AI सामग्री",
+    "dashKpiSeoScore": "SEO स्कोर",
+    "dashKpiOrganic": "ऑर्गेनिक ट्रैफिक",
+    "dashKpiGeoScore": "GEO स्कोर",
+    "dashKpiRankings": "रैंकिंग",
+    "dashKpiSub1": "+12 इस महीने",
+    "dashKpiSub2": "+34% वृद्धि",
+    "dashKpiSub4": "67 पहला पेज",
+    "dashKeywordsLabel": "कीवर्ड"
   },
   "features": {
     "title": "एक ही प्लेटफ़ॉर्म पर सब कुछ",
@@ -94,7 +116,11 @@
     "citation": "उद्धरण",
     "citationDesc": "AI का आपकी साइट को स्रोत के रूप में उद्धृत करना",
     "ratio": "उद्धरण/उल्लेख अनुपात",
-    "ratioDesc": "10% से कम → कंटेंट संरचना समस्या"
+    "ratioDesc": "10% से कम → कंटेंट संरचना समस्या",
+    "learnMore": "GEO के बारे में अधिक जानें",
+    "trackedPlatforms": "ट्रैक किए जा रहे AI प्लेटफॉर्म",
+    "geoScore": "GEO दृश्यता स्कोर",
+    "last30Days": "पिछले 30 दिन"
   },
   "pricing": {
     "title": "पारदर्शी मूल्य निर्धारण",
@@ -131,7 +157,9 @@
       "tracking": "रैंक ट्रैकिंग गहराई",
       "firstPage": "पहला पृष्ठ",
       "top100": "टॉप 100"
-    }
+    },
+    "badge": "मूल्य निर्धारण",
+    "compareAll": "सभी सुविधाएं और एंटरप्राइज़ योजना की तुलना करें →"
   },
   "auth": {
     "login": "लॉग इन",
@@ -206,7 +234,18 @@
     "distanceSales": "दूरस्थ बिक्री अनुबंध",
     "refund": "वापसी नीति",
     "allRights": "सर्वाधिकार सुरक्षित।",
-    "whatsapp": "WhatsApp सहायता"
+    "whatsapp": "WhatsApp सहायता",
+    "techSeo": "तकनीकी SEO स्कैन",
+    "aiContent": "AI कंटेंट इंजन",
+    "geoVisibility": "GEO / AI दृश्यता",
+    "backlinkMarket": "बैकलिंक मार्केट",
+    "outreach": "डिजिटल PR / Outreach",
+    "rankTracking": "रैंक ट्रैकिंग",
+    "pricing": "मूल्य निर्धारण",
+    "aboutUs": "हमारे बारे में",
+    "contact": "संपर्क",
+    "geoWhat": "GEO क्या है?",
+    "freeAnalysis": "मुफ़्त साइट विश्लेषण"
   },
   "cookie": {
     "title": "कुकी प्राथमिकताएं",
@@ -273,7 +312,9 @@
     "title": "Blog",
     "subtitle": "SEO और GEO पर नवीनतम लेख, सुझाव और सर्वोत्तम अभ्यास।",
     "readTime": "मिनट पढ़ें",
-    "all": "सभी"
+    "all": "सभी",
+    "backToBlog": "← ब्लॉग पर वापस",
+    "author": "लेखक"
   },
   "testimonials": {
     "badge": "ग्राहक समीक्षाएं",
@@ -500,7 +541,8 @@
     "addModalCancel": "रद्द करें",
     "addModalErrorEmpty": "कम से कम एक कीवर्ड दर्ज करें।",
     "addModalErrorFailed": "कीवर्ड नहीं जोड़े जा सके। पुनः प्रयास करें।",
-    "addModalPlaceholder": "seo tool\nकीवर्ड ट्रैकिंग\ngeo दृश्यता"
+    "addModalPlaceholder": "seo tool\nकीवर्ड ट्रैकिंग\ngeo दृश्यता",
+    "colUpdated": "अपडेट"
   },
   "auditPage": {
     "title": "तकनीकी SEO ऑडिट",
@@ -519,7 +561,11 @@
     "noIssuesFilter": "इस फ़िल्टर के लिए कोई समस्या नहीं",
     "startScanPrompt": "स्कैन शुरू करें",
     "howToFix": "कैसे ठीक करें?",
-    "affectedPages": "{count} पृष्ठ"
+    "affectedPages": "{count} पृष्ठ",
+    "csvSeverity": "गंभीरता",
+    "csvCategory": "श्रेणी",
+    "csvMessage": "समस्या",
+    "csvCount": "संख्या"
   },
   "billingPage": {
     "title": "बिलिंग",
@@ -874,5 +920,32 @@
     "statusInProgress": "İşlemde",
     "statusCompleted": "Tamamlandı",
     "statusCancelled": "İptal"
+  },
+  "notificationBell": {
+    "title": "सूचनाएं",
+    "markAllRead": "सभी को पढ़ा हुआ चिह्नित करें",
+    "empty": "कोई सूचना नहीं"
+  },
+  "consentModal": {
+    "heading": "समझौता अद्यतन",
+    "description": "हमारे प्लेटफ़ॉर्म का उपयोग जारी रखने के लिए, आपको निम्नलिखित अद्यतन समझौतों को पढ़ना और स्वीकार करना होगा। यह चरण छोड़ा नहीं जा सकता।",
+    "consentTerms": "अद्यतन सेवा की शर्तें",
+    "consentKvkk": "डेटा संरक्षण सूचना (KVKK)",
+    "consentDistanceSales": "दूरस्थ बिक्री समझौता",
+    "consentPrivacy": "गोपनीयता नीति",
+    "readAndAccept": "मैंने पढ़ा और स्वीकार करता हूं",
+    "saving": "सहेज रहा है...",
+    "acceptAndContinue": "मैं स्वीकार करता हूं और जारी रखता हूं"
+  },
+  "dashContent": {
+    "title": "सामग्री",
+    "subtitle": "AI-संचालित सामग्री प्रबंधन SEO + GEO स्कोरिंग के साथ।",
+    "generateBtn": "+ सामग्री बनाएं",
+    "tabList": "सूची",
+    "tabCalendar": "कैलेंडर",
+    "calPrev": "‹ पिछला",
+    "calNext": "अगला ›",
+    "calEmpty": "इस महीने कोई सामग्री निर्धारित नहीं है।",
+    "untitled": "सामग्री"
   }
 }

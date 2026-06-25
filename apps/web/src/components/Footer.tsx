@@ -13,21 +13,21 @@ export function Footer() {
 
   const productLinks = [
     { href: localePath('/ozellikler'), label: t('product') },
-    { href: localePath('/ozellikler/seo-tarama'), label: 'Teknik SEO Tarama' },
-    { href: localePath('/ozellikler/icerik-motoru'), label: 'AI İçerik Motoru' },
-    { href: localePath('/ozellikler/geo-ai-gorunurluk'), label: 'GEO / AI Görünürlük' },
-    { href: localePath('/ozellikler/backlink-market'), label: 'Backlink Market' },
-    { href: localePath('/ozellikler/outreach'), label: 'Dijital PR / Outreach' },
-    { href: localePath('/ozellikler/siralama-takibi'), label: 'Sıralama Takibi' },
-    { href: localePath('/fiyatlandirma'), label: 'Fiyatlandırma' },
+    { href: localePath('/ozellikler/seo-tarama'), label: t('techSeo') },
+    { href: localePath('/ozellikler/icerik-motoru'), label: t('aiContent') },
+    { href: localePath('/ozellikler/geo-ai-gorunurluk'), label: t('geoVisibility') },
+    { href: localePath('/ozellikler/backlink-market'), label: t('backlinkMarket') },
+    { href: localePath('/ozellikler/outreach'), label: t('outreach') },
+    { href: localePath('/ozellikler/siralama-takibi'), label: t('rankTracking') },
+    { href: localePath('/fiyatlandirma'), label: t('pricing') },
   ];
 
   const companyLinks = [
-    { href: localePath('/hakkimizda'), label: 'Hakkımızda' },
+    { href: localePath('/hakkimizda'), label: t('aboutUs') },
     { href: localePath('/blog'), label: 'Blog' },
-    { href: localePath('/iletisim'), label: 'İletişim' },
-    { href: localePath('/geo'), label: 'GEO Nedir?' },
-    { href: localePath('/ucretsiz-analiz'), label: 'Ücretsiz Site Analizi' },
+    { href: localePath('/iletisim'), label: t('contact') },
+    { href: localePath('/geo'), label: t('geoWhat') },
+    { href: localePath('/ucretsiz-analiz'), label: t('freeAnalysis') },
   ];
 
   const legalLinks = [

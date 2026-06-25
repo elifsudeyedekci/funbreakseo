@@ -55,7 +55,29 @@
     "trustedBy": "empresas confían en nosotros",
     "freeAudit": "Analiza tu sitio web gratis",
     "freeAuditPlaceholder": "domain.com",
-    "freeAuditBtn": "Analizar"
+    "freeAuditBtn": "Analizar",
+    "statProjects": "Proyectos activos",
+    "statKeywords": "Palabras clave rastreadas",
+    "statPages": "Páginas analizadas",
+    "metricOrganicLabel": "Tráfico orgánico",
+    "metricOrganicSub": "Últimos 3 meses",
+    "metricRankingLabel": "Clasificación",
+    "metricRankingValue": "#1 Posición",
+    "metricRankingSub": "\"herramienta seo\" — Google ES",
+    "metricAILabel": "AI Mentions",
+    "metricAIValue": "247 detectados",
+    "dashBadgeOrganic": "Tráfico orgánico",
+    "dashNavScan": "Análisis SEO",
+    "dashNavKeywords": "Palabras clave",
+    "dashNavContent": "Contenido IA",
+    "dashKpiSeoScore": "Puntuación SEO",
+    "dashKpiOrganic": "Tráfico orgánico",
+    "dashKpiGeoScore": "Puntuación GEO",
+    "dashKpiRankings": "Clasificaciones",
+    "dashKpiSub1": "+12 este mes",
+    "dashKpiSub2": "+34% aumento",
+    "dashKpiSub4": "67 primera página",
+    "dashKeywordsLabel": "Palabras clave"
   },
   "features": {
     "title": "Todo en una sola plataforma",
@@ -94,7 +116,11 @@
     "citation": "Cita",
     "citationDesc": "La IA cita tu sitio como fuente",
     "ratio": "Ratio Cita/Mención",
-    "ratioDesc": "Menos del 10 % → problema de estructura de contenido"
+    "ratioDesc": "Menos del 10 % → problema de estructura de contenido",
+    "learnMore": "Más información sobre GEO",
+    "trackedPlatforms": "Plataformas de IA rastreadas",
+    "geoScore": "Puntuación de visibilidad GEO",
+    "last30Days": "Últimos 30 días"
   },
   "pricing": {
     "title": "Precios transparentes",
@@ -131,7 +157,9 @@
       "tracking": "Profundidad de seguimiento de posición",
       "firstPage": "Primera página",
       "top100": "Top 100"
-    }
+    },
+    "badge": "Precios",
+    "compareAll": "Comparar todas las funciones y el plan Empresarial →"
   },
   "auth": {
     "login": "Iniciar sesión",
@@ -206,7 +234,18 @@
     "distanceSales": "Contrato de venta a distancia",
     "refund": "Política de reembolso",
     "allRights": "Todos los derechos reservados.",
-    "whatsapp": "Soporte por WhatsApp"
+    "whatsapp": "Soporte por WhatsApp",
+    "techSeo": "Escaneo SEO Técnico",
+    "aiContent": "Motor de Contenido IA",
+    "geoVisibility": "GEO / Visibilidad IA",
+    "backlinkMarket": "Mercado de Backlinks",
+    "outreach": "PR Digital / Outreach",
+    "rankTracking": "Seguimiento de Posiciones",
+    "pricing": "Precios",
+    "aboutUs": "Acerca de nosotros",
+    "contact": "Contacto",
+    "geoWhat": "¿Qué es GEO?",
+    "freeAnalysis": "Análisis de Sitio Gratis"
   },
   "cookie": {
     "title": "Preferencias de cookies",
@@ -273,7 +312,9 @@
     "title": "Blog",
     "subtitle": "Últimos artículos, consejos y mejores prácticas sobre SEO y GEO.",
     "readTime": "min de lectura",
-    "all": "Todo"
+    "all": "Todo",
+    "backToBlog": "← Volver al blog",
+    "author": "Autor"
   },
   "testimonials": {
     "badge": "Opiniones de clientes",
@@ -500,7 +541,8 @@
     "addModalCancel": "Cancelar",
     "addModalErrorEmpty": "Introduce al menos una palabra clave.",
     "addModalErrorFailed": "No se pudieron añadir las palabras clave. Inténtalo de nuevo.",
-    "addModalPlaceholder": "seo tool\nrastreo de palabras clave\nvisibilidad geo"
+    "addModalPlaceholder": "seo tool\nrastreo de palabras clave\nvisibilidad geo",
+    "colUpdated": "Actualizado"
   },
   "auditPage": {
     "title": "Auditoría SEO Técnica",
@@ -519,7 +561,11 @@
     "noIssuesFilter": "No se encontraron problemas para este filtro",
     "startScanPrompt": "Iniciar un escaneo",
     "howToFix": "¿Cómo solucionarlo?",
-    "affectedPages": "{count} páginas"
+    "affectedPages": "{count} páginas",
+    "csvSeverity": "Gravedad",
+    "csvCategory": "Categoría",
+    "csvMessage": "Problema",
+    "csvCount": "Cantidad"
   },
   "billingPage": {
     "title": "Facturación",
@@ -874,5 +920,32 @@
     "statusInProgress": "İşlemde",
     "statusCompleted": "Tamamlandı",
     "statusCancelled": "İptal"
+  },
+  "notificationBell": {
+    "title": "Notificaciones",
+    "markAllRead": "Marcar todo como leído",
+    "empty": "Sin notificaciones"
+  },
+  "consentModal": {
+    "heading": "Actualización de acuerdos",
+    "description": "Para continuar usando nuestra plataforma, debe leer y aceptar los siguientes acuerdos actualizados. Este paso no se puede omitir.",
+    "consentTerms": "Términos de servicio actualizados",
+    "consentKvkk": "Aviso de protección de datos (KVKK)",
+    "consentDistanceSales": "Contrato de venta a distancia",
+    "consentPrivacy": "Política de privacidad",
+    "readAndAccept": "He leído y acepto",
+    "saving": "Guardando...",
+    "acceptAndContinue": "Acepto y continúo"
+  },
+  "dashContent": {
+    "title": "Contenido",
+    "subtitle": "Gestión de contenido impulsada por IA con puntuación SEO + GEO.",
+    "generateBtn": "+ Generar contenido",
+    "tabList": "Lista",
+    "tabCalendar": "Calendario",
+    "calPrev": "‹ Anterior",
+    "calNext": "Siguiente ›",
+    "calEmpty": "No hay contenido programado este mes.",
+    "untitled": "Contenido"
   }
 }

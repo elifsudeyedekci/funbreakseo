@@ -84,8 +84,14 @@ export default function AutopilotPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['admin-autopilot'],
     queryFn: async () => {
-      try { const r = await adminApi.get('/admin/autopilot'); return r.data; }
-      catch { return { settings: MOCK_SETTINGS, queue: MOCK_QUEUE, stats: MOCK_STATS }; }
+      try {
+        const [settingsRes, dashRes, queueRes] = await Promise.all([
+          adminApi.get('/admin/autopilot/settings'),
+          adminApi.get('/admin/autopilot/dashboard'),
+          adminApi.get('/admin/autopilot/queue'),
+        ]);
+        return { settings: settingsRes.data, stats: dashRes.data, queue: queueRes.data };
+      } catch { return { settings: MOCK_SETTINGS, queue: MOCK_QUEUE, stats: MOCK_STATS }; }
     },
   });
 

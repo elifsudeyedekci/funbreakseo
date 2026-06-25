@@ -56,7 +56,29 @@
     "trustedBy": "companies trust us",
     "freeAudit": "Analyze your website for free",
     "freeAuditPlaceholder": "domain.com",
-    "freeAuditBtn": "Analyze"
+    "freeAuditBtn": "Analyze",
+    "statProjects": "Active projects",
+    "statKeywords": "Keywords tracked",
+    "statPages": "Pages analyzed",
+    "metricOrganicLabel": "Organic Traffic",
+    "metricOrganicSub": "Last 3 months",
+    "metricRankingLabel": "Ranking",
+    "metricRankingValue": "#1 Position",
+    "metricRankingSub": "\"seo tool\" — Google US",
+    "metricAILabel": "AI Mentions",
+    "metricAIValue": "247 detected",
+    "dashBadgeOrganic": "Organic traffic",
+    "dashNavScan": "SEO Scan",
+    "dashNavKeywords": "Keywords",
+    "dashNavContent": "AI Content",
+    "dashKpiSeoScore": "SEO Score",
+    "dashKpiOrganic": "Organic Traffic",
+    "dashKpiGeoScore": "GEO Score",
+    "dashKpiRankings": "Rankings",
+    "dashKpiSub1": "+12 this month",
+    "dashKpiSub2": "+34% increase",
+    "dashKpiSub4": "67 first page",
+    "dashKeywordsLabel": "Keywords"
   },
   "features": {
     "title": "Everything in One Platform",
@@ -121,7 +143,9 @@
       "tracking": "Rank tracking depth",
       "firstPage": "First page",
       "top100": "Top 100"
-    }
+    },
+    "badge": "Pricing",
+    "compareAll": "Compare all features and Enterprise plan →"
   },
   "auth": {
     "login": "Sign In",
@@ -184,7 +208,18 @@
     "distanceSales": "Distance Sales Agreement",
     "refund": "Refund Policy",
     "allRights": "All rights reserved.",
-    "whatsapp": "WhatsApp Support"
+    "whatsapp": "WhatsApp Support",
+    "techSeo": "Technical SEO Scan",
+    "aiContent": "AI Content Engine",
+    "geoVisibility": "GEO / AI Visibility",
+    "backlinkMarket": "Backlink Market",
+    "outreach": "Digital PR / Outreach",
+    "rankTracking": "Rank Tracking",
+    "pricing": "Pricing",
+    "aboutUs": "About Us",
+    "contact": "Contact",
+    "geoWhat": "What is GEO?",
+    "freeAnalysis": "Free Site Analysis"
   },
   "cookie": {
     "title": "Cookie Preferences",
@@ -251,7 +286,9 @@
     "title": "Blog",
     "subtitle": "Latest articles, tips and best practices on SEO and GEO.",
     "readTime": "min read",
-    "all": "All"
+    "all": "All",
+    "backToBlog": "← Back to Blog",
+    "author": "Author"
   },
   "testimonials": {
     "badge": "Customer Reviews",
@@ -478,7 +515,8 @@
     "addModalCancel": "Cancel",
     "addModalErrorEmpty": "Enter at least one keyword.",
     "addModalErrorFailed": "Could not add keywords. Please try again.",
-    "addModalPlaceholder": "seo tool\nkeyword tracking\ngeo visibility"
+    "addModalPlaceholder": "seo tool\nkeyword tracking\ngeo visibility",
+    "colUpdated": "Updated"
   },
   "auditPage": {
     "title": "Technical SEO Audit",
@@ -497,7 +535,11 @@
     "noIssuesFilter": "No issues found for this filter",
     "startScanPrompt": "Start a scan",
     "howToFix": "How to Fix?",
-    "affectedPages": "{count} pages"
+    "affectedPages": "{count} pages",
+    "csvSeverity": "Severity",
+    "csvCategory": "Category",
+    "csvMessage": "Issue",
+    "csvCount": "Count"
   },
   "billingPage": {
     "title": "Billing",
@@ -841,7 +883,11 @@
     "citation": "Citation",
     "citationDesc": "AI cites your site as a source",
     "ratio": "Citation/Mention Ratio",
-    "ratioDesc": "Below 10% → content structure issue"
+    "ratioDesc": "Below 10% → content structure issue",
+    "learnMore": "Learn more about GEO",
+    "trackedPlatforms": "Tracked AI Platforms",
+    "geoScore": "GEO Visibility Score",
+    "last30Days": "Last 30 days"
   },
   "onboarding": {
     "title": "Your setup is in progress",
@@ -875,5 +921,32 @@
     "statusInProgress": "In Progress",
     "statusCompleted": "Completed",
     "statusCancelled": "Cancelled"
+  },
+  "notificationBell": {
+    "title": "Notifications",
+    "markAllRead": "Mark all as read",
+    "empty": "No notifications"
+  },
+  "consentModal": {
+    "heading": "Agreement Update",
+    "description": "To continue using our platform, you must read and accept the following updated agreements. This step cannot be skipped.",
+    "consentTerms": "Updated Terms of Service",
+    "consentKvkk": "Data Protection Notice (KVKK)",
+    "consentDistanceSales": "Distance Sales Agreement",
+    "consentPrivacy": "Privacy Policy",
+    "readAndAccept": "I have read and accept",
+    "saving": "Saving...",
+    "acceptAndContinue": "I Accept and Continue"
+  },
+  "dashContent": {
+    "title": "Content",
+    "subtitle": "AI-powered content management with SEO + GEO scoring.",
+    "generateBtn": "+ Generate Content",
+    "tabList": "List",
+    "tabCalendar": "Calendar",
+    "calPrev": "‹ Prev",
+    "calNext": "Next ›",
+    "calEmpty": "No content scheduled this month.",
+    "untitled": "Content"
   }
 }

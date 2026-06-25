@@ -178,14 +178,14 @@ export default function KeywordsPage() {
                   updatedAt: k.updatedAt,
                 })),
                 [
-                  { key: 'keyword', label: 'Kelime' },
-                  { key: 'position', label: 'Pozisyon' },
-                  { key: 'searchVolume', label: 'Arama Hacmi' },
-                  { key: 'difficulty', label: 'Zorluk' },
-                  { key: 'intent', label: 'Niyet' },
-                  { key: 'updatedAt', label: 'Güncelleme' },
+                  { key: 'keyword', label: t('colKeyword') },
+                  { key: 'position', label: t('colPosition') },
+                  { key: 'searchVolume', label: t('colVolume') },
+                  { key: 'difficulty', label: t('colDifficulty') },
+                  { key: 'intent', label: t('colIntent') },
+                  { key: 'updatedAt', label: t('colUpdated') },
                 ],
-                'anahtar-kelimeler.csv'
+                'keywords.csv'
               )}
               className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-white/70 hover:bg-white/10 transition-all"
             >

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { ExternalLink, Shield } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
 import { apiClient } from '@/lib/api';
@@ -10,19 +10,20 @@ import { apiClient } from '@/lib/api';
 export function ConsentModal() {
   const { pendingConsents, clearPendingConsent } = useAuthStore();
   const locale = useLocale();
+  const t = useTranslations('consentModal');
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(false);
   const localePath = (path: string) => locale === 'tr' ? path : `/${locale}${path}`;
 
   if (!pendingConsents || pendingConsents.length === 0) return null;
 
-  const allChecked = pendingConsents.every((t) => checked[t]);
+  const allChecked = pendingConsents.every((type) => checked[type]);
 
   const CONSENT_LABELS: Record<string, { label: string; link: string }> = {
-    TERMS: { label: 'Güncellenen Kullanım Şartları', link: localePath('/kullanim-sartlari') },
-    KVKK: { label: 'KVKK Aydınlatma Metni', link: localePath('/kvkk') },
-    DISTANCE_SALES: { label: 'Mesafeli Satış Sözleşmesi', link: localePath('/mesafeli-satis-sozlesmesi') },
-    PRIVACY: { label: 'Gizlilik Politikası', link: localePath('/gizlilik-politikasi') },
+    TERMS: { label: t('consentTerms'), link: localePath('/kullanim-sartlari') },
+    KVKK: { label: t('consentKvkk'), link: localePath('/kvkk') },
+    DISTANCE_SALES: { label: t('consentDistanceSales'), link: localePath('/mesafeli-satis-sozlesmesi') },
+    PRIVACY: { label: t('consentPrivacy'), link: localePath('/gizlilik-politikasi') },
   };
 
   async function handleAccept() {
@@ -49,11 +50,10 @@ export function ConsentModal() {
           <div className="p-2 rounded-lg bg-indigo-500/20">
             <Shield className="h-5 w-5 text-indigo-400" />
           </div>
-          <h2 className="text-lg font-semibold text-white">Sözleşme Güncellemesi</h2>
+          <h2 className="text-lg font-semibold text-white">{t('heading')}</h2>
         </div>
         <p className="text-sm text-white/60 mb-5 leading-relaxed">
-          Platformumuzu kullanmaya devam edebilmek için aşağıdaki güncellenmiş sözleşmeleri
-          okumanız ve onaylamanız gerekmektedir. Bu adım atlanamaz.
+          {t('description')}
         </p>
 
         <div className="space-y-3 mb-6">
@@ -76,7 +76,7 @@ export function ConsentModal() {
                   >
                     {info.label} <ExternalLink className="h-3 w-3" />
                   </Link>
-                  &apos;nı okudum ve kabul ediyorum
+                  {' '}{t('readAndAccept')}
                 </span>
               </label>
             );
@@ -88,7 +88,7 @@ export function ConsentModal() {
           disabled={!allChecked || loading}
           className="w-full rounded-xl bg-indigo-600 py-3 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
         >
-          {loading ? 'Kaydediliyor...' : 'Onaylıyorum ve Devam Ediyorum'}
+          {loading ? t('saving') : t('acceptAndContinue')}
         </button>
       </div>
     </div>

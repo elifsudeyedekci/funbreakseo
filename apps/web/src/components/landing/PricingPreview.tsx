@@ -13,21 +13,21 @@ export function PricingPreview() {
       key: 'starter',
       name: t('starter'),
       price: PLAN_PRICES_TRY.starter.monthly,
-      features: ['1 proje', '50 kelime', '5 AI blog', '25 GEO sorgu', 'E-posta destek'],
+      features: [`1 ${t('features.projects')}`, `50 ${t('features.keywords')}`, `5 ${t('features.blogs')}`, `25 ${t('features.geo')}`, t('features.email')],
       popular: false,
     },
     {
       key: 'growth',
       name: t('growth'),
       price: PLAN_PRICES_TRY.growth.monthly,
-      features: ['5 proje', '250 kelime', '25 AI blog', '150 GEO sorgu', '2 outreach kampanya', 'E-posta + WhatsApp'],
+      features: [`5 ${t('features.projects')}`, `250 ${t('features.keywords')}`, `25 ${t('features.blogs')}`, `150 ${t('features.geo')}`, `2 ${t('features.outreach')}`, t('features.whatsapp')],
       popular: true,
     },
     {
       key: 'pro',
       name: t('pro'),
       price: PLAN_PRICES_TRY.pro.monthly,
-      features: ['15 proje', '1.000 kelime', '100 AI blog', '750 GEO sorgu', '10 kampanya', 'Öncelikli destek', 'API erişimi'],
+      features: [`15 ${t('features.projects')}`, `1.000 ${t('features.keywords')}`, `100 ${t('features.blogs')}`, `750 ${t('features.geo')}`, `10 ${t('features.outreach')}`, t('features.priority'), `API`],
       popular: false,
     },
   ];
@@ -42,7 +42,7 @@ export function PricingPreview() {
       <div className="mx-auto max-w-7xl">
         <div className="text-center mb-16">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] backdrop-blur-sm px-4 py-1.5 mb-5">
-            <span className="text-xs font-medium text-white/50">Fiyatlandırma</span>
+            <span className="text-xs font-medium text-white/50">{t('badge')}</span>
           </div>
           <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4 tracking-tight">{t('title')}</h2>
           <p className="text-white/35 text-lg">{t('subtitle')}</p>
@@ -106,7 +106,7 @@ export function PricingPreview() {
             href={localePath('/fiyatlandirma')}
             className="text-sm text-indigo-400/60 hover:text-indigo-300 transition-colors underline underline-offset-4 decoration-indigo-500/30"
           >
-            Tüm özellikleri ve Kurumsal planı karşılaştır →
+            {t('compareAll')}
           </Link>
         </div>
       </div>

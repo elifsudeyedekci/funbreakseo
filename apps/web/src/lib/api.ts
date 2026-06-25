@@ -95,13 +95,13 @@ export const projectApi = {
   update: (id: string, d: Record<string, unknown>) => api.patch(`/projects/${id}`, d),
   delete: (id: string) => api.delete(`/projects/${id}`),
   overview: (id: string) => api.get(`/projects/${id}/overview`),
-  dashboard: (id: string) => api.get(`/projects/${id}/dashboard`),
+  dashboard: (id: string) => api.get(`/projects/${id}/overview`),
   connectGsc: (id: string) => api.post(`/projects/${id}/connect-gsc`),
 };
 
 export const keywordApi = {
   list: (projectId: string, p?: Record<string, unknown>) => api.get(`/projects/${projectId}/keywords`, { params: p }),
-  add: (projectId: string, d: Record<string, unknown> | string[]) => api.post(`/projects/${projectId}/keywords`, Array.isArray(d) ? { keywords: d } : d),
+  add: (projectId: string, d: Record<string, unknown> | string[]) => api.post(`/projects/${projectId}/keywords`, Array.isArray(d) ? { phrases: d } : d),
   bulkAdd: (projectId: string, keywords: unknown[]) => api.post(`/projects/${projectId}/keywords/bulk`, { keywords }),
   delete: (id: string) => api.delete(`/keywords/${id}`),
   history: (id: string) => api.get(`/keywords/${id}/history`),

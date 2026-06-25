@@ -9,25 +9,26 @@ import {
   UseGuards,
 } from '@nestjs/common'
 import { ApiTags } from '@nestjs/swagger'
+import { IsArray, IsEnum, IsOptional, IsString, MinLength } from 'class-validator'
 import { ContentStatus, ContentType } from '@prisma/client'
 import { JwtAuthGuard } from '../auth/jwt-auth.guard'
 import { CurrentUser } from '../auth/current-user.decorator'
 import { ContentService } from './content.service'
 
 export class GenerateContentDto {
-  title: string = ''
-  focusKeyword: string = ''
-  type: ContentType = 'BLOG'
-  secondaryKeywords?: string[]
-  language?: string
-  tone?: string
+  @IsString() @MinLength(3) title: string = ''
+  @IsString() @MinLength(1) focusKeyword: string = ''
+  @IsOptional() @IsEnum(['BLOG', 'PILLAR', 'LANDING', 'FAQ', 'PRODUCT']) type: ContentType = 'BLOG'
+  @IsOptional() @IsArray() @IsString({ each: true }) secondaryKeywords?: string[]
+  @IsOptional() @IsString() language?: string
+  @IsOptional() @IsString() tone?: string
 }
 
 export class UpdateContentDto {
-  title?: string
-  bodyMarkdown?: string
-  metaTitle?: string
-  metaDescription?: string
+  @IsOptional() @IsString() title?: string
+  @IsOptional() @IsString() bodyMarkdown?: string
+  @IsOptional() @IsString() metaTitle?: string
+  @IsOptional() @IsString() metaDescription?: string
 }
 
 @ApiTags('Content')

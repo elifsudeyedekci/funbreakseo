@@ -8,19 +8,20 @@ import {
   UseGuards,
 } from '@nestjs/common'
 import { ApiTags } from '@nestjs/swagger'
+import { IsOptional, IsString, MinLength } from 'class-validator'
 import { User } from '@prisma/client'
 import { JwtAuthGuard } from '../auth/jwt-auth.guard'
 import { CurrentUser } from '../auth/current-user.decorator'
 import { GeoService } from './geo.service'
 
 export class AddGeoQueryDto {
-  prompt: string = ''
-  location?: string
-  language?: string
+  @IsString() @MinLength(3) prompt: string = ''
+  @IsOptional() @IsString() location?: string
+  @IsOptional() @IsString() language?: string
 }
 
 export class GeoHistoryQueryDto {
-  days?: number
+  @IsOptional() days?: number
 }
 
 @ApiTags('GEO')

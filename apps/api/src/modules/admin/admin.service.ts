@@ -847,6 +847,21 @@ export class AdminService {
     return { success: true };
   }
 
+  async getAllInvoices(page: number, limit: number, status?: string) {
+    const where = status ? { status: status as any } : {};
+    const [total, data] = await Promise.all([
+      this.prisma.invoice.count({ where }),
+      this.prisma.invoice.findMany({
+        where,
+        include: { organization: { select: { name: true } } },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+    ]);
+    return { total, page, limit, data };
+  }
+
   // ─── Coupons ─────────────────────────────────────────────────────────────────
 
   async getCoupons() {

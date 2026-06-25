@@ -91,13 +91,13 @@ export function GeoSection() {
               href={localePath('/geo')}
               className="inline-flex items-center gap-2 rounded-xl border border-purple-500/30 bg-purple-500/8 backdrop-blur-sm px-6 py-3 text-sm font-medium text-purple-300 hover:bg-purple-500/15 hover:border-purple-500/50 transition-all duration-200"
             >
-              GEO hakkında daha fazla bilgi <ArrowRight className="h-4 w-4" />
+              {t('learnMore')} <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
 
           {/* ── Right: platform + score ── */}
           <div className="space-y-4">
-            <p className="text-xs font-semibold text-white/25 uppercase tracking-widest mb-3">İzlenen AI Platformları</p>
+            <p className="text-xs font-semibold text-white/25 uppercase tracking-widest mb-3">{t('trackedPlatforms')}</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {GEO_PLATFORMS.map((platform) => (
                 <div
@@ -113,8 +113,8 @@ export function GeoSection() {
             {/* GEO score card */}
             <div className="rounded-2xl border border-purple-500/25 bg-gradient-to-br from-purple-900/25 via-indigo-900/10 to-transparent backdrop-blur-sm p-7 shadow-[inset_0_1px_0_rgba(168,85,247,0.15)]">
               <div className="flex items-center justify-between mb-5">
-                <span className="text-sm font-semibold text-white">GEO Görünürlük Skoru</span>
-                <span className="text-xs text-white/25 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-0.5">Son 30 gün</span>
+                <span className="text-sm font-semibold text-white">{t('geoScore')}</span>
+                <span className="text-xs text-white/25 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-0.5">{t('last30Days')}</span>
               </div>
               <div className="flex items-end gap-2 mb-3">
                 <span className="text-5xl font-bold gradient-text-geo">78</span>

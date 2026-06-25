@@ -94,13 +94,13 @@ export default function AuditPage() {
                   count: i.count,
                 })),
                 [
-                  { key: 'severity', label: 'Önem' },
-                  { key: 'category', label: 'Kategori' },
-                  { key: 'message', label: 'Sorun' },
+                  { key: 'severity', label: t('csvSeverity') },
+                  { key: 'category', label: t('csvCategory') },
+                  { key: 'message', label: t('csvMessage') },
                   { key: 'url', label: 'URL' },
-                  { key: 'count', label: 'Sayı' },
+                  { key: 'count', label: t('csvCount') },
                 ],
-                'seo-sorunlari.csv'
+                'seo-issues.csv'
               )}
               className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-white/70 hover:bg-white/10 transition-all"
             >

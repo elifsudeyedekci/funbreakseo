@@ -55,7 +55,29 @@
     "trustedBy": "شركة تثق بنا",
     "freeAudit": "حلّل موقعك مجاناً",
     "freeAuditPlaceholder": "domain.com",
-    "freeAuditBtn": "تحليل"
+    "freeAuditBtn": "تحليل",
+    "statProjects": "مشاريع نشطة",
+    "statKeywords": "كلمات مفتاحية متتبعة",
+    "statPages": "صفحات محللة",
+    "metricOrganicLabel": "الزيارات العضوية",
+    "metricOrganicSub": "آخر 3 أشهر",
+    "metricRankingLabel": "الترتيب",
+    "metricRankingValue": "المركز الأول",
+    "metricRankingSub": "\"أداة seo\" — Google SA",
+    "metricAILabel": "AI Mentions",
+    "metricAIValue": "247 مكتشف",
+    "dashBadgeOrganic": "الزيارات العضوية",
+    "dashNavScan": "فحص SEO",
+    "dashNavKeywords": "الكلمات المفتاحية",
+    "dashNavContent": "محتوى AI",
+    "dashKpiSeoScore": "نقاط SEO",
+    "dashKpiOrganic": "الزيارات العضوية",
+    "dashKpiGeoScore": "نقاط GEO",
+    "dashKpiRankings": "الترتيبات",
+    "dashKpiSub1": "+12 هذا الشهر",
+    "dashKpiSub2": "+34% ارتفاع",
+    "dashKpiSub4": "67 الصفحة الأولى",
+    "dashKeywordsLabel": "الكلمات المفتاحية"
   },
   "features": {
     "title": "كل شيء في منصة واحدة",
@@ -94,7 +116,11 @@
     "citation": "الاستشهاد",
     "citationDesc": "الذكاء الاصطناعي يستشهد بموقعك كمصدر",
     "ratio": "نسبة الاستشهاد/الإشارة",
-    "ratioDesc": "أقل من 10٪ ← مشكلة في هيكل المحتوى"
+    "ratioDesc": "أقل من 10٪ ← مشكلة في هيكل المحتوى",
+    "learnMore": "اعرف المزيد عن GEO",
+    "trackedPlatforms": "منصات الذكاء الاصطناعي المتتبعة",
+    "geoScore": "نقاط ظهور GEO",
+    "last30Days": "آخر 30 يومًا"
   },
   "pricing": {
     "title": "أسعار شفافة",
@@ -131,7 +157,9 @@
       "tracking": "عمق تتبع الترتيب",
       "firstPage": "الصفحة الأولى",
       "top100": "أفضل 100"
-    }
+    },
+    "badge": "الأسعار",
+    "compareAll": "قارن جميع الميزات وخطة المؤسسات ←"
   },
   "auth": {
     "login": "تسجيل الدخول",
@@ -206,7 +234,18 @@
     "distanceSales": "عقد البيع عن بُعد",
     "refund": "سياسة الاسترداد",
     "allRights": "جميع الحقوق محفوظة.",
-    "whatsapp": "دعم واتساب"
+    "whatsapp": "دعم واتساب",
+    "techSeo": "فحص SEO التقني",
+    "aiContent": "محرك المحتوى الذكي",
+    "geoVisibility": "GEO / رؤية الذكاء الاصطناعي",
+    "backlinkMarket": "سوق الروابط الخلفية",
+    "outreach": "علاقات عامة رقمية",
+    "rankTracking": "تتبع الترتيب",
+    "pricing": "الأسعار",
+    "aboutUs": "من نحن",
+    "contact": "التواصل",
+    "geoWhat": "ما هو GEO؟",
+    "freeAnalysis": "تحليل موقع مجاني"
   },
   "cookie": {
     "title": "تفضيلات الكوكيز",
@@ -273,7 +312,9 @@
     "title": "Blog",
     "subtitle": "أحدث المقالات والنصائح وأفضل الممارسات في SEO وGEO.",
     "readTime": "د قراءة",
-    "all": "الكل"
+    "all": "الكل",
+    "backToBlog": "← العودة إلى المدونة",
+    "author": "الكاتب"
   },
   "testimonials": {
     "badge": "آراء العملاء",
@@ -500,7 +541,8 @@
     "addModalCancel": "إلغاء",
     "addModalErrorEmpty": "أدخل كلمة مفتاحية واحدة على الأقل.",
     "addModalErrorFailed": "تعذر إضافة الكلمات. يرجى المحاولة مجدداً.",
-    "addModalPlaceholder": "seo tool\nتتبع الكلمات\nظهور geo"
+    "addModalPlaceholder": "seo tool\nتتبع الكلمات\nظهور geo",
+    "colUpdated": "تحديث"
   },
   "auditPage": {
     "title": "تدقيق SEO التقني",
@@ -519,7 +561,11 @@
     "noIssuesFilter": "لم يتم العثور على مشكلات لهذا المرشح",
     "startScanPrompt": "ابدأ الفحص",
     "howToFix": "كيفية الإصلاح؟",
-    "affectedPages": "{count} صفحات"
+    "affectedPages": "{count} صفحات",
+    "csvSeverity": "الخطورة",
+    "csvCategory": "الفئة",
+    "csvMessage": "المشكلة",
+    "csvCount": "العدد"
   },
   "billingPage": {
     "title": "الفواتير",
@@ -874,5 +920,32 @@
     "statusInProgress": "İşlemde",
     "statusCompleted": "Tamamlandı",
     "statusCancelled": "İptal"
+  },
+  "notificationBell": {
+    "title": "الإشعارات",
+    "markAllRead": "تحديد الكل كمقروء",
+    "empty": "لا توجد إشعارات"
+  },
+  "consentModal": {
+    "heading": "تحديث الاتفاقية",
+    "description": "للاستمرار في استخدام منصتنا، يجب عليك قراءة وقبول الاتفاقيات المحدثة التالية. لا يمكن تخطي هذه الخطوة.",
+    "consentTerms": "شروط الخدمة المحدثة",
+    "consentKvkk": "إشعار حماية البيانات (KVKK)",
+    "consentDistanceSales": "اتفاقية البيع عن بعد",
+    "consentPrivacy": "سياسة الخصوصية",
+    "readAndAccept": "لقد قرأت وأوافق على",
+    "saving": "جارٍ الحفظ...",
+    "acceptAndContinue": "أوافق وأستمر"
+  },
+  "dashContent": {
+    "title": "المحتوى",
+    "subtitle": "إدارة المحتوى بالذكاء الاصطناعي مع تقييم SEO + GEO.",
+    "generateBtn": "+ إنشاء محتوى",
+    "tabList": "القائمة",
+    "tabCalendar": "التقويم",
+    "calPrev": "‹ السابق",
+    "calNext": "التالي ›",
+    "calEmpty": "لا يوجد محتوى مجدول لهذا الشهر.",
+    "untitled": "محتوى"
   }
 }

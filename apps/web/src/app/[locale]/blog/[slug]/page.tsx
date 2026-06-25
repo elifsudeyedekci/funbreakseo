@@ -1,6 +1,7 @@
 ﻿import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { SUPPORTED_LOCALES } from '@funbreakseo/shared';
@@ -54,6 +55,9 @@ export default async function BlogPostPage({ params }: { params: Promise<{ local
   const post = await getPost(slug);
   if (!post) notFound();
 
+  const t = await getTranslations('blog');
+  const dateLocale = locale === 'tr' ? 'tr-TR' : locale === 'ar' ? 'ar-SA' : locale === 'hi' ? 'hi-IN' : locale === 'ru' ? 'ru-RU' : locale === 'de' ? 'de-DE' : locale === 'es' ? 'es-ES' : locale === 'fr' ? 'fr-FR' : 'en-US';
+
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Article',
@@ -72,14 +76,14 @@ export default async function BlogPostPage({ params }: { params: Promise<{ local
           <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
           <div className="mb-4">
             <Link href={'/' + (locale === 'tr' ? '' : locale + '/') + 'blog'} className="text-sm text-indigo-400 hover:text-indigo-300">
-              ← Blog'a Dön
+              {t('backToBlog')}
             </Link>
           </div>
           <div className="flex items-center gap-2 mb-4">
             <span className="text-xs rounded-full bg-indigo-500/20 text-indigo-400 px-2 py-0.5">{post.category}</span>
-            <span className="text-xs text-white/30">{post.readTime} dk okuma</span>
+            <span className="text-xs text-white/30">{post.readTime} {t('readTime')}</span>
             <span className="text-xs text-white/30">·</span>
-            <span className="text-xs text-white/30">{new Date(post.date).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+            <span className="text-xs text-white/30">{new Date(post.date).toLocaleDateString(dateLocale, { year: 'numeric', month: 'long', day: 'numeric' })}</span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-4 leading-snug">{post.title}</h1>
           <p className="text-lg text-white/60 mb-8 leading-relaxed">{post.excerpt}</p>
@@ -90,7 +94,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ local
             <p className="text-white/70 leading-relaxed">{post.content}</p>
           </div>
           <div className="mt-12 pt-8 border-t border-white/10">
-            <p className="text-sm text-white/40">Yazar: <span className="text-white/60">{post.author}</span></p>
+            <p className="text-sm text-white/40">{t('author')}: <span className="text-white/60">{post.author}</span></p>
           </div>
         </div>
       </main>

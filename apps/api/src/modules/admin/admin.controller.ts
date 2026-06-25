@@ -375,6 +375,22 @@ export class AdminController {
     return this.adminService.updateFinanceSettings(dto);
   }
 
+  @Get('admin/invoices')
+  getAllInvoices(
+    @Query('page') page = '1',
+    @Query('limit') limit = '100',
+    @Query('status') status?: string,
+  ) {
+    return this.adminService.getAllInvoices(parseInt(page), parseInt(limit), status);
+  }
+
+  @Post('admin/invoices/:id/refund')
+  refundAdminInvoice(@Param('id') id: string, @Body() dto: Record<string, unknown>) {
+    const amount = Number(dto.amount ?? 0);
+    const type: 'FULL' | 'PARTIAL' = dto.partial ? 'PARTIAL' : 'FULL';
+    return this.adminService.refundInvoice(id, amount, type);
+  }
+
   // ─── Coupons ─────────────────────────────────────────────────────────────────
 
   @Get('admin/coupons')

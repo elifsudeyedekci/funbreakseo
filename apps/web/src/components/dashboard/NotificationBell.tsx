@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { Bell } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { notificationApi } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
@@ -18,6 +19,7 @@ interface Notification {
 
 export function NotificationBell() {
   const { isAuthenticated } = useAuthStore();
+  const t = useTranslations('notificationBell');
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unread, setUnread] = useState(0);
@@ -71,7 +73,7 @@ export function NotificationBell() {
       <button
         onClick={() => { setOpen(!open); if (!open) markAllRead(); }}
         className="relative flex items-center justify-center h-8 w-8 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors"
-        aria-label="Bildirimler"
+        aria-label={t('title')}
       >
         <Bell className="h-4 w-4" />
         {unread > 0 && (
@@ -84,19 +86,19 @@ export function NotificationBell() {
       {open && (
         <div className="absolute right-0 top-10 z-50 w-80 glass rounded-xl border border-white/10 shadow-2xl overflow-hidden">
           <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-white">Bildirimler</h3>
+            <h3 className="text-sm font-semibold text-white">{t('title')}</h3>
             {notifications.length > 0 && (
               <button
                 onClick={markAllRead}
                 className="text-xs text-indigo-400 hover:text-indigo-300"
               >
-                Tümünü okundu işaretle
+                {t('markAllRead')}
               </button>
             )}
           </div>
           <div className="max-h-80 overflow-y-auto">
             {notifications.length === 0 ? (
-              <div className="py-8 text-center text-sm text-white/40">Bildirim yok</div>
+              <div className="py-8 text-center text-sm text-white/40">{t('empty')}</div>
             ) : (
               notifications.map((n) => (
                 <div

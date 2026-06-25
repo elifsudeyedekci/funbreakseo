@@ -113,6 +113,7 @@ function MetricBadge({ className = '', color, label, value, sub, bars, delay = '
 
 /* ─── Dashboard mockup ─── */
 function DashboardMockup() {
+  const t = useTranslations('hero');
   return (
     <div className="relative mx-auto max-w-5xl mt-20 px-4 sm:px-6">
       {/* Halo glow */}
@@ -143,12 +144,12 @@ function DashboardMockup() {
               <span className="text-[9px] font-black text-white/30 tracking-widest uppercase">FunBreak</span>
             </div>
             {[
-              { l: 'Dashboard',  a: true  },
-              { l: 'SEO Tarama', a: false },
-              { l: 'Kelimeler',  a: false },
-              { l: 'İçerik AI',  a: false },
-              { l: 'GEO & AI',   a: false },
-              { l: 'Backlinks',  a: false },
+              { l: 'Dashboard',           a: true  },
+              { l: t('dashNavScan'),      a: false },
+              { l: t('dashNavKeywords'),  a: false },
+              { l: t('dashNavContent'),   a: false },
+              { l: 'GEO & AI',            a: false },
+              { l: 'Backlinks',           a: false },
             ].map((item) => (
               <div
                 key={item.l}
@@ -167,10 +168,10 @@ function DashboardMockup() {
             {/* KPIs */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-3.5">
               {[
-                { l: 'SEO Skoru',       v: '87',    s: '+12 bu ay',    dot: 'bg-indigo-400' },
-                { l: 'Organik Trafik',  v: '12.4K', s: '+34% artış',   dot: 'bg-emerald-400' },
-                { l: 'GEO Skoru',       v: '72',    s: '4 AI platform', dot: 'bg-purple-400' },
-                { l: 'Sıralamalar',     v: '248',   s: '67 ilk sayfa',  dot: 'bg-blue-400' },
+                { l: t('dashKpiSeoScore'), v: '87',    s: t('dashKpiSub1'), dot: 'bg-indigo-400' },
+                { l: t('dashKpiOrganic'),  v: '12.4K', s: t('dashKpiSub2'), dot: 'bg-emerald-400' },
+                { l: t('dashKpiGeoScore'), v: '72',    s: '4 AI platform',  dot: 'bg-purple-400' },
+                { l: t('dashKpiRankings'), v: '248',   s: t('dashKpiSub4'), dot: 'bg-blue-400' },
               ].map((s) => (
                 <div key={s.l} className="rounded-xl border border-white/[0.05] bg-white/[0.03] p-2.5">
                   <div className="flex items-center gap-1.5 mb-1">
@@ -186,7 +187,7 @@ function DashboardMockup() {
             {/* Keywords + GEO */}
             <div className="grid grid-cols-3 gap-2.5">
               <div className="col-span-2 rounded-xl border border-white/[0.05] bg-white/[0.02] p-3">
-                <div className="text-[9px] font-bold text-white/20 mb-2.5 uppercase tracking-widest">Anahtar Kelimeler</div>
+                <div className="text-[9px] font-bold text-white/20 mb-2.5 uppercase tracking-widest">{t('dashKeywordsLabel')}</div>
                 <div className="space-y-2">
                   {[
                     { kw: 'seo aracı',        pos: 3, ch: '+5',  p: 88  },
@@ -232,14 +233,14 @@ function DashboardMockup() {
 
       {/* Floating badges */}
       <div className="absolute -right-4 sm:-right-10 top-[28%] rounded-2xl border border-emerald-500/28 bg-[#061009]/90 backdrop-blur-xl px-4 py-3 shadow-2xl shadow-black/60">
-        <div className="text-[10px] text-emerald-400/55 mb-0.5 font-semibold">Organik trafik</div>
+        <div className="text-[10px] text-emerald-400/55 mb-0.5 font-semibold">{t('dashBadgeOrganic')}</div>
         <div className="text-sm font-bold text-emerald-300 flex items-center gap-1.5">
           <TrendingUp className="w-3.5 h-3.5" /> +180%
         </div>
       </div>
       <div className="absolute -left-4 sm:-left-10 bottom-[28%] rounded-2xl border border-purple-500/28 bg-[#0d0814]/90 backdrop-blur-xl px-4 py-3 shadow-2xl shadow-black/60">
-        <div className="text-[10px] text-purple-400/55 mb-0.5 font-semibold">AI Mentions</div>
-        <div className="text-sm font-bold text-purple-300">247 tespit</div>
+        <div className="text-[10px] text-purple-400/55 mb-0.5 font-semibold">{t('metricAILabel')}</div>
+        <div className="text-sm font-bold text-purple-300">{t('metricAIValue')}</div>
       </div>
     </div>
   );
@@ -298,25 +299,25 @@ export function HeroSection() {
       <MetricBadge
         className="left-[3%] top-[28%] -rotate-3 animate-float-delayed"
         color="emerald"
-        label="Organik Trafik"
+        label={t('metricOrganicLabel')}
         value="+180% ↑"
-        sub="Son 3 ay"
+        sub={t('metricOrganicSub')}
         bars={[25,38,32,48,44,60,55,72,68,88]}
         delay="0.3s"
       />
       <MetricBadge
         className="right-[3%] top-[22%] rotate-2 animate-float"
         color="indigo"
-        label="Sıralama"
-        value="#1 Pozisyon"
-        sub='"seo aracı" — Google TR'
+        label={t('metricRankingLabel')}
+        value={t('metricRankingValue')}
+        sub={t('metricRankingSub')}
         delay="0.5s"
       />
       <MetricBadge
         className="right-[4%] bottom-[22%] -rotate-1 animate-float-b"
         color="purple"
-        label="AI Mentions"
-        value="247 tespit"
+        label={t('metricAILabel')}
+        value={t('metricAIValue')}
         sub="ChatGPT · Gemini · Perplexity"
         delay="0.7s"
       />
@@ -395,9 +396,9 @@ export function HeroSection() {
         {/* Stats */}
         <div className="mt-14 flex flex-wrap items-center justify-center gap-x-10 gap-y-5">
           {[
-            { stat: '500+',  label: 'Aktif proje'           },
-            { stat: '1M+',   label: 'Takip edilen kelime'   },
-            { stat: '50M+',  label: 'Analiz edilen sayfa'   },
+            { stat: '500+',  label: t('statProjects') },
+            { stat: '1M+',   label: t('statKeywords') },
+            { stat: '50M+',  label: t('statPages')    },
           ].map((item, i) => (
             <div key={i} className="flex items-center gap-3">
               {i > 0 && <div className="hidden sm:block w-px h-6 bg-white/8" />}

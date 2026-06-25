@@ -55,7 +55,29 @@
     "trustedBy": "компаний доверяют нам",
     "freeAudit": "Проанализируйте ваш сайт бесплатно",
     "freeAuditPlaceholder": "domain.com",
-    "freeAuditBtn": "Анализировать"
+    "freeAuditBtn": "Анализировать",
+    "statProjects": "Активных проектов",
+    "statKeywords": "Отслеживаемых ключевых слов",
+    "statPages": "Проанализированных страниц",
+    "metricOrganicLabel": "Органический трафик",
+    "metricOrganicSub": "Последние 3 месяца",
+    "metricRankingLabel": "Позиция",
+    "metricRankingValue": "#1 Позиция",
+    "metricRankingSub": "\"seo инструмент\" — Google RU",
+    "metricAILabel": "AI Mentions",
+    "metricAIValue": "247 обнаружено",
+    "dashBadgeOrganic": "Органический трафик",
+    "dashNavScan": "SEO Сканирование",
+    "dashNavKeywords": "Ключевые слова",
+    "dashNavContent": "AI Контент",
+    "dashKpiSeoScore": "SEO Счёт",
+    "dashKpiOrganic": "Органический трафик",
+    "dashKpiGeoScore": "GEO Счёт",
+    "dashKpiRankings": "Позиции",
+    "dashKpiSub1": "+12 в этом месяце",
+    "dashKpiSub2": "+34% рост",
+    "dashKpiSub4": "67 первая страница",
+    "dashKeywordsLabel": "Ключевые слова"
   },
   "features": {
     "title": "Всё в одной платформе",
@@ -94,7 +116,11 @@
     "citation": "Цитирование",
     "citationDesc": "ИИ указывает ваш сайт как источник",
     "ratio": "Соотношение цитирований/упоминаний",
-    "ratioDesc": "Ниже 10 % → проблема со структурой контента"
+    "ratioDesc": "Ниже 10 % → проблема со структурой контента",
+    "learnMore": "Узнать больше о GEO",
+    "trackedPlatforms": "Отслеживаемые ИИ-платформы",
+    "geoScore": "Оценка видимости GEO",
+    "last30Days": "Последние 30 дней"
   },
   "pricing": {
     "title": "Прозрачные цены",
@@ -131,7 +157,9 @@
       "tracking": "Глубина отслеживания позиций",
       "firstPage": "Первая страница",
       "top100": "Топ 100"
-    }
+    },
+    "badge": "Тарифы",
+    "compareAll": "Сравнить все функции и план Enterprise →"
   },
   "auth": {
     "login": "Войти",
@@ -206,7 +234,18 @@
     "distanceSales": "Договор дистанционной продажи",
     "refund": "Политика возврата",
     "allRights": "Все права защищены.",
-    "whatsapp": "Поддержка в WhatsApp"
+    "whatsapp": "Поддержка в WhatsApp",
+    "techSeo": "Технический SEO-аудит",
+    "aiContent": "ИИ-движок контента",
+    "geoVisibility": "GEO / видимость в ИИ",
+    "backlinkMarket": "Рынок бэклинков",
+    "outreach": "Digital PR / Outreach",
+    "rankTracking": "Отслеживание позиций",
+    "pricing": "Тарифы",
+    "aboutUs": "О нас",
+    "contact": "Контакт",
+    "geoWhat": "Что такое GEO?",
+    "freeAnalysis": "Бесплатный анализ сайта"
   },
   "cookie": {
     "title": "Настройки cookies",
@@ -273,7 +312,9 @@
     "title": "Blog",
     "subtitle": "Последние статьи, советы и лучшие практики по SEO и GEO.",
     "readTime": "мин чтения",
-    "all": "Все"
+    "all": "Все",
+    "backToBlog": "← Назад к блогу",
+    "author": "Автор"
   },
   "testimonials": {
     "badge": "Отзывы клиентов",
@@ -500,7 +541,8 @@
     "addModalCancel": "Отмена",
     "addModalErrorEmpty": "Введите хотя бы одно ключевое слово.",
     "addModalErrorFailed": "Не удалось добавить слова. Попробуйте снова.",
-    "addModalPlaceholder": "seo инструмент\nотслеживание слов\ngeo видимость"
+    "addModalPlaceholder": "seo инструмент\nотслеживание слов\ngeo видимость",
+    "colUpdated": "Обновлено"
   },
   "auditPage": {
     "title": "Технический SEO-аудит",
@@ -519,7 +561,11 @@
     "noIssuesFilter": "Проблем для этого фильтра не найдено",
     "startScanPrompt": "Запустите сканирование",
     "howToFix": "Как исправить?",
-    "affectedPages": "{count} страниц"
+    "affectedPages": "{count} страниц",
+    "csvSeverity": "Серьёзность",
+    "csvCategory": "Категория",
+    "csvMessage": "Проблема",
+    "csvCount": "Количество"
   },
   "billingPage": {
     "title": "Биллинг",
@@ -874,5 +920,32 @@
     "statusInProgress": "İşlemde",
     "statusCompleted": "Tamamlandı",
     "statusCancelled": "İptal"
+  },
+  "notificationBell": {
+    "title": "Уведомления",
+    "markAllRead": "Отметить все прочитанными",
+    "empty": "Нет уведомлений"
+  },
+  "consentModal": {
+    "heading": "Обновление соглашения",
+    "description": "Для продолжения использования нашей платформы необходимо прочитать и принять следующие обновленные соглашения. Этот шаг нельзя пропустить.",
+    "consentTerms": "Обновленные условия использования",
+    "consentKvkk": "Уведомление о защите данных (KVKK)",
+    "consentDistanceSales": "Договор дистанционной продажи",
+    "consentPrivacy": "Политика конфиденциальности",
+    "readAndAccept": "Я прочитал и принимаю",
+    "saving": "Сохранение...",
+    "acceptAndContinue": "Принимаю и продолжаю"
+  },
+  "dashContent": {
+    "title": "Контент",
+    "subtitle": "Управление контентом с ИИ и оценками SEO + GEO.",
+    "generateBtn": "+ Создать контент",
+    "tabList": "Список",
+    "tabCalendar": "Календарь",
+    "calPrev": "‹ Назад",
+    "calNext": "Далее ›",
+    "calEmpty": "Нет запланированного контента на этот месяц.",
+    "untitled": "Контент"
   }
 }

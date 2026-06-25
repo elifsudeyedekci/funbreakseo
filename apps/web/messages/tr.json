@@ -56,7 +56,29 @@
     "trustedBy": "güvenen şirket",
     "freeAudit": "Sitenizi ücretsiz analiz edin",
     "freeAuditPlaceholder": "domain.com",
-    "freeAuditBtn": "Analiz Et"
+    "freeAuditBtn": "Analiz Et",
+    "statProjects": "Aktif proje",
+    "statKeywords": "Takip edilen kelime",
+    "statPages": "Analiz edilen sayfa",
+    "metricOrganicLabel": "Organik Trafik",
+    "metricOrganicSub": "Son 3 ay",
+    "metricRankingLabel": "Sıralama",
+    "metricRankingValue": "#1 Pozisyon",
+    "metricRankingSub": "\"seo aracı\" — Google TR",
+    "metricAILabel": "AI Mentions",
+    "metricAIValue": "247 tespit",
+    "dashBadgeOrganic": "Organik trafik",
+    "dashNavScan": "SEO Tarama",
+    "dashNavKeywords": "Kelimeler",
+    "dashNavContent": "İçerik AI",
+    "dashKpiSeoScore": "SEO Skoru",
+    "dashKpiOrganic": "Organik Trafik",
+    "dashKpiGeoScore": "GEO Skoru",
+    "dashKpiRankings": "Sıralamalar",
+    "dashKpiSub1": "+12 bu ay",
+    "dashKpiSub2": "+34% artış",
+    "dashKpiSub4": "67 ilk sayfa",
+    "dashKeywordsLabel": "Anahtar Kelimeler"
   },
   "features": {
     "title": "Her Şey Tek Platformda",
@@ -95,7 +117,11 @@
     "citation": "Citation",
     "citationDesc": "AI'nın sitenizi kaynak göstermesi",
     "ratio": "Citation/Mention Oranı",
-    "ratioDesc": "%10 altı → içerik yapısı sorunu"
+    "ratioDesc": "%10 altı → içerik yapısı sorunu",
+    "learnMore": "GEO hakkında daha fazla bilgi",
+    "trackedPlatforms": "İzlenen AI Platformları",
+    "geoScore": "GEO Görünürlük Skoru",
+    "last30Days": "Son 30 gün"
   },
   "pricing": {
     "title": "Şeffaf Fiyatlandırma",
@@ -132,7 +158,9 @@
       "tracking": "Sıralama takip derinliği",
       "firstPage": "İlk sayfa",
       "top100": "Top 100"
-    }
+    },
+    "badge": "Fiyatlandırma",
+    "compareAll": "Tüm özellikleri ve Kurumsal planı karşılaştır →"
   },
   "auth": {
     "login": "Giriş Yap",
@@ -207,7 +235,18 @@
     "distanceSales": "Mesafeli Satış",
     "refund": "İade Politikası",
     "allRights": "Tüm hakları saklıdır.",
-    "whatsapp": "WhatsApp Destek"
+    "whatsapp": "WhatsApp Destek",
+    "techSeo": "Teknik SEO Tarama",
+    "aiContent": "AI İçerik Motoru",
+    "geoVisibility": "GEO / AI Görünürlük",
+    "backlinkMarket": "Backlink Market",
+    "outreach": "Dijital PR / Outreach",
+    "rankTracking": "Sıralama Takibi",
+    "pricing": "Fiyatlandırma",
+    "aboutUs": "Hakkımızda",
+    "contact": "İletişim",
+    "geoWhat": "GEO Nedir?",
+    "freeAnalysis": "Ücretsiz Site Analizi"
   },
   "cookie": {
     "title": "Çerez Tercihleri",
@@ -274,7 +313,9 @@
     "title": "Blog",
     "subtitle": "SEO ve GEO hakkında güncel makaleler, ipuçları ve en iyi uygulamalar.",
     "readTime": "dk okuma",
-    "all": "Tümü"
+    "all": "Tümü",
+    "backToBlog": "← Blog'a Dön",
+    "author": "Yazar"
   },
   "testimonials": {
     "badge": "Müşteri Yorumları",
@@ -501,7 +542,8 @@
     "addModalCancel": "İptal",
     "addModalErrorEmpty": "En az bir anahtar kelime girin.",
     "addModalErrorFailed": "Kelimeler eklenemedi. Lütfen tekrar deneyin.",
-    "addModalPlaceholder": "seo aracı\nanahtar kelime takibi\ngeo görünürlük"
+    "addModalPlaceholder": "seo aracı\nanahtar kelime takibi\ngeo görünürlük",
+    "colUpdated": "Güncelleme"
   },
   "auditPage": {
     "title": "Teknik SEO Tarama",
@@ -520,7 +562,11 @@
     "noIssuesFilter": "Bu filtrede sorun bulunamadı",
     "startScanPrompt": "Tarama başlatın",
     "howToFix": "Nasıl Düzeltilir?",
-    "affectedPages": "{count} sayfa"
+    "affectedPages": "{count} sayfa",
+    "csvSeverity": "Önem",
+    "csvCategory": "Kategori",
+    "csvMessage": "Sorun",
+    "csvCount": "Sayı"
   },
   "billingPage": {
     "title": "Faturalama",
@@ -902,5 +948,21 @@
     "statusInProgress": "İşlemde",
     "statusCompleted": "Tamamlandı",
     "statusCancelled": "İptal"
+  },
+  "notificationBell": {
+    "title": "Bildirimler",
+    "markAllRead": "Tümünü okundu işaretle",
+    "empty": "Bildirim yok"
+  },
+  "consentModal": {
+    "heading": "Sözleşme Güncellemesi",
+    "description": "Platformumuzu kullanmaya devam edebilmek için aşağıdaki güncellenmiş sözleşmeleri okumanız ve onaylamanız gerekmektedir. Bu adım atlanamaz.",
+    "consentTerms": "Güncellenen Kullanım Şartları",
+    "consentKvkk": "KVKK Aydınlatma Metni",
+    "consentDistanceSales": "Mesafeli Satış Sözleşmesi",
+    "consentPrivacy": "Gizlilik Politikası",
+    "readAndAccept": "'nı okudum ve kabul ediyorum",
+    "saving": "Kaydediliyor...",
+    "acceptAndContinue": "Onaylıyorum ve Devam Ediyorum"
   }
 }

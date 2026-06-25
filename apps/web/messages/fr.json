@@ -55,7 +55,29 @@
     "trustedBy": "entreprises nous font confiance",
     "freeAudit": "Analysez votre site gratuitement",
     "freeAuditPlaceholder": "domain.com",
-    "freeAuditBtn": "Analyser"
+    "freeAuditBtn": "Analyser",
+    "statProjects": "Projets actifs",
+    "statKeywords": "Mots-clés suivis",
+    "statPages": "Pages analysées",
+    "metricOrganicLabel": "Trafic organique",
+    "metricOrganicSub": "3 derniers mois",
+    "metricRankingLabel": "Classement",
+    "metricRankingValue": "#1 Position",
+    "metricRankingSub": "\"outil seo\" — Google FR",
+    "metricAILabel": "AI Mentions",
+    "metricAIValue": "247 détectés",
+    "dashBadgeOrganic": "Trafic organique",
+    "dashNavScan": "Analyse SEO",
+    "dashNavKeywords": "Mots-clés",
+    "dashNavContent": "Contenu IA",
+    "dashKpiSeoScore": "Score SEO",
+    "dashKpiOrganic": "Trafic organique",
+    "dashKpiGeoScore": "Score GEO",
+    "dashKpiRankings": "Classements",
+    "dashKpiSub1": "+12 ce mois",
+    "dashKpiSub2": "+34% hausse",
+    "dashKpiSub4": "67 première page",
+    "dashKeywordsLabel": "Mots-clés"
   },
   "features": {
     "title": "Tout en une seule plateforme",
@@ -94,7 +116,11 @@
     "citation": "Citation",
     "citationDesc": "L'IA cite votre site comme source",
     "ratio": "Ratio Citation/Mention",
-    "ratioDesc": "Moins de 10 % → problème de structure de contenu"
+    "ratioDesc": "Moins de 10 % → problème de structure de contenu",
+    "learnMore": "En savoir plus sur GEO",
+    "trackedPlatforms": "Plateformes IA suivies",
+    "geoScore": "Score de visibilité GEO",
+    "last30Days": "30 derniers jours"
   },
   "pricing": {
     "title": "Tarification transparente",
@@ -131,7 +157,9 @@
       "tracking": "Profondeur du suivi de positionnement",
       "firstPage": "Première page",
       "top100": "Top 100"
-    }
+    },
+    "badge": "Tarifs",
+    "compareAll": "Comparer toutes les fonctionnalités et le plan Entreprise →"
   },
   "auth": {
     "login": "Connexion",
@@ -206,7 +234,18 @@
     "distanceSales": "Contrat de vente à distance",
     "refund": "Politique de remboursement",
     "allRights": "Tous droits réservés.",
-    "whatsapp": "Support WhatsApp"
+    "whatsapp": "Support WhatsApp",
+    "techSeo": "Scan SEO Technique",
+    "aiContent": "Moteur de Contenu IA",
+    "geoVisibility": "GEO / Visibilité IA",
+    "backlinkMarket": "Marché de Backlinks",
+    "outreach": "RP Numérique / Outreach",
+    "rankTracking": "Suivi de Classement",
+    "pricing": "Tarifs",
+    "aboutUs": "À propos",
+    "contact": "Contact",
+    "geoWhat": "Qu'est-ce que le GEO ?",
+    "freeAnalysis": "Analyse de Site Gratuite"
   },
   "cookie": {
     "title": "Préférences des cookies",
@@ -273,7 +312,9 @@
     "title": "Blog",
     "subtitle": "Derniers articles, conseils et meilleures pratiques sur le SEO et le GEO.",
     "readTime": "min de lecture",
-    "all": "Tout"
+    "all": "Tout",
+    "backToBlog": "← Retour au blog",
+    "author": "Auteur"
   },
   "testimonials": {
     "badge": "Avis clients",
@@ -500,7 +541,8 @@
     "addModalCancel": "Annuler",
     "addModalErrorEmpty": "Entrez au moins un mot-clé.",
     "addModalErrorFailed": "Impossible d'ajouter les mots-clés. Veuillez réessayer.",
-    "addModalPlaceholder": "outil seo\nsuivi des mots-clés\nvisibilité geo"
+    "addModalPlaceholder": "outil seo\nsuivi des mots-clés\nvisibilité geo",
+    "colUpdated": "Mis à jour"
   },
   "auditPage": {
     "title": "Audit SEO Technique",
@@ -519,7 +561,11 @@
     "noIssuesFilter": "Aucun problème trouvé pour ce filtre",
     "startScanPrompt": "Démarrer un scan",
     "howToFix": "Comment corriger ?",
-    "affectedPages": "{count} pages"
+    "affectedPages": "{count} pages",
+    "csvSeverity": "Sévérité",
+    "csvCategory": "Catégorie",
+    "csvMessage": "Problème",
+    "csvCount": "Nombre"
   },
   "billingPage": {
     "title": "Facturation",
@@ -874,5 +920,32 @@
     "statusInProgress": "İşlemde",
     "statusCompleted": "Tamamlandı",
     "statusCancelled": "İptal"
+  },
+  "notificationBell": {
+    "title": "Notifications",
+    "markAllRead": "Tout marquer comme lu",
+    "empty": "Aucune notification"
+  },
+  "consentModal": {
+    "heading": "Mise à jour des accords",
+    "description": "Pour continuer à utiliser notre plateforme, vous devez lire et accepter les accords mis à jour suivants. Cette étape ne peut pas être ignorée.",
+    "consentTerms": "Conditions d'utilisation mises à jour",
+    "consentKvkk": "Avis de protection des données (KVKK)",
+    "consentDistanceSales": "Contrat de vente à distance",
+    "consentPrivacy": "Politique de confidentialité",
+    "readAndAccept": "J'ai lu et j'accepte",
+    "saving": "Enregistrement...",
+    "acceptAndContinue": "J'accepte et continue"
+  },
+  "dashContent": {
+    "title": "Contenu",
+    "subtitle": "Gestion de contenu alimentée par l'IA avec notation SEO + GEO.",
+    "generateBtn": "+ Créer du contenu",
+    "tabList": "Liste",
+    "tabCalendar": "Calendrier",
+    "calPrev": "‹ Précédent",
+    "calNext": "Suivant ›",
+    "calEmpty": "Aucun contenu prévu ce mois-ci.",
+    "untitled": "Contenu"
   }
 }

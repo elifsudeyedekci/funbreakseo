@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslations, useLocale } from 'next-intl';
 import { contentApi } from '@/lib/api';
 
 const PROJECT_ID = 'current';
@@ -9,7 +10,8 @@ const PROJECT_ID = 'current';
 type TabType = 'list' | 'calendar';
 
 // Simple content calendar — shows scheduled/published content by month
-function ContentCalendar({ content }: { content: Record<string, unknown>[] }) {
+function ContentCalendar({ content, locale }: { content: Record<string, unknown>[]; locale: string }) {
+  const t = useTranslations('dashContent');
   const now = new Date();
   const [viewMonth, setViewMonth] = useState(now.getMonth());
   const [viewYear, setViewYear] = useState(now.getFullYear());
@@ -17,8 +19,12 @@ function ContentCalendar({ content }: { content: Record<string, unknown>[] }) {
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
   const firstDay = new Date(viewYear, viewMonth, 1).getDay();
 
-  const MONTH_NAMES = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
-  const DAY_NAMES = ['Pz', 'Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct'];
+  const MONTH_NAMES = Array.from({ length: 12 }, (_, i) =>
+    new Intl.DateTimeFormat(locale, { month: 'long' }).format(new Date(2024, i, 1))
+  );
+  const DAY_NAMES = Array.from({ length: 7 }, (_, i) =>
+    new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(new Date(2024, 0, i))
+  );
 
   function getItemsForDay(day: number) {
     const date = new Date(viewYear, viewMonth, day);
@@ -45,9 +51,9 @@ function ContentCalendar({ content }: { content: Record<string, unknown>[] }) {
     <div className="rounded-xl p-4 space-y-4" style={{ background: 'var(--bg-surface)', border: '1px solid rgba(255,255,255,0.06)' }}>
       {/* Calendar Header */}
       <div className="flex items-center justify-between">
-        <button onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-white/5 transition text-sm" style={{ color: 'var(--text-secondary)' }}>‹ Önceki</button>
+        <button onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-white/5 transition text-sm" style={{ color: 'var(--text-secondary)' }}>{t('calPrev')}</button>
         <span className="font-semibold text-sm">{MONTH_NAMES[viewMonth]} {viewYear}</span>
-        <button onClick={nextMonth} className="p-1.5 rounded-lg hover:bg-white/5 transition text-sm" style={{ color: 'var(--text-secondary)' }}>Sonraki ›</button>
+        <button onClick={nextMonth} className="p-1.5 rounded-lg hover:bg-white/5 transition text-sm" style={{ color: 'var(--text-secondary)' }}>{t('calNext')}</button>
       </div>
       {/* Day Names */}
       <div className="grid grid-cols-7 gap-1">
@@ -69,7 +75,7 @@ function ContentCalendar({ content }: { content: Record<string, unknown>[] }) {
               <span className={`block mb-1 font-medium ${isToday ? 'text-indigo-400' : ''}`} style={{ color: isToday ? undefined : 'var(--text-secondary)' }}>{day}</span>
               {items.slice(0, 2).map((item, idx) => (
                 <div key={idx} className="truncate rounded px-1 py-0.5 text-[10px]" style={{ background: 'var(--accent)', color: '#fff', opacity: 0.85 }}>
-                  {item.title as string || 'İçerik'}
+                  {item.title as string || t('untitled')}
                 </div>
               ))}
               {items.length > 2 && <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>+{items.length - 2}</span>}
@@ -78,7 +84,7 @@ function ContentCalendar({ content }: { content: Record<string, unknown>[] }) {
         })}
       </div>
       {content.length === 0 && (
-        <p className="text-center text-sm py-4" style={{ color: 'var(--text-muted)' }}>Bu ayda planlanmış içerik yok.</p>
+        <p className="text-center text-sm py-4" style={{ color: 'var(--text-muted)' }}>{t('calEmpty')}</p>
       )}
     </div>
   );
@@ -103,6 +109,8 @@ const ScoreBar = ({ value, color }: { value: number; color: string }) => (
 );
 
 export default function ContentPage() {
+  const t = useTranslations('dashContent');
+  const locale = useLocale();
   const [showGenerate, setShowGenerate] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('list');
   const [genTopic, setGenTopic] = useState('');
@@ -148,7 +156,7 @@ export default function ContentPage() {
           className="px-4 py-2 rounded-lg text-sm font-medium transition hover:opacity-90"
           style={{ background: 'var(--accent)', color: '#fff' }}
         >
-          + Generate Content
+          {t('generateBtn')}
         </button>
       </div>
 
@@ -164,14 +172,14 @@ export default function ContentPage() {
               color: activeTab === tab ? '#fff' : 'var(--text-secondary)',
             }}
           >
-            {tab === 'list' ? 'Liste' : 'Takvim'}
+            {tab === 'list' ? t('tabList') : t('tabCalendar')}
           </button>
         ))}
       </div>
 
       {/* Calendar View */}
       {activeTab === 'calendar' && (
-        <ContentCalendar content={content ?? []} />
+        <ContentCalendar content={content ?? []} locale={locale} />
       )}
 
       {/* Status Summary + Content List (list view only) */}

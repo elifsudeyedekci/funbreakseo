@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { useParams } from 'next/navigation';
 import { outreachApi } from '@/lib/api';
 
@@ -11,6 +11,7 @@ type Tab = 'profile' | 'market' | 'orders';
 export default function BacklinksPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const t = useTranslations('backlinksPage');
+  const locale = useLocale();
   const [tab, setTab] = useState<Tab>('profile');
 
   const { data: backlinks, isLoading } = useQuery({
@@ -133,7 +134,7 @@ export default function BacklinksPage() {
                   <td className="px-4 py-3 text-white font-medium">{o.domain}</td>
                   <td className="px-4 py-3 text-white">{(o.amount || 0).toLocaleString()} TL</td>
                   <td className="px-4 py-3"><span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400">{o.status}</span></td>
-                  <td className="px-4 py-3 text-white/40 text-xs">{o.createdAt ? new Date(o.createdAt).toLocaleDateString('tr-TR') : '-'}</td>
+                  <td className="px-4 py-3 text-white/40 text-xs">{o.createdAt ? new Date(o.createdAt).toLocaleDateString(locale) : '-'}</td>
                 </tr>
               ))}
             </tbody>

@@ -55,7 +55,29 @@
     "trustedBy": "Unternehmen vertrauen uns",
     "freeAudit": "Analysieren Sie Ihre Website kostenlos",
     "freeAuditPlaceholder": "domain.com",
-    "freeAuditBtn": "Analysieren"
+    "freeAuditBtn": "Analysieren",
+    "statProjects": "Aktive Projekte",
+    "statKeywords": "Verfolgte Keywords",
+    "statPages": "Analysierte Seiten",
+    "metricOrganicLabel": "Organischer Traffic",
+    "metricOrganicSub": "Letzte 3 Monate",
+    "metricRankingLabel": "Ranking",
+    "metricRankingValue": "#1 Position",
+    "metricRankingSub": "\"seo tool\" — Google DE",
+    "metricAILabel": "AI Mentions",
+    "metricAIValue": "247 erkannt",
+    "dashBadgeOrganic": "Organischer Traffic",
+    "dashNavScan": "SEO Scan",
+    "dashNavKeywords": "Keywords",
+    "dashNavContent": "KI-Inhalte",
+    "dashKpiSeoScore": "SEO Score",
+    "dashKpiOrganic": "Organischer Traffic",
+    "dashKpiGeoScore": "GEO Score",
+    "dashKpiRankings": "Rankings",
+    "dashKpiSub1": "+12 diesen Monat",
+    "dashKpiSub2": "+34% Anstieg",
+    "dashKpiSub4": "67 erste Seite",
+    "dashKeywordsLabel": "Keywords"
   },
   "features": {
     "title": "Alles auf einer Plattform",
@@ -94,7 +116,11 @@
     "citation": "Citation",
     "citationDesc": "KI nennt Ihre Website als Quelle",
     "ratio": "Citation/Mention-Verhältnis",
-    "ratioDesc": "Unter 10 % → Problem mit der Inhaltsstruktur"
+    "ratioDesc": "Unter 10 % → Problem mit der Inhaltsstruktur",
+    "learnMore": "Mehr über GEO erfahren",
+    "trackedPlatforms": "Verfolgte KI-Plattformen",
+    "geoScore": "GEO-Sichtbarkeitsscore",
+    "last30Days": "Letzte 30 Tage"
   },
   "pricing": {
     "title": "Transparente Preise",
@@ -131,7 +157,9 @@
       "tracking": "Ranking-Tracking-Tiefe",
       "firstPage": "Erste Seite",
       "top100": "Top 100"
-    }
+    },
+    "badge": "Preise",
+    "compareAll": "Alle Funktionen und Enterprise-Plan vergleichen →"
   },
   "auth": {
     "login": "Anmelden",
@@ -206,7 +234,18 @@
     "distanceSales": "Fernabsatzvertrag",
     "refund": "Rückgaberichtlinie",
     "allRights": "Alle Rechte vorbehalten.",
-    "whatsapp": "WhatsApp-Support"
+    "whatsapp": "WhatsApp-Support",
+    "techSeo": "Technischer SEO-Scan",
+    "aiContent": "AI-Content-Engine",
+    "geoVisibility": "GEO / AI-Sichtbarkeit",
+    "backlinkMarket": "Backlink Market",
+    "outreach": "Digitale PR / Outreach",
+    "rankTracking": "Ranking-Verfolgung",
+    "pricing": "Preise",
+    "aboutUs": "Über uns",
+    "contact": "Kontakt",
+    "geoWhat": "Was ist GEO?",
+    "freeAnalysis": "Kostenlose Siteanalyse"
   },
   "cookie": {
     "title": "Cookie-Einstellungen",
@@ -273,7 +312,9 @@
     "title": "Blog",
     "subtitle": "Aktuelle Artikel, Tipps und Best Practices zu SEO und GEO.",
     "readTime": "Min. Lesezeit",
-    "all": "Alle"
+    "all": "Alle",
+    "backToBlog": "← Zurück zum Blog",
+    "author": "Autor"
   },
   "testimonials": {
     "badge": "Kundenbewertungen",
@@ -500,7 +541,8 @@
     "addModalCancel": "Abbrechen",
     "addModalErrorEmpty": "Mindestens ein Keyword eingeben.",
     "addModalErrorFailed": "Keywords konnten nicht hinzugefügt werden. Bitte erneut versuchen.",
-    "addModalPlaceholder": "seo tool\nkeyword tracking\ngeo sichtbarkeit"
+    "addModalPlaceholder": "seo tool\nkeyword tracking\ngeo sichtbarkeit",
+    "colUpdated": "Aktualisiert"
   },
   "auditPage": {
     "title": "Technisches SEO-Audit",
@@ -519,7 +561,11 @@
     "noIssuesFilter": "Keine Probleme für diesen Filter gefunden",
     "startScanPrompt": "Scan starten",
     "howToFix": "Wie beheben?",
-    "affectedPages": "{count} Seiten"
+    "affectedPages": "{count} Seiten",
+    "csvSeverity": "Schweregrad",
+    "csvCategory": "Kategorie",
+    "csvMessage": "Problem",
+    "csvCount": "Anzahl"
   },
   "billingPage": {
     "title": "Abrechnung",
@@ -874,5 +920,32 @@
     "statusInProgress": "İşlemde",
     "statusCompleted": "Tamamlandı",
     "statusCancelled": "İptal"
+  },
+  "notificationBell": {
+    "title": "Benachrichtigungen",
+    "markAllRead": "Alle als gelesen markieren",
+    "empty": "Keine Benachrichtigungen"
+  },
+  "consentModal": {
+    "heading": "Vertragsaktualisierung",
+    "description": "Um unsere Plattform weiter nutzen zu können, müssen Sie die folgenden aktualisierten Vereinbarungen lesen und akzeptieren. Dieser Schritt kann nicht übersprungen werden.",
+    "consentTerms": "Aktualisierte Nutzungsbedingungen",
+    "consentKvkk": "Datenschutzhinweis (KVKK)",
+    "consentDistanceSales": "Fernabsatzvertrag",
+    "consentPrivacy": "Datenschutzrichtlinie",
+    "readAndAccept": "Ich habe gelesen und akzeptiere",
+    "saving": "Wird gespeichert...",
+    "acceptAndContinue": "Ich akzeptiere und fahre fort"
+  },
+  "dashContent": {
+    "title": "Inhalt",
+    "subtitle": "KI-gestütztes Content-Management mit SEO + GEO-Bewertung.",
+    "generateBtn": "+ Inhalt erstellen",
+    "tabList": "Liste",
+    "tabCalendar": "Kalender",
+    "calPrev": "‹ Zurück",
+    "calNext": "Weiter ›",
+    "calEmpty": "Kein Inhalt für diesen Monat geplant.",
+    "untitled": "Inhalt"
   }
 }
