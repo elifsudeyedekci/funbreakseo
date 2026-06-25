@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { PrismaClient } from '@prisma/client';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
@@ -11,7 +12,25 @@ const pinoHttp: (opts?: Record<string, unknown>) => import('express').RequestHan
 const pino: (opts?: Record<string, unknown>) => import('pino').Logger = require('pino');
 import { AppModule } from './app.module';
 
+async function loadDbSettingsToEnv(): Promise<void> {
+  const prisma = new PrismaClient();
+  try {
+    const settings = await prisma.systemSetting.findMany();
+    for (const s of settings) {
+      if (s.value && !process.env[s.key]) {
+        process.env[s.key] = String(s.value);
+      }
+    }
+  } catch {
+    // DB not ready yet (first run) — skip silently
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
 async function bootstrap(): Promise<void> {
+  await loadDbSettingsToEnv();
+
   const app = await NestFactory.create(AppModule, {
     bufferLogs: true,
   });

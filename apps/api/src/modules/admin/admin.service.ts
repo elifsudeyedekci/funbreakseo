@@ -568,11 +568,14 @@ export class AdminService {
   }
 
   async updateSystemSetting(key: string, value: string) {
-    return this.prisma.systemSetting.upsert({
+    const result = await this.prisma.systemSetting.upsert({
       where: { key },
       create: { key, value },
       update: { value },
     });
+    // Sync to process.env so ConfigService picks it up immediately without restart
+    if (value) process.env[key] = value;
+    return result;
   }
 
   // Returns which API keys are configured (without revealing actual values for secrets)
