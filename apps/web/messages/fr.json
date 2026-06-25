@@ -968,5 +968,58 @@
     "outreach": { "title": "Campagne Outreach", "desc": "Modèles d'e-mails personnalisés par IA, séquences de suivi automatiques et gestion des réponses.", "tags": ["Modèle IA", "Suivi auto", "Intégration CRM"] },
     "whiteLabel": { "title": "Rapports en marque blanche", "desc": "Créez des rapports PDF, Excel et portail client interactif de marque avec votre propre logo.", "tags": ["Votre marque", "PDF & Excel", "Portail client"] }
   }
+},
+"seoPage": {
+  "badge": "Guide complet — 2025",
+  "title": "Qu'est-ce que le SEO ?",
+  "titleHighlight": "Optimisation pour les moteurs de recherche",
+  "subtitle": "L'ensemble des stratégies techniques, de contenu et d'autorité que vous appliquez pour mieux vous classer dans Google et autres moteurs de recherche.",
+  "stats": [
+    { "value": "68%", "label": "Part estimée de tout le trafic web provenant de la recherche organique" },
+    { "value": "#1", "label": "Le taux de clics moyen pour la première position sur Google est de 27,6%" },
+    { "value": "3 sec", "label": "53% des utilisateurs quittent si le temps de chargement dépasse 3 secondes" },
+    { "value": "200+", "label": "Nombre de facteurs dans l'algorithme de classement de Google" }
+  ],
+  "pillarsTitle": "Les 6 piliers du SEO",
+  "pillars": {
+    "technical": { "title": "SEO Technique", "desc": "Vitesse du site, Core Web Vitals, budget de crawl, hreflang, données structurées et compatibilité mobile." },
+    "content": { "title": "Optimisation du contenu", "desc": "Production de contenu conforme E-E-A-T, optimisation des titres, méta-descriptions et stratégie de liens internes." },
+    "offpage": { "title": "SEO Off-Page & Backlinks", "desc": "Profil de backlinks qualitatifs qui augmentent l'autorité et le score de confiance." },
+    "local": { "title": "SEO Local & International", "desc": "Profil Google Business, mots-clés locaux, balises hreflang et stratégie de contenu multilingue." },
+    "analytics": { "title": "Analyse SEO & Mesure", "desc": "Trafic organique, changements de classement, optimisation CTR et mesure du ROI." },
+    "geo": { "title": "Intégration SEO + GEO", "desc": "En 2025, Google seul ne suffit plus. Gérez la stratégie GEO parallèlement au SEO pour ChatGPT, Gemini et Perplexity." }
+  },
+  "howTitle": "Comment fonctionne le SEO ?",
+  "howBody": "Google explore des milliards de pages web chaque jour, indexe leur contenu et classe les pages les plus pertinentes en évaluant 200+ facteurs.",
+  "whyTitle": "Pourquoi est-ce important ?",
+  "whyBody": "La recherche organique représente 68% de tout le trafic web et ne s'arrête pas lorsqu'un budget de campagne est épuisé, contrairement aux annonces payantes.",
+  "changedTitle": "Comment le SEO a-t-il changé en 2025 ?",
+  "changedBody": "Avec la montée des outils de recherche basés sur l'IA, le SEO seul ne suffit plus. L'application conjointe de GEO et SEO est devenue critique.",
+  "ctaTitle": "Découvrez gratuitement le score SEO de votre site",
+  "ctaSubtitle": "Voyez où se situe votre site en 5 minutes avec plus de 150 vérifications techniques.",
+  "ctaButton": "Démarrer le scan SEO gratuit",
+  "geoLink": "Qu'est-ce que le GEO ? →"
+},
+"geoPage": {
+  "badge": "Nouveau : Optimisation GEO",
+  "title": "Démarquez-vous dans",
+  "titleHighlight": "les recherches IA",
+  "subtitle": "40% des utilisateurs utilisent désormais ChatGPT et Gemini au lieu de Google. Atteignez ces audiences avec GEO (Generative Engine Optimization).",
+  "whatTitle": "Qu'est-ce que GEO ?",
+  "whatBody": "GEO (Generative Engine Optimization) est l'ensemble des stratégies d'optimisation appliquées pour que votre marque apparaisse correctement et fréquemment dans les réponses générées par IA — incluant ChatGPT, Gemini, Perplexity, Claude et Google AI Overview.",
+  "whyTitle": "Pourquoi est-ce important ?",
+  "whyBody": "L'utilisation des outils de recherche basés sur l'IA a triplé entre 2024-2025. ChatGPT a atteint 600 millions d'utilisateurs actifs mensuels.",
+  "howTitle": "Comment fonctionne FunBreak GEO ?",
+  "howBody": "Notre plateforme scanne 6 plateformes IA différentes chaque semaine pour mesurer le taux de mention et de citation de votre marque.",
+  "howItems": [
+    { "title": "Suivi des mentions :", "desc": "Combien de fois votre marque est-elle mentionnée dans les réponses IA ?" },
+    { "title": "Taux de citation :", "desc": "Quel est votre pourcentage d'être cité comme source ?" },
+    { "title": "Comparaison concurrentielle :", "desc": "Benchmarking avec d'autres marques de votre secteur" },
+    { "title": "Recommandations de contenu :", "desc": "Quel contenu devriez-vous produire pour être une marque recommandée par l'IA ?" }
+  ],
+  "platformsTitle": "Plateformes que nous suivons",
+  "marketShare": "Part de marché IA",
+  "cta": "Essayer le suivi GEO gratuitement",
+  "ctaNote": "14 jours gratuits, pas de carte de crédit requise"
 }
 }

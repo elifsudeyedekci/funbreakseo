@@ -995,5 +995,58 @@
     "outreach": { "title": "Outreach Kampanya", "desc": "AI ile kişiselleştirilmiş e-posta şablonları, otomatik takip dizileri ve yanıt yönetimi. Konuk yazarlık ve link kampanyaları için hazır şablonlar.", "tags": ["AI Şablon", "Oto Takip", "CRM Entegrasyonu"] },
     "whiteLabel": { "title": "White Label Raporlar", "desc": "Kendi logonuz ve renk paletinizle markalı PDF, Excel ve interaktif müşteri portalı raporları oluşturun. Ajans büyütmek için ideal.", "tags": ["Kendi Marka", "PDF & Excel", "Müşteri Portali"] }
   }
+},
+"seoPage": {
+  "badge": "Kapsamlı Rehber — 2025",
+  "title": "SEO Nedir?",
+  "titleHighlight": "Arama Motoru Optimizasyonu",
+  "subtitle": "Google ve diğer arama motorlarında üst sıralara çıkmak için uyguladığınız teknik, içerik ve otorite stratejilerinin bütünüdür. 2025'te SEO, yapay zeka aramaları (GEO) ile birlikte çalışır.",
+  "stats": [
+    { "value": "%68", "label": "Tüm web trafiğinin organik aramadan geldiği tahmini oran" },
+    { "value": "#1", "label": "Google'da birinci sıranın ortalama tıklama oranı %27,6" },
+    { "value": "3 sn", "label": "Sayfa yüklenme süresi 3 saniyeyi geçerse kullanıcıların %53'ü terk eder" },
+    { "value": "200+", "label": "Google'ın sıralama algoritmasındaki faktör sayısı" }
+  ],
+  "pillarsTitle": "SEO'nun 6 Temel Direği",
+  "pillars": {
+    "technical": { "title": "Teknik SEO", "desc": "Site hızı, Core Web Vitals, crawl bütçesi, hreflang, yapısal veri ve mobil uyum. Arama motorlarının sitenizi doğru taraması ve indexlemesi için temel." },
+    "content": { "title": "İçerik Optimizasyonu", "desc": "Hedef anahtar kelimelere yönelik E-E-A-T uyumlu içerik üretimi, başlık optimizasyonu, meta açıklamalar ve iç linkleme stratejisi." },
+    "offpage": { "title": "Off-Page SEO & Backlink", "desc": "Otorite ve güven puanını artıran kaliteli backlink profili. Domain Rating (DR), anchor text dağılımı ve link çeşitliliği." },
+    "local": { "title": "Yerel & Uluslararası SEO", "desc": "Google Business profili, yerel anahtar kelimeler, hreflang etiketleri ve çok dilli içerik stratejisiyle küresel pazara açılın." },
+    "analytics": { "title": "SEO Analitik & Ölçüm", "desc": "Organik trafik, sıralama değişimleri, CTR optimizasyonu ve ROI ölçümü. Google Search Console ve FunBreak SEO dashboardıyla veriye dayalı kararlar." },
+    "geo": { "title": "SEO + GEO Entegrasyonu", "desc": "2025'te sadece Google yetmez. ChatGPT, Gemini ve Perplexity'de de sıralama almak için GEO stratejisini SEO ile birlikte yönetin." }
+  },
+  "howTitle": "SEO Nasıl Çalışır?",
+  "howBody": "Google her gün milyarlarca web sayfasını tarar, içeriklerini indexler ve kullanıcı sorgusuna en alakalı sayfaları 200'den fazla faktörü değerlendirerek sıralar. SEO, bu faktörleri anlayıp sitenizi arama motorlarının ve kullanıcıların tercih edeceği şekilde optimize etme sürecidir.",
+  "whyTitle": "Neden Önemli?",
+  "whyBody": "Organik arama, tüm web trafiğinin %68'ini oluşturuyor ve ücretli reklamların aksine kampanya bütçesi bitince durmuyor. İyi optimize edilmiş bir site, yıllarca düşük maliyetle nitelikli trafik almaya devam eder.",
+  "changedTitle": "2025'te SEO Nasıl Değişti?",
+  "changedBody": "Yapay zeka tabanlı arama araçlarının yükselişiyle SEO artık tek başına yeterli değil. ChatGPT, Gemini ve Perplexity gibi platformlar milyonlarca sorguya cevap veriyor. GEO (Generative Engine Optimization) ile SEO'nun birlikte uygulanması kritik hale geldi.",
+  "ctaTitle": "Sitenizin SEO Skorunu Ücretsiz Öğrenin",
+  "ctaSubtitle": "150+ teknik kontrol, Core Web Vitals analizi ve öncelikli aksiyon listesi ile sitenizin nerede durduğunu 5 dakikada görün.",
+  "ctaButton": "Ücretsiz SEO Taraması Başlat",
+  "geoLink": "GEO Nedir? →"
+},
+"geoPage": {
+  "badge": "Yeni: GEO Optimizasyon",
+  "title": "Yapay Zeka Aramalarında",
+  "titleHighlight": "Öne Çıkın",
+  "subtitle": "Kullanıcıların %40'ı artık Google yerine ChatGPT ve Gemini kullanıyor. GEO (Generative Engine Optimization) ile bu kitlelere ulaşın.",
+  "whatTitle": "GEO Nedir?",
+  "whatBody": "GEO (Generative Engine Optimization), markanızın yapay zeka tarafından üretilen yanıtlarda — ChatGPT, Gemini, Perplexity, Claude ve Google AI Overview dahil — doğru ve sık şekilde yer almasını sağlamak için uygulanan optimizasyon stratejilerinin bütününüdür.",
+  "whyTitle": "Neden Önemli?",
+  "whyBody": "Yapay zeka tabanlı arama araçlarının kullanımı 2024-2025 arasında 3 kata katlandı. ChatGPT aylık 600 milyon aktif kullanıcıya ulaştı. Bu kullanıcılar artık ürün ve hizmet önerileri için de AI araçlarına başvuruyor.",
+  "howTitle": "FunBreak GEO Nasıl Çalışır?",
+  "howBody": "Platformumuz her hafta 6 farklı AI platformunu tarayarak markanızın mention ve citation oranını ölçer. Rakiplerinizle karşılaştırır, düşen görünürlük için alarm kurar ve iyileştirme önerileri sunar.",
+  "howItems": [
+    { "title": "Mention Takibi:", "desc": "Markanız AI yanıtlarında kaç kez geçiyor?" },
+    { "title": "Citation Oranı:", "desc": "Kaynak olarak gösterilme yüzdeniz nedir?" },
+    { "title": "Rakip Karşılaştırma:", "desc": "Sektörünüzdeki diğer markalarla kıyaslama" },
+    { "title": "İçerik Önerileri:", "desc": "AI tarafından önerilen marka olmak için hangi içerikleri üretmelisiniz?" }
+  ],
+  "platformsTitle": "Takip Ettiğimiz Platformlar",
+  "marketShare": "AI Pazar Payı",
+  "cta": "GEO Takibini Ücretsiz Dene",
+  "ctaNote": "14 gün ücretsiz, kredi kartı gerekmez"
 }
 }
