@@ -31,10 +31,10 @@ export class VakifBankService {
   private readonly apiUrl: string;
 
   constructor(private readonly config: ConfigService) {
-    this.merchantId = config.getOrThrow<string>('VAKIFBANK_MERCHANT_ID');
-    this.terminalId = config.getOrThrow<string>('VAKIFBANK_TERMINAL_ID');
-    this.posnetId = config.getOrThrow<string>('VAKIFBANK_POSNET_ID');
-    this.encKey = config.getOrThrow<string>('VAKIFBANK_ENC_KEY');
+    this.merchantId = config.get<string>('VAKIFBANK_MERCHANT_ID', '');
+    this.terminalId = config.get<string>('VAKIFBANK_TERMINAL_ID', '');
+    this.posnetId = config.get<string>('VAKIFBANK_POSNET_ID', '');
+    this.encKey = config.get<string>('VAKIFBANK_ENC_KEY', '');
     this.apiUrl = config.get<string>(
       'VAKIFBANK_API_URL',
       'https://onlineodeme.vakifbank.com.tr:4443/UIService/Index',

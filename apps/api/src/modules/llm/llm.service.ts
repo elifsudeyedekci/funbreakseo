@@ -45,11 +45,11 @@ export class LlmService {
 
   constructor(private readonly config: ConfigService) {
     this.anthropic = new Anthropic({
-      apiKey: config.getOrThrow<string>('ANTHROPIC_API_KEY'),
+      apiKey: config.get<string>('ANTHROPIC_API_KEY', 'sk-ant-placeholder'),
     });
 
     this.openai = new OpenAI({
-      apiKey: config.getOrThrow<string>('OPENAI_API_KEY'),
+      apiKey: config.get<string>('OPENAI_API_KEY', 'sk-placeholder'),
     });
 
     this.defaultAnthropicModel = config.get<string>(

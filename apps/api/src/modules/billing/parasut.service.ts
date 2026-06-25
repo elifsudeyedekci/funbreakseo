@@ -41,11 +41,11 @@ export class ParasutService {
   private tokenExpiresAt: number = 0;
 
   constructor(private readonly config: ConfigService) {
-    this.companyId = config.getOrThrow<string>('PARASUT_COMPANY_ID');
-    this.clientId = config.getOrThrow<string>('PARASUT_CLIENT_ID');
-    this.clientSecret = config.getOrThrow<string>('PARASUT_CLIENT_SECRET');
-    this.username = config.getOrThrow<string>('PARASUT_USERNAME');
-    this.password = config.getOrThrow<string>('PARASUT_PASSWORD');
+    this.companyId = config.get<string>('PARASUT_COMPANY_ID', '');
+    this.clientId = config.get<string>('PARASUT_CLIENT_ID', '');
+    this.clientSecret = config.get<string>('PARASUT_CLIENT_SECRET', '');
+    this.username = config.get<string>('PARASUT_USERNAME', '');
+    this.password = config.get<string>('PARASUT_PASSWORD', '');
     this.baseUrl = config.get<string>(
       'PARASUT_API_URL',
       'https://api.parasut.com/v4',

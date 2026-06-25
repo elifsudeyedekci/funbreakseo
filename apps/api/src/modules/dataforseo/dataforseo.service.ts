@@ -81,8 +81,8 @@ export class DataForSeoService {
   private readonly sandboxMode: boolean;
 
   constructor(private readonly config: ConfigService) {
-    const login = config.getOrThrow<string>('DATAFORSEO_LOGIN');
-    const password = config.getOrThrow<string>('DATAFORSEO_PASSWORD');
+    const login = config.get<string>('DATAFORSEO_LOGIN', '');
+    const password = config.get<string>('DATAFORSEO_PASSWORD', '');
     this.sandboxMode = config.get<string>('DATAFORSEO_USE_SANDBOX', 'false') === 'true';
 
     const baseURL = this.sandboxMode
