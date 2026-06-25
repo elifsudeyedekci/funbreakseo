@@ -1,43 +1,57 @@
 #!/bin/bash
-# FunBreak SEO — Production Deploy Script (Contabo Ubuntu 24.04)
-# Run from /home/funbreak/funbreakseo
+# FunBreak SEO — Production Deploy Script
+# Sunucu: Contabo VPS Ubuntu 24.04
+# Çalıştır: bash deploy.sh
+# Konum: /home/funbreak/funbreakseo/
 
 set -e
 
-echo "🚀 FunBreak SEO Deploy Starting..."
+APP_DIR="/home/funbreak/funbreakseo"
+cd "$APP_DIR"
 
-# Pull latest
-git pull origin main
+echo "=========================================="
+echo " FunBreak SEO — Production Deploy"
+echo "=========================================="
 
-# Install dependencies
+# 1. En son kodu çek
+echo "[1/6] Pulling latest code..."
+git pull origin master
+
+# 2. Bağımlılıkları yükle
+echo "[2/6] Installing dependencies..."
 pnpm install --frozen-lockfile
 
-# Generate Prisma client
+# 3. Prisma client oluştur
+echo "[3/6] Generating Prisma client..."
 pnpm --filter @funbreakseo/database generate
 
-# Run migrations
+# 4. Veritabanı migration (production-safe, geri alınamaz değişiklik olmaz)
+echo "[4/6] Running database migrations..."
 pnpm --filter @funbreakseo/database migrate:deploy
 
-# Build all apps
+# 5. Tüm uygulamaları build et
+echo "[5/6] Building all apps (api, web, admin)..."
 pnpm build
 
-echo "✅ Build complete. Restarting PM2 processes..."
+# 6. PM2 süreçlerini yeniden başlat
+echo "[6/6] Restarting PM2 processes..."
+mkdir -p "$APP_DIR/logs"
 
-# Restart API
-pm2 restart fb-api || pm2 start apps/api/dist/main.js --name fb-api --interpreter none
-
-# Restart Worker
-pm2 restart fb-worker || pm2 start apps/api/dist/worker.js --name fb-worker --interpreter none
-
-# Restart Web
-pm2 restart fb-web || pm2 start "pnpm --filter @funbreakseo/web start" --name fb-web
-
-# Restart Admin
-pm2 restart fb-admin || pm2 start "pnpm --filter @funbreakseo/admin start" --name fb-admin
+# ecosystem.config.js ile tüm süreçleri yönet
+if pm2 list | grep -q "fb-api"; then
+  pm2 reload ecosystem.config.js --update-env
+else
+  pm2 start ecosystem.config.js
+fi
 
 pm2 save
 
-echo "✅ Deploy complete!"
 echo ""
-echo "Services:"
+echo "=========================================="
+echo " Deploy tamamlandı!"
+echo "=========================================="
+echo ""
 pm2 status
+echo ""
+echo "Loglar için: pm2 logs"
+echo "API health: curl https://api.funbreakseo.com/health"

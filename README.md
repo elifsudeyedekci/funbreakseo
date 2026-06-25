@@ -72,43 +72,174 @@ pnpm dev
 
 ---
 
-## Production Deploy (Contabo Sunucu)
+## Production Deploy (Contabo VPS — Ubuntu 24.04)
 
-### Sunucu gereksinimleri
-- Ubuntu 24.04, 8 vCPU, 24GB RAM
-- Node.js 22, PostgreSQL 16, Redis 7, Nginx, PM2, Certbot
+**Sunucu:** 95.111.249.4 | Node 22, PostgreSQL 16, Redis 7, Nginx, PM2, Certbot kurulu.
 
-### Nginx kurulum
+---
+
+### ADIM 1 — Repo'yu klonla
+
+```bash
+cd /home/funbreak
+git clone https://github.com/elifsudeyedekci/funbreakseo.git funbreakseo
+cd funbreakseo
+```
+
+---
+
+### ADIM 2 — .env dosyasını oluştur ve doldur
+
+```bash
+cp .env.example .env
+nano .env
+```
+
+**Kesinlikle doldurulması gereken değişkenler:**
+
+```env
+NODE_ENV=production
+APP_URL=https://funbreakseo.com
+ADMIN_URL=https://admin.funbreakseo.com
+API_URL=https://api.funbreakseo.com
+NEXT_PUBLIC_API_URL=https://api.funbreakseo.com/api/v1
+
+# Sunucudaki PostgreSQL
+DATABASE_URL=postgresql://KULLANICI:SIFRE@localhost:5432/funbreakseo
+
+# JWT (en az 32 karakter rastgele metin)
+JWT_ACCESS_SECRET=BURAYA_COK_UZUN_RASTGELE_METIN_YAZ
+JWT_REFRESH_SECRET=BURAYA_BASKA_COK_UZUN_RASTGELE_METIN_YAZ
+
+# Anthropic (içerik üretimi için zorunlu)
+ANTHROPIC_API_KEY=sk-ant-...
+
+# DataForSEO (keyword takibi için zorunlu)
+DATAFORSEO_LOGIN=email@example.com
+DATAFORSEO_PASSWORD=...
+
+# SMTP (e-posta için)
+SMTP_HOST=...
+SMTP_PORT=587
+SMTP_USER=...
+SMTP_PASS=...
+
+# VakıfBank (ödeme için — başlangıçta test URL kullan)
+VAKIFBANK_MERCHANT_ID=...
+VAKIFBANK_TERMINAL_NO=...
+VAKIFBANK_PASSWORD=...
+VAKIFBANK_3DSECURE_KEY=...
+VAKIFBANK_BASE_URL=https://onlineodemetest.vakifbank.com.tr
+```
+
+---
+
+### ADIM 3 — PostgreSQL veritabanı oluştur
+
+```bash
+sudo -u postgres psql -c "CREATE DATABASE funbreakseo;"
+sudo -u postgres psql -c "CREATE USER funbreak WITH PASSWORD 'GUCLU_SIFRE';"
+sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE funbreakseo TO funbreak;"
+```
+
+---
+
+### ADIM 4 — pnpm yükle ve bağımlılıkları çek
+
+```bash
+npm install -g pnpm
+pnpm install --frozen-lockfile
+```
+
+---
+
+### ADIM 5 — Veritabanı migrate ve seed
+
+```bash
+pnpm --filter @funbreakseo/database generate
+pnpm --filter @funbreakseo/database migrate:deploy
+pnpm --filter @funbreakseo/database seed
+```
+
+---
+
+### ADIM 6 — Production build
+
+```bash
+pnpm build
+```
+
+---
+
+### ADIM 7 — Nginx konfigürasyonu
+
 ```bash
 sudo cp nginx.conf /etc/nginx/sites-available/funbreakseo
-sudo ln -s /etc/nginx/sites-available/funbreakseo /etc/nginx/sites-enabled/
+sudo ln -sf /etc/nginx/sites-available/funbreakseo /etc/nginx/sites-enabled/funbreakseo
+sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
-### SSL sertifikası
+---
+
+### ADIM 8 — SSL sertifikası (Certbot)
+
 ```bash
-sudo certbot --nginx -d funbreakseo.com -d www.funbreakseo.com -d admin.funbreakseo.com -d api.funbreakseo.com
+sudo certbot --nginx \
+  -d funbreakseo.com \
+  -d www.funbreakseo.com \
+  -d admin.funbreakseo.com \
+  -d api.funbreakseo.com
 ```
 
-### İlk Deploy
+---
+
+### ADIM 9 — PM2 ile başlat
+
 ```bash
-git clone <repo> /home/funbreak/funbreakseo
-cd /home/funbreak/funbreakseo
-cp .env.example .env
-# .env doldurul
-pnpm install
-pnpm db:generate && pnpm db:migrate && pnpm db:seed
-pnpm build
+mkdir -p /home/funbreak/funbreakseo/logs
 pm2 start ecosystem.config.js
 pm2 save
-pm2 startup
+pm2 startup   # Çıktıdaki komutu kopyalayıp çalıştır (sudo ile)
 ```
 
-### Güncellemeler
+---
+
+### ADIM 10 — Doğrula
+
+```bash
+curl https://api.funbreakseo.com/health
+pm2 status
+```
+
+Beklenen: `{"status":"ok","timestamp":"..."}`
+
+---
+
+### Sonraki güncellemeler (her push sonrası)
+
 ```bash
 cd /home/funbreak/funbreakseo
-./deploy.sh
+bash deploy.sh
 ```
+
+---
+
+### İlk Admin Girişi
+
+- URL: https://admin.funbreakseo.com
+- E-posta: `admin@funbreakseo.com`
+- Şifre: `Admin123!`
+- **Giriş yaptıktan sonra şifreyi hemen değiştir!**
+
+---
+
+### API Key'leri Sonradan Girmek
+
+Sunucu kurulduktan sonra API key'leri `.env`'e yazmak yerine admin panelden de girebilirsin:  
+https://admin.funbreakseo.com → Sistem Yönetimi → API Entegrasyonları
+
+Girilen key'ler veritabanına şifreli kaydedilir ve sunucu restart'ında otomatik yüklenir.
 
 ---
 
