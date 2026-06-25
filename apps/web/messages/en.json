@@ -709,7 +709,14 @@
     "marketLoading": "Loading marketplace listings...",
     "visitsPerMonth": "visits/month",
     "buyBtn": "Buy",
-    "noOrders": "No orders yet"
+    "noOrders": "No orders yet",
+    "subtitle": "Track inbound links to your site",
+    "tabAll": "All",
+    "tabNew": "New",
+    "tabLost": "Lost",
+    "colTargetUrl": "Target URL",
+    "noLinksYet": "No backlinks yet",
+    "noLinksDesc": "Earn new backlinks through outreach campaigns."
   },
   "supportPage": {
     "title": "Support",
@@ -784,5 +791,26 @@
     },
     "complete": "Setup complete",
     "progress": "{pct}% complete"
+  },
+  "marketPage": {
+    "title": "Backlink Market",
+    "subtitle": "Purchase high-quality backlinks",
+    "tabListings": "Listings",
+    "tabOrders": "My Orders",
+    "filterAll": "All",
+    "colDomain": "Domain",
+    "colDA": "DA",
+    "colCategory": "Category",
+    "colTraffic": "Traffic",
+    "colPrice": "Price",
+    "buyBtn": "Buy",
+    "noListings": "No listings available",
+    "colStatus": "Status",
+    "colDate": "Date",
+    "noOrders": "No orders yet",
+    "statusPending": "Pending",
+    "statusInProgress": "In Progress",
+    "statusCompleted": "Completed",
+    "statusCancelled": "Cancelled"
   }
 }

@@ -731,7 +731,14 @@
     "marketLoading": "Загрузка объявлений маркетплейса...",
     "visitsPerMonth": "визитов/мес",
     "buyBtn": "Купить",
-    "noOrders": "Заказов пока нет"
+    "noOrders": "Заказов пока нет",
+    "subtitle": "Sitenize yönelen geri bağlantıları takip edin",
+    "tabAll": "Tümü",
+    "tabNew": "Yeni",
+    "tabLost": "Kaybedilen",
+    "colTargetUrl": "Hedef URL",
+    "noLinksYet": "Henüz backlink yok",
+    "noLinksDesc": "Outreach kampanyaları ile yeni backlinkler kazanabilirsiniz."
   },
   "supportPage": {
     "title": "Поддержка",
@@ -783,5 +790,26 @@
   "settingsPage": {
     "title": "Настройки",
     "subtitle": "Управление настройками"
+  },
+  "marketPage": {
+    "title": "Backlink Marketi",
+    "subtitle": "Yüksek kaliteli backlinkler satın alın",
+    "tabListings": "Listeler",
+    "tabOrders": "Siparişlerim",
+    "filterAll": "Tümü",
+    "colDomain": "Domain",
+    "colDA": "DA",
+    "colCategory": "Kategori",
+    "colTraffic": "Trafik",
+    "colPrice": "Fiyat",
+    "buyBtn": "Satın Al",
+    "noListings": "Şu an uygun liste yok",
+    "colStatus": "Durum",
+    "colDate": "Tarih",
+    "noOrders": "Henüz sipariş yok",
+    "statusPending": "Bekliyor",
+    "statusInProgress": "İşlemde",
+    "statusCompleted": "Tamamlandı",
+    "statusCancelled": "İptal"
   }
 }

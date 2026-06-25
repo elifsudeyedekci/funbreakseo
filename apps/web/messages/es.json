@@ -731,7 +731,14 @@
     "marketLoading": "Cargando listados del mercado...",
     "visitsPerMonth": "visitas/mes",
     "buyBtn": "Comprar",
-    "noOrders": "Todavía no hay pedidos"
+    "noOrders": "Todavía no hay pedidos",
+    "subtitle": "Sitenize yönelen geri bağlantıları takip edin",
+    "tabAll": "Tümü",
+    "tabNew": "Yeni",
+    "tabLost": "Kaybedilen",
+    "colTargetUrl": "Hedef URL",
+    "noLinksYet": "Henüz backlink yok",
+    "noLinksDesc": "Outreach kampanyaları ile yeni backlinkler kazanabilirsiniz."
   },
   "supportPage": {
     "title": "Soporte",
@@ -783,5 +790,26 @@
   "settingsPage": {
     "title": "Configuracion",
     "subtitle": "Gestionar preferencias"
+  },
+  "marketPage": {
+    "title": "Backlink Marketi",
+    "subtitle": "Yüksek kaliteli backlinkler satın alın",
+    "tabListings": "Listeler",
+    "tabOrders": "Siparişlerim",
+    "filterAll": "Tümü",
+    "colDomain": "Domain",
+    "colDA": "DA",
+    "colCategory": "Kategori",
+    "colTraffic": "Trafik",
+    "colPrice": "Fiyat",
+    "buyBtn": "Satın Al",
+    "noListings": "Şu an uygun liste yok",
+    "colStatus": "Durum",
+    "colDate": "Tarih",
+    "noOrders": "Henüz sipariş yok",
+    "statusPending": "Bekliyor",
+    "statusInProgress": "İşlemde",
+    "statusCompleted": "Tamamlandı",
+    "statusCancelled": "İptal"
   }
 }
