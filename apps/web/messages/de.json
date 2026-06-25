@@ -947,5 +947,26 @@
     "calNext": "Weiter ›",
     "calEmpty": "Kein Inhalt für diesen Monat geplant.",
     "untitled": "Inhalt"
+  },
+  "ozelliklerPage": {
+  "badge": "11 leistungsstarke Tools",
+  "title": "SEO und GEO in",
+  "titleHighlight": "einer Plattform",
+  "subtitle": "Gehen Sie über traditionelle SEO-Tools hinaus. Technische Analyse, KI-Inhalte, Backlinks, Outreach und KI-Sichtbarkeit — keine separaten Abonnements.",
+  "cta": { "title": "Alle Funktionen 14 Tage kostenlos testen", "subtitle": "Keine Kreditkarte erforderlich. Sofortige Einrichtung. Jederzeit kündigen.", "button": "Kostenlos starten" },
+  "cats": { "seoAnalysis": "SEO & Analyse", "geoAi": "GEO & Künstliche Intelligenz", "contentProd": "Inhalt & Produktion", "backlinkOutreach": "Backlink & Outreach", "reportingAgency": "Reporting & Agentur" },
+  "features": {
+    "seoScan": { "title": "SEO-Scan", "desc": "150+ technische Prüfungen, Core Web Vitals, Crawl-Fehler und Geschwindigkeitsanalyse mit einem Klick.", "tags": ["150+ Regeln", "Core Web Vitals", "Automatisiert"] },
+    "rankTracking": { "title": "Rang-Tracking", "desc": "Keyword-Positionen in Google und Bing täglich überwachen. Wettbewerbsvergleich, Trendgrafiken und Benachrichtigungen.", "tags": ["Tägliches Update", "Wettbewerbsanalyse", "Standort"] },
+    "keywordResearch": { "title": "Keyword-Recherche", "desc": "Entdecken Sie die wertvollsten Keywords mit Suchvolumen, Schwierigkeitsgrad und Wettbewerbsanalyse.", "tags": ["Volumen & CPC", "Schwierigkeitsgrad", "Clustering"] },
+    "competitorAnalysis": { "title": "Wettbewerbsanalyse", "desc": "Organische Traffic-Quellen, Ranking-Gewinne und Backlink-Profile Ihrer Wettbewerber.", "tags": ["Traffic-Analyse", "Content-Lücke", "Benachrichtigungen"] },
+    "geoAiVisibility": { "title": "GEO / KI-Sichtbarkeit", "desc": "Verfolgen Sie die Erwähnungs- und Zitationsrate Ihrer Marke auf ChatGPT, Gemini, Perplexity, Claude und Google AI Mode.", "tags": ["6 KI-Plattformen", "Erwähnungs-Tracking", "GEO-Bericht"] },
+    "autopilot": { "title": "Autopilot", "desc": "Automatisieren Sie Crawling, KI-Inhaltserstellung, Backlink-Erkennung und Berichtversand in einem Ablauf.", "tags": ["Vollautomatisierung", "Workflow", "Zeitplanung"] },
+    "aiContent": { "title": "KI-Inhaltsmaschine", "desc": "GPT-4o-gestützte SEO-kompatible Blogbeiträge, Meta-Tags, Produktbeschreibungen und Landing-Page-Texte.", "tags": ["GPT-4o", "E-E-A-T", "8 Sprachen"] },
+    "multilingualSeo": { "title": "Mehrsprachiges SEO", "desc": "Hreflang-Validierung in 8 Sprachen, automatische Übersetzungsvorschläge und länderspezifisches Rank-Tracking.", "tags": ["8 Sprachen", "Hreflang", "Länderspezifisch"] },
+    "backlinkMarket": { "title": "Backlink-Marktplatz", "desc": "Finden und bestellen Sie qualitativ hochwertige Links mit DR/DA und thematischem Filter.", "tags": ["DR/DA-Filter", "Manuelle Genehmigung", "Thematisch"] },
+    "outreach": { "title": "Outreach-Kampagne", "desc": "KI-personalisierte E-Mail-Vorlagen, automatische Follow-up-Sequenzen und Antwortmanagement.", "tags": ["KI-Vorlage", "Auto-Follow-up", "CRM-Integration"] },
+    "whiteLabel": { "title": "White-Label-Berichte", "desc": "Erstellen Sie gebrandete PDF-, Excel- und interaktive Client-Portal-Berichte mit Ihrem eigenen Logo.", "tags": ["Eigene Marke", "PDF & Excel", "Kundenportal"] }
   }
+}
 }

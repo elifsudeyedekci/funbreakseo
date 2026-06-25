@@ -948,5 +948,36 @@
     "calNext": "Next ›",
     "calEmpty": "No content scheduled this month.",
     "untitled": "Content"
+  },
+  "ozelliklerPage": {
+  "badge": "11 Powerful Tools",
+  "title": "SEO and GEO in",
+  "titleHighlight": "one platform",
+  "subtitle": "Go beyond traditional SEO tools. Technical analysis, AI content, backlink, outreach, and AI visibility — no separate subscriptions.",
+  "cta": {
+    "title": "Try all features free for 14 days",
+    "subtitle": "No credit card required. Instant setup. Cancel anytime.",
+    "button": "Start Free"
+  },
+  "cats": {
+    "seoAnalysis": "SEO & Analysis",
+    "geoAi": "GEO & Artificial Intelligence",
+    "contentProd": "Content & Production",
+    "backlinkOutreach": "Backlink & Outreach",
+    "reportingAgency": "Reporting & Agency"
+  },
+  "features": {
+    "seoScan": { "title": "SEO Scan", "desc": "150+ technical checks, Core Web Vitals, crawl errors and speed analysis in one click. Prioritized fix guide for every issue.", "tags": ["150+ Rules", "Core Web Vitals", "Automated"] },
+    "rankTracking": { "title": "Rank Tracking", "desc": "Monitor keyword positions in Google and Bing daily. Competitor comparison, trend graphs, and instant alerts.", "tags": ["Daily Update", "Competitor Analysis", "Location"] },
+    "keywordResearch": { "title": "Keyword Research", "desc": "Discover the most valuable keywords with search volume, difficulty score, and competitor analysis. Clustering and prioritization included.", "tags": ["Volume & CPC", "Difficulty Score", "Clustering"] },
+    "competitorAnalysis": { "title": "Competitor Analysis", "desc": "Organic traffic sources, ranking gains, and backlink profiles of your competitors. Never miss a move with automated alerts.", "tags": ["Traffic Analysis", "Content Gap", "Alerts"] },
+    "geoAiVisibility": { "title": "GEO / AI Visibility", "desc": "Track your brand mention and citation rate on ChatGPT, Gemini, Perplexity, Claude and Google AI Mode. Shape your GEO strategy with data.", "tags": ["6 AI Platforms", "Mention Tracking", "GEO Report"] },
+    "autopilot": { "title": "Autopilot", "desc": "Automate crawling, AI content generation, backlink detection and report sending in one flow. You focus on growth, the platform handles the rest.", "tags": ["Full Automation", "Workflow", "Scheduling"] },
+    "aiContent": { "title": "AI Content Engine", "desc": "GPT-4o powered SEO-compatible blog posts, meta tags, product descriptions, and landing page copy. E-E-A-T compliant, 8 language support.", "tags": ["GPT-4o", "E-E-A-T", "8 Languages"] },
+    "multilingualSeo": { "title": "Multilingual SEO", "desc": "Hreflang validation in 8 languages, automatic translation suggestions, and country-based rank tracking. Go global.", "tags": ["8 Languages", "Hreflang", "Country-Based"] },
+    "backlinkMarket": { "title": "Backlink Market", "desc": "Find and order quality links with DR/DA and thematic filter. Manual approval guarantee.", "tags": ["DR/DA Filter", "Manual Approval", "Thematic"] },
+    "outreach": { "title": "Outreach Campaign", "desc": "AI-personalized email templates, automated follow-up sequences, and reply management. Ready templates for guest posting and link campaigns.", "tags": ["AI Template", "Auto Follow-up", "CRM Integration"] },
+    "whiteLabel": { "title": "White Label Reports", "desc": "Create branded PDF, Excel and interactive client portal reports with your own logo and color palette. Ideal for agency growth.", "tags": ["Own Brand", "PDF & Excel", "Client Portal"] }
   }
+}
 }

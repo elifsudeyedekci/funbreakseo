@@ -350,6 +350,17 @@ export class AdminService {
     return { impersonating: true, user: targetUser };
   }
 
+  async impersonateByOrg(adminUserId: string, orgId: string) {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: orgId },
+      include: { users: { where: { deletedAt: null }, orderBy: { createdAt: 'asc' }, take: 1 } },
+    });
+    if (!org) throw new NotFoundException('Organization not found');
+    const targetUser = org.users[0];
+    if (!targetUser) throw new NotFoundException('No user found in organization');
+    return this.impersonateUser(adminUserId, targetUser.id);
+  }
+
   async sendCustomEmail(orgId: string, subject: string, body: string) {
     const org = await this.prisma.organization.findUnique({
       where: { id: orgId },

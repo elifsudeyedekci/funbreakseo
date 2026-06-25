@@ -121,11 +121,9 @@ export class AdminController {
   @Post('admin/customers/:id/impersonate')
   impersonateUser(
     @Param('id') targetOrgId: string,
-    @Body('targetUserId') targetUserId: string,
     @CurrentUser() admin: User,
   ) {
-    void targetOrgId;
-    return this.adminService.impersonateUser(admin.id, targetUserId);
+    return this.adminService.impersonateByOrg(admin.id, targetOrgId);
   }
 
   @Post('admin/customers/:id/send-email')

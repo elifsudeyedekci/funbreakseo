@@ -947,5 +947,26 @@
     "calNext": "Suivant ›",
     "calEmpty": "Aucun contenu prévu ce mois-ci.",
     "untitled": "Contenu"
+  },
+  "ozelliklerPage": {
+  "badge": "11 outils puissants",
+  "title": "SEO et GEO en",
+  "titleHighlight": "une seule plateforme",
+  "subtitle": "Allez au-delà des outils SEO traditionnels. Analyse technique, contenu IA, backlinks, outreach et visibilité IA — pas d'abonnements séparés.",
+  "cta": { "title": "Essayez toutes les fonctionnalités gratuitement pendant 14 jours", "subtitle": "Pas de carte de crédit. Installation instantanée. Annulez à tout moment.", "button": "Commencer gratuitement" },
+  "cats": { "seoAnalysis": "SEO & Analyse", "geoAi": "GEO & Intelligence Artificielle", "contentProd": "Contenu & Production", "backlinkOutreach": "Backlink & Outreach", "reportingAgency": "Rapport & Agence" },
+  "features": {
+    "seoScan": { "title": "Scan SEO", "desc": "150+ contrôles techniques, Core Web Vitals, erreurs de crawl et analyse de vitesse en un clic.", "tags": ["150+ règles", "Core Web Vitals", "Automatisé"] },
+    "rankTracking": { "title": "Suivi des classements", "desc": "Surveillez les positions des mots-clés dans Google et Bing quotidiennement.", "tags": ["Mise à jour quotidienne", "Analyse concurrentielle", "Localisation"] },
+    "keywordResearch": { "title": "Recherche de mots-clés", "desc": "Découvrez les mots-clés les plus précieux avec le volume de recherche, la difficulté et l'analyse concurrentielle.", "tags": ["Volume & CPC", "Difficulté", "Clustering"] },
+    "competitorAnalysis": { "title": "Analyse concurrentielle", "desc": "Sources de trafic organique, gains de classement et profils de backlinks de vos concurrents.", "tags": ["Analyse du trafic", "Lacunes de contenu", "Alertes"] },
+    "geoAiVisibility": { "title": "GEO / Visibilité IA", "desc": "Suivez le taux de mention et de citation de votre marque sur ChatGPT, Gemini, Perplexity, Claude et Google AI Mode.", "tags": ["6 plateformes IA", "Suivi des mentions", "Rapport GEO"] },
+    "autopilot": { "title": "Pilote automatique", "desc": "Automatisez le crawl, la création de contenu IA, la détection de backlinks et l'envoi de rapports en un flux.", "tags": ["Automatisation totale", "Flux de travail", "Planification"] },
+    "aiContent": { "title": "Moteur de contenu IA", "desc": "Articles de blog, balises meta, descriptions de produits optimisés SEO alimentés par GPT-4o.", "tags": ["GPT-4o", "E-E-A-T", "8 langues"] },
+    "multilingualSeo": { "title": "SEO multilingue", "desc": "Validation hreflang en 8 langues, suggestions de traduction automatique et suivi des classements par pays.", "tags": ["8 langues", "Hreflang", "Par pays"] },
+    "backlinkMarket": { "title": "Marché des backlinks", "desc": "Trouvez et commandez des liens de qualité avec filtre DR/DA et thématique.", "tags": ["Filtre DR/DA", "Approbation manuelle", "Thématique"] },
+    "outreach": { "title": "Campagne Outreach", "desc": "Modèles d'e-mails personnalisés par IA, séquences de suivi automatiques et gestion des réponses.", "tags": ["Modèle IA", "Suivi auto", "Intégration CRM"] },
+    "whiteLabel": { "title": "Rapports en marque blanche", "desc": "Créez des rapports PDF, Excel et portail client interactif de marque avec votre propre logo.", "tags": ["Votre marque", "PDF & Excel", "Portail client"] }
   }
+}
 }

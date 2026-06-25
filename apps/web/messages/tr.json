@@ -964,5 +964,36 @@
     "readAndAccept": "'nı okudum ve kabul ediyorum",
     "saving": "Kaydediliyor...",
     "acceptAndContinue": "Onaylıyorum ve Devam Ediyorum"
+  },
+  "ozelliklerPage": {
+  "badge": "11 Güçlü Araç",
+  "title": "SEO ve GEO için",
+  "titleHighlight": "tek platform",
+  "subtitle": "Geleneksel SEO araçlarının ötesine geçin. Teknik analiz, AI içerik, backlink, outreach ve yapay zeka görünürlüğü — ayrı abonelik gerekmez.",
+  "cta": {
+    "title": "Tüm özellikleri 14 gün ücretsiz deneyin",
+    "subtitle": "Kredi kartı gerekmez. Anında kurulum. İstediğiniz zaman iptal.",
+    "button": "Ücretsiz Başla"
+  },
+  "cats": {
+    "seoAnalysis": "SEO & Analiz",
+    "geoAi": "GEO & Yapay Zeka",
+    "contentProd": "İçerik & Üretim",
+    "backlinkOutreach": "Backlink & Outreach",
+    "reportingAgency": "Raporlama & Ajans"
+  },
+  "features": {
+    "seoScan": { "title": "SEO Tarama", "desc": "150+ teknik kontrol, Core Web Vitals, crawl hataları ve hız analizi tek tıkla. Her sorun için önceliklendirilmiş düzeltme rehberi.", "tags": ["150+ Kural", "Core Web Vitals", "Otomatik"] },
+    "rankTracking": { "title": "Sıralama Takibi", "desc": "Google ve Bing'deki anahtar kelime pozisyonlarını günlük izleyin. Rakip karşılaştırması, trend grafikleri ve anlık uyarılar.", "tags": ["Günlük Güncelleme", "Rakip Analizi", "Lokasyon"] },
+    "keywordResearch": { "title": "Anahtar Kelime Araştırması", "desc": "Arama hacmi, zorluk skoru ve rakip analizi ile en değerli anahtar kelimeleri keşfedin. Kümeleme ve önceliklendirme dahil.", "tags": ["Hacim & CPC", "Zorluk Skoru", "Kümeleme"] },
+    "competitorAnalysis": { "title": "Rakip Analizi", "desc": "Rakiplerinizin organik trafik kaynakları, sıralama kazanımları ve backlink profilleri. Otomatik uyarılarla hiçbir hareketi kaçırmayın.", "tags": ["Trafik Analizi", "İçerik Boşluğu", "Uyarılar"] },
+    "geoAiVisibility": { "title": "GEO / AI Görünürlük", "desc": "ChatGPT, Gemini, Perplexity, Claude ve Google AI Mode'da markanızın anılma ve citation oranını izleyin. GEO stratejinizi veriye dayalı şekillendirin.", "tags": ["6 AI Platformu", "Mention Takibi", "GEO Raporu"] },
+    "autopilot": { "title": "Autopilot", "desc": "Tarama, AI içerik üretimi, backlink tespiti ve rapor gönderimini tek akışta otomatikleştirin. Siz büyümeye odaklanın, platform halleder.", "tags": ["Tam Otomasyon", "İş Akışı", "Zamanlama"] },
+    "aiContent": { "title": "AI İçerik Motoru", "desc": "GPT-4o destekli SEO uyumlu blog yazıları, meta taglar, ürün açıklamaları ve landing page metinleri. E-E-A-T uyumlu, 8 dil destekli.", "tags": ["GPT-4o", "E-E-A-T", "8 Dil"] },
+    "multilingualSeo": { "title": "Çok Dilli SEO", "desc": "8 dilde hreflang doğrulama, otomatik çeviri önerileri ve ülke bazlı sıralama takibi. Küresel pazara açılın.", "tags": ["8 Dil", "Hreflang", "Ülke Bazlı"] },
+    "backlinkMarket": { "title": "Backlink Market", "desc": "DR/DA ve tematik uyum filtresi ile kaliteli link bulun ve sipariş edin. Manuel onay güvencesi.", "tags": ["DR/DA Filtre", "Manuel Onay", "Tematik Uyum"] },
+    "outreach": { "title": "Outreach Kampanya", "desc": "AI ile kişiselleştirilmiş e-posta şablonları, otomatik takip dizileri ve yanıt yönetimi. Konuk yazarlık ve link kampanyaları için hazır şablonlar.", "tags": ["AI Şablon", "Oto Takip", "CRM Entegrasyonu"] },
+    "whiteLabel": { "title": "White Label Raporlar", "desc": "Kendi logonuz ve renk paletinizle markalı PDF, Excel ve interaktif müşteri portalı raporları oluşturun. Ajans büyütmek için ideal.", "tags": ["Kendi Marka", "PDF & Excel", "Müşteri Portali"] }
   }
+}
 }
