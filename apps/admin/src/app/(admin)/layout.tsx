@@ -1,5 +1,6 @@
 'use client';
 import { AdminSidebar } from '@/components/AdminSidebar';
+import { AdminHeader } from '@/components/AdminHeader';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/Toaster';
 import * as React from 'react';
@@ -14,9 +15,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <Toaster>
         <div className="flex min-h-screen">
           <AdminSidebar />
-          <main className="admin-content overflow-auto">
-            {children}
-          </main>
+          <div className="admin-content">
+            <AdminHeader />
+            <main className="flex-1 p-6">
+              {children}
+            </main>
+          </div>
         </div>
       </Toaster>
     </QueryClientProvider>
