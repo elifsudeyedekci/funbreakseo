@@ -31,6 +31,9 @@ export const useAdminAuthStore = create<AdminAuthState>()(
       clearAuth: () => {
         if (typeof window !== 'undefined') {
           localStorage.removeItem('admin_access_token');
+          localStorage.removeItem('admin_refresh_token');
+          // Clear auth cookie so middleware redirects to login
+          document.cookie = 'admin_token=; path=/; max-age=0; SameSite=Lax';
         }
         set({ user: null, accessToken: null, isAuthenticated: false });
       },

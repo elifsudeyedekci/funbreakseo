@@ -25,6 +25,8 @@ export default function AdminLoginPage() {
         return;
       }
       if (tokens.refreshToken) localStorage.setItem('admin_refresh_token', tokens.refreshToken);
+      // Set cookie so middleware auth guard lets us through
+      document.cookie = `admin_token=${tokens.accessToken}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
       setAuth(user, tokens.accessToken);
       router.push('/dashboard');
     } catch (err: unknown) {

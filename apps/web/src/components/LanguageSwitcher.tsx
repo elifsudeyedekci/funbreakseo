@@ -1,11 +1,11 @@
 'use client';
 
 import { useLocale } from 'next-intl';
-import { usePathname, useRouter } from 'next/navigation';
 import { useState, useRef, useEffect } from 'react';
 import { Globe } from 'lucide-react';
 import { SUPPORTED_LOCALES } from '@funbreakseo/shared';
 import { cn } from '@/lib/utils';
+import { useRouter, usePathname } from '@/i18n/navigation';
 
 const LOCALE_LABELS: Record<string, string> = {
   tr: 'Türkçe',
@@ -47,18 +47,8 @@ export function LanguageSwitcher({ variant = 'dropdown' }: { variant?: 'dropdown
   }, []);
 
   function switchLocale(newLocale: string) {
-    // Remove current locale prefix and add new one
-    let newPath = pathname;
-    const localeInPath = SUPPORTED_LOCALES.find((l) => pathname.startsWith(`/${l}/`) || pathname === `/${l}`);
-    if (localeInPath) {
-      newPath = pathname.replace(`/${localeInPath}`, '') || '/';
-    }
-    // For default locale (tr) use as-needed prefix (no prefix)
-    if (newLocale === 'tr') {
-      router.push(newPath || '/');
-    } else {
-      router.push(`/${newLocale}${newPath || '/'}`);
-    }
+    // next-intl's useRouter handles locale prefix automatically
+    router.replace(pathname, { locale: newLocale });
     setOpen(false);
   }
 
