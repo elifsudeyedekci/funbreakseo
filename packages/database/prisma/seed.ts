@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+﻿import { PrismaClient } from '@prisma/client';
 import * as crypto from 'crypto';
 
 const prisma = new PrismaClient();
@@ -538,7 +538,7 @@ Her sayfada tek bir H1 kullanın. H2 ve H3 başlıklarını içeriği bölümler
 
 ### URL Yapısı
 
-Kısa, açıklayıcı ve keyword içeren URL'ler kullanın. Örneğin: `/seo-nasil-yapilir` tercih edilmeli, `/p?id=1234` gibi parametreli yapılardan kaçınılmalıdır.
+Kısa, açıklayıcı ve keyword içeren URL'ler kullanın. Örneğin: \`/seo-nasil-yapilir\` tercih edilmeli, \`/p?id=1234\` gibi parametreli yapılardan kaçınılmalıdır.
 
 ## 4. Adım: Kaliteli İçerik Üretimi
 
@@ -885,11 +885,11 @@ DoFollow bağlantılar, link juice'u (PageRank değerini) hedef siteye aktarır.
 
 ### NoFollow Backlink
 
-`rel="nofollow"` özelliği taşıyan bağlantılar, link juice aktarımını engeller. Ancak bu bağlantılar tamamen değersiz değildir; trafik getirebilir ve doğal backlink profili için çeşitlilik sağlar.
+\`rel="nofollow"\` özelliği taşıyan bağlantılar, link juice aktarımını engeller. Ancak bu bağlantılar tamamen değersiz değildir; trafik getirebilir ve doğal backlink profili için çeşitlilik sağlar.
 
 ### Sponsored ve UGC
 
-Google, ücretli linkler için `rel="sponsored"`, kullanıcı tarafından oluşturulan içeriklerdeki linkler için `rel="ugc"` etiketlerini kullanılmasını talep eder.
+Google, ücretli linkler için \`rel="sponsored"\`, kullanıcı tarafından oluşturulan içeriklerdeki linkler için \`rel="ugc"\` etiketlerini kullanılmasını talep eder.
 
 ## Kaliteli Backlink ile Düşük Kaliteli Backlink Arasındaki Fark
 
@@ -1093,9 +1093,9 @@ Google, mobil-önce indeksleme (mobile-first indexing) uyguladığından siteniz
 HTTPS, Google'ın doğrudan sıralama faktörü olarak kullandığı bir metriktir. Tüm trafiğin HTTPS'e yönlendirildiğinden ve SSL sertifikasının geçerli olduğundan emin olun.
 
 Ek güvenlik başlıkları da önemlidir:
-- `Strict-Transport-Security` (HSTS)
-- `Content-Security-Policy` (CSP)
-- `X-Frame-Options`
+- \`Strict-Transport-Security\` (HSTS)
+- \`Content-Security-Policy\` (CSP)
+- \`X-Frame-Options\`
 
 ### 6. Site Hızı
 
@@ -1105,24 +1105,21 @@ Site hızı hem kullanıcı deneyimini hem de sıralamayı etkiler. Hız optimiz
 - **Lazy loading**: Görünürde olmayan içerikleri geç yükleyin
 - **CDN kullanımı**: Statik dosyaları küresel ağdan sunun
 - **Tarayıcı önbellekleme**: Sık değişmeyen kaynakları önbellekleyin
-- **Render-blocking kaynaklar**: JS dosyalarına `async` veya `defer` ekleyin
+- **Render-blocking kaynaklar**: JS dosyalarına \`async\` veya \`defer\` ekleyin
 
 ### 7. Yapılandırılmış URL Yapısı
 
 Temiz ve anlamlı URL'ler hem kullanıcı deneyimini iyileştirir hem de arama motorlarına sayfa konusu hakkında bilgi verir:
 
-- Kısa ve açıklayıcı olsun: `/teknik-seo-nedir`
+- Kısa ve açıklayıcı olsun: \`/teknik-seo-nedir\`
 - Küçük harf kullanın, Türkçe karakter yerine latin karakterleri tercih edin
-- Tarih tabanlı yapılardan kaçının: `/2026/03/15/makale` yerine `/makale-adi`
+- Tarih tabanlı yapılardan kaçının: \`/2026/03/15/makale\` yerine \`/makale-adi\`
 
 ### 8. Canonical Etiketler
 
 Aynı içeriğe birden fazla URL ile erişilebiliyorsa (filtreler, sıralama seçenekleri, www vs non-www) canonical etiketi doğru kurulmalıdır:
 
-```html
 <link rel="canonical" href="https://ornek.com/tercih-edilen-url/" />
-```
-
 ### 9. Hreflang (Çok Dilli Siteler)
 
 Farklı dil ve bölgeler için içerik sunuyorsanız hreflang etiketleri doğru URL eşlemesini sağlar ve dilsel kopya içerik sorunlarını önler.
@@ -1593,16 +1590,16 @@ Kategori sayfaları, e-ticaret sitelerinde genellikle en fazla organik trafik ç
 Ürün sayfalarına Product schema eklemek, arama sonuçlarında fiyat, stok durumu ve yıldız puanı gibi zengin verilerin görünmesini sağlar. Bu, tıklama oranını önemli ölçüde artırır.
 
 Zorunlu alanlar:
-- `name`: Ürün adı
-- `description`: Ürün açıklaması
-- `offers`: Fiyat, stok durumu ve para birimi
-- `aggregateRating`: Ortalama puan ve yorum sayısı
+- \`name\`: Ürün adı
+- \`description\`: Ürün açıklaması
+- \`offers\`: Fiyat, stok durumu ve para birimi
+- \`aggregateRating\`: Ortalama puan ve yorum sayısı
 
 ### URL Yapısı
 
 E-ticaret URL'leri kısa, temiz ve anahtar kelime içermelidir:
-- İyi: `/urunler/kadin-spor-ayakkabi`
-- Kötü: `/kategori/alt-kategori/sub/p?id=12345&ref=x`
+- İyi: \`/urunler/kadin-spor-ayakkabi\`
+- Kötü: \`/kategori/alt-kategori/sub/p?id=12345&ref=x\`
 
 ## Teknik SEO: E-Ticaret'e Özgü Konular
 
@@ -1612,7 +1609,7 @@ Boyut, renk, fiyat gibi filtreler yeni URL'ler ürettiğinde kopya içerik ve ta
 
 Çözüm stratejileri:
 - Filtreleme parametrelerini robots.txt veya canonical ile yönetin
-- Yüksek değerli filtre kombinasyonlarına (örn. `/ayakkabi/kadin/kirmizi`) ayrı, optimize edilmiş sayfa oluşturun
+- Yüksek değerli filtre kombinasyonlarına (örn. \`/ayakkabi/kadin/kirmizi\`) ayrı, optimize edilmiş sayfa oluşturun
 - Düşük değerli filtre URL'lerini noindex edin
 
 ### Sayfalandırma (Pagination)
@@ -1707,7 +1704,7 @@ Bu kelimeleri kullanabileceğiniz alanlar:
 - Ana sayfa ve hizmet sayfası başlıkları (title tag ve H1)
 - Meta açıklamalar
 - Sayfa içeriği (doğal kullanım)
-- URL yapısı: `/istanbul-dis-klinigi`
+- URL yapısı: \`/istanbul-dis-klinigi\`
 - Image alt text
 
 ## Yerel İçerik Stratejisi
@@ -1890,8 +1887,8 @@ Sayfa yüklenirken içerik öğelerinin ne kadar yer değiştirdiğini ölçer. 
 LCP genellikle sayfa üstündeki büyük bir görsel tarafından belirlenir. Bu görseli optimize etmek LCP'yi doğrudan iyileştirir:
 
 - WebP veya AVIF formatına dönüştürün
-- `fetchpriority="high"` özelliği ekleyin
-- `<link rel="preload">` ile önceden yükleyin
+- \`fetchpriority="high"\` özelliği ekleyin
+- \`<link rel="preload">\` ile önceden yükleyin
 - Doğru boyutlarda (width/height) sunun
 
 ### 2. Sunucu Yanıt Süresini İyileştirin (TTFB)
@@ -1904,8 +1901,8 @@ Sunucunun ilk byte'ı göndermesi ne kadar uzun sürerse LCP o kadar geç gerçe
 ### 3. Render-Blocking Kaynakları Ortadan Kaldırın
 
 CSS ve JS dosyaları HTML parser'ı bloklamasın:
-- `<link rel="stylesheet">` yerine kritik CSS'i inline edin
-- JavaScript dosyalarına `defer` veya `async` ekleyin
+- \`<link rel="stylesheet">\` yerine kritik CSS'i inline edin
+- JavaScript dosyalarına \`defer\` veya \`async\` ekleyin
 - Kritik olmayan stillemeleri lazy load edin
 
 ## INP Optimizasyonu
@@ -1913,15 +1910,15 @@ CSS ve JS dosyaları HTML parser'ı bloklamasın:
 ### 1. Uzun JavaScript Görevlerini Bölün
 
 Ana thread'i 50ms'den uzun süre meşgul eden JavaScript görevleri INP'yi kötüleştirir:
-- `setTimeout` ve `requestIdleCallback` ile görevleri parçalara bölün
+- \`setTimeout\` ve \`requestIdleCallback\` ile görevleri parçalara bölün
 - Web Worker kullanarak ağır işlemleri arka plana taşıyın
 
 ### 2. Third-Party Script'leri Yönetin
 
 Analitik, chatbot, reklam ve sosyal medya widget'ları INP'yi ciddi biçimde etkileyebilir:
-- Kritik olmayan script'leri erteleyın (`defer` veya `async`)
+- Kritik olmayan script'leri erteleyın (\`defer\` veya \`async\`)
 - Gerekli olmayan script'leri kaldırın
-- `Partytown` gibi kütüphanelerle üçüncü taraf script'leri ayrı thread'de çalıştırın
+- \`Partytown\` gibi kütüphanelerle üçüncü taraf script'leri ayrı thread'de çalıştırın
 
 ## CLS Optimizasyonu
 
@@ -1929,17 +1926,14 @@ Analitik, chatbot, reklam ve sosyal medya widget'ları INP'yi ciddi biçimde etk
 
 Tarayıcı, görselin boyutunu önceden bilirse yer tutucu alan oluşturabilir ve yüklenince içeriği kaydırmaz:
 
-```html
 <img src="foto.webp" width="800" height="450" alt="Açıklama">
-```
-
 ### 2. Reklam ve Gömülü İçerik İçin Yer Ayırın
 
 Reklam ve iframe'lerin boyutlarını CSS ile önceden tanımlayın; yüklendiklerinde etrafındaki içeriği kaydırmamaları için sabit yükseklik belirleyin.
 
 ### 3. Web Fontları İçin font-display: swap
 
-Web fontları yüklenene kadar sistem fontu gösterin; yüklendikten sonra geçiş yapın. Bu geçiş bazen hafif CLS oluşturabilir; `font-display: optional` ile daha agresif bir önbellek stratejisi deneyin.
+Web fontları yüklenene kadar sistem fontu gösterin; yüklendikten sonra geçiş yapın. Bu geçiş bazen hafif CLS oluşturabilir; \`font-display: optional\` ile daha agresif bir önbellek stratejisi deneyin.
 
 ## Hız Ölçüm Araçları
 
@@ -2092,18 +2086,17 @@ Zengin sonuçlar, tıklama oranını %20-30 oranında artırabilmektedir.
 Blog yazıları ve haber makaleleri için kullanılır. Yazar bilgisi, yayın tarihi ve görseli tanımlar. Google Discover ve diğer içerik önerileri için önemlidir.
 
 Temel alanlar:
-- `headline`: Makale başlığı
-- `datePublished`: Yayın tarihi
-- `dateModified`: Güncelleme tarihi
-- `author`: Yazar bilgisi
-- `image`: Makale görseli
+- \`headline\`: Makale başlığı
+- \`datePublished\`: Yayın tarihi
+- \`dateModified\`: Güncelleme tarihi
+- \`author\`: Yazar bilgisi
+- \`image\`: Makale görseli
 
 ### FAQPage
 
 Sık sorulan sorular bölümü içeren sayfalar için kullanılır. SERP'te accordion (açılır-kapanır) görünümü kazandırır ve SERP alanını genişletir.
 
 Temel yapı:
-```json
 {
   "@type": "FAQPage",
   "mainEntity": [{
@@ -2115,17 +2108,15 @@ Temel yapı:
     }
   }]
 }
-```
-
 ### Product (Ürün)
 
 E-ticaret ürün sayfaları için zorunludur. Fiyat, stok durumu, değerlendirme puanı ve inceleme sayısını SERP'te gösterir.
 
 Temel alanlar:
-- `name`: Ürün adı
-- `offers`: Fiyat ve para birimi
-- `aggregateRating`: Ortalama puan
-- `availability`: Stok durumu
+- \`name\`: Ürün adı
+- \`offers\`: Fiyat ve para birimi
+- \`aggregateRating\`: Ortalama puan
+- \`availability\`: Stok durumu
 
 ### LocalBusiness (Yerel İşletme)
 
@@ -2147,9 +2138,8 @@ Marka hakkında temel bilgileri (ad, logo, sosyal medya profilleri, iletişim) t
 
 ### JSON-LD (Önerilen Yöntem)
 
-Google, JSON-LD formatını önerir. Sayfanın `<head>` veya `<body>` bölümüne eklenen `<script type="application/ld+json">` bloğu yeterlidir:
+Google, JSON-LD formatını önerir. Sayfanın \`<head>\` veya \`<body>\` bölümüne eklenen \`<script type="application/ld+json">\` bloğu yeterlidir:
 
-```html
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -2157,8 +2147,6 @@ Google, JSON-LD formatını önerir. Sayfanın `<head>` veya `<body>` bölümün
   "headline": "Schema Markup Nedir?"
 }
 </script>
-```
-
 ### Microdata ve RDFa
 
 Alternatif yöntemlerdir; ancak bakımı daha zordur. Günümüzde JSON-LD tercih edilmektedir.
@@ -2408,12 +2396,10 @@ Organik trafik artırmak; doğru teknik altyapı, kullanıcı odaklı içerik ve
       bodyHtml: '<h1>The Complete SEO Guide for 2026</h1><p>Search engine optimisation has evolved dramatically.</p>',
       status: 'PUBLISHED' as const,
       publishedAt: new Date('2026-01-10'),
-      author: 'FunBreak SEO Team',
-      category: 'SEO',
-      tags: ['seo', 'guide', '2026', 'core-web-vitals', 'geo'],
+      authorName: 'FunBreak SEO Team',
       metaTitle: 'The Complete SEO Guide for 2026 | FunBreak SEO',
       metaDescription: 'Master SEO in 2026 with our comprehensive guide covering Core Web Vitals, E-E-A-T, GEO, and proven link-building strategies.',
-      schemaMarkup: { '@context': 'https://schema.org', '@type': 'Article', headline: 'The Complete SEO Guide for 2026' },
+      jsonLd: { '@context': 'https://schema.org', '@type': 'Article', headline: 'The Complete SEO Guide for 2026' },
     },
     {
       slug: 'geo-generative-engine-optimisation-guide',
@@ -2424,12 +2410,10 @@ Organik trafik artırmak; doğru teknik altyapı, kullanıcı odaklı içerik ve
       bodyHtml: '<h1>Generative Engine Optimisation (GEO)</h1><p>As AI assistants replace traditional search...</p>',
       status: 'PUBLISHED' as const,
       publishedAt: new Date('2026-02-15'),
-      author: 'FunBreak SEO Team',
-      category: 'GEO',
-      tags: ['geo', 'ai-seo', 'chatgpt', 'gemini', 'perplexity'],
+      authorName: 'FunBreak SEO Team',
       metaTitle: 'GEO: How to Rank in AI Answers (2026 Guide) | FunBreak SEO',
       metaDescription: 'Discover proven Generative Engine Optimisation (GEO) strategies to get your brand cited by ChatGPT, Gemini, and Perplexity.',
-      schemaMarkup: { '@context': 'https://schema.org', '@type': 'Article', headline: 'Generative Engine Optimisation (GEO)' },
+      jsonLd: { '@context': 'https://schema.org', '@type': 'Article', headline: 'Generative Engine Optimisation (GEO)' },
     },
     {
       slug: 'technical-seo-checklist-2026',
@@ -2440,12 +2424,10 @@ Organik trafik artırmak; doğru teknik altyapı, kullanıcı odaklı içerik ve
       bodyHtml: '<h1>Technical SEO Checklist 2026</h1>',
       status: 'PUBLISHED' as const,
       publishedAt: new Date('2026-03-01'),
-      author: 'FunBreak SEO Team',
-      category: 'Technical SEO',
-      tags: ['technical-seo', 'checklist', 'core-web-vitals'],
+      authorName: 'FunBreak SEO Team',
       metaTitle: 'Technical SEO Checklist 2026: 50 Must-Have Items | FunBreak SEO',
       metaDescription: 'The complete 50-item technical SEO checklist for 2026.',
-      schemaMarkup: { '@context': 'https://schema.org', '@type': 'Article', headline: 'Technical SEO Checklist 2026' },
+      jsonLd: { '@context': 'https://schema.org', '@type': 'Article', headline: 'Technical SEO Checklist 2026' },
     },
     {
       slug: 'link-building-strategies-2026',
@@ -2456,12 +2438,10 @@ Organik trafik artırmak; doğru teknik altyapı, kullanıcı odaklı içerik ve
       bodyHtml: '<h1>Link Building Strategies 2026</h1>',
       status: 'PUBLISHED' as const,
       publishedAt: new Date('2026-04-05'),
-      author: 'FunBreak SEO Team',
-      category: 'Link Building',
-      tags: ['link-building', 'backlinks', 'digital-pr'],
+      authorName: 'FunBreak SEO Team',
       metaTitle: 'Link Building Strategies 2026: What Actually Works | FunBreak SEO',
       metaDescription: 'Discover modern link-building strategies that survive algorithm updates.',
-      schemaMarkup: { '@context': 'https://schema.org', '@type': 'Article', headline: 'Link Building Strategies 2026' },
+      jsonLd: { '@context': 'https://schema.org', '@type': 'Article', headline: 'Link Building Strategies 2026' },
     },
     // ── GERMAN (3 posts) ──
     {
@@ -2473,12 +2453,10 @@ Organik trafik artırmak; doğru teknik altyapı, kullanıcı odaklı içerik ve
       bodyHtml: '<h1>SEO-Leitfaden 2026</h1>',
       status: 'PUBLISHED' as const,
       publishedAt: new Date('2026-01-20'),
-      author: 'FunBreak SEO Team',
-      category: 'SEO',
-      tags: ['seo', 'leitfaden', '2026'],
+      authorName: 'FunBreak SEO Team',
       metaTitle: 'SEO-Leitfaden 2026 | FunBreak SEO',
       metaDescription: 'Meistern Sie SEO im Jahr 2026: Core Web Vitals, E-E-A-T, GEO und bewährte Linkaufbau-Strategien.',
-      schemaMarkup: { '@context': 'https://schema.org', '@type': 'Article', headline: 'SEO-Leitfaden 2026' },
+      jsonLd: { '@context': 'https://schema.org', '@type': 'Article', headline: 'SEO-Leitfaden 2026' },
     },
     {
       slug: 'technisches-seo-checkliste-2026',
@@ -2489,12 +2467,10 @@ Organik trafik artırmak; doğru teknik altyapı, kullanıcı odaklı içerik ve
       bodyHtml: '<h1>Technische SEO-Checkliste 2026</h1>',
       status: 'PUBLISHED' as const,
       publishedAt: new Date('2026-02-10'),
-      author: 'FunBreak SEO Team',
-      category: 'Technical SEO',
-      tags: ['technisches-seo', 'checkliste'],
+      authorName: 'FunBreak SEO Team',
       metaTitle: 'Technische SEO-Checkliste 2026 | FunBreak SEO',
       metaDescription: 'Die vollständige 50-Punkte technische SEO-Checkliste für 2026.',
-      schemaMarkup: { '@context': 'https://schema.org', '@type': 'Article', headline: 'Technische SEO-Checkliste 2026' },
+      jsonLd: { '@context': 'https://schema.org', '@type': 'Article', headline: 'Technische SEO-Checkliste 2026' },
     },
     {
       slug: 'linkaufbau-strategien-2026',
@@ -2505,12 +2481,10 @@ Organik trafik artırmak; doğru teknik altyapı, kullanıcı odaklı içerik ve
       bodyHtml: '<h1>Linkaufbau-Strategien 2026</h1>',
       status: 'PUBLISHED' as const,
       publishedAt: new Date('2026-03-15'),
-      author: 'FunBreak SEO Team',
-      category: 'Link Building',
-      tags: ['linkaufbau', 'backlinks'],
+      authorName: 'FunBreak SEO Team',
       metaTitle: 'Linkaufbau-Strategien 2026 | FunBreak SEO',
       metaDescription: 'Entdecken Sie moderne Linkaufbau-Strategien: Digitale PR, verlinkbare Assets und mehr.',
-      schemaMarkup: { '@context': 'https://schema.org', '@type': 'Article', headline: 'Linkaufbau-Strategien 2026' },
+      jsonLd: { '@context': 'https://schema.org', '@type': 'Article', headline: 'Linkaufbau-Strategien 2026' },
     },
     // ── FRENCH (3 posts) ──
     {
@@ -2522,12 +2496,10 @@ Organik trafik artırmak; doğru teknik altyapı, kullanıcı odaklı içerik ve
       bodyHtml: '<h1>Le Guide SEO Complet 2026</h1>',
       status: 'PUBLISHED' as const,
       publishedAt: new Date('2026-01-25'),
-      author: 'FunBreak SEO Team',
-      category: 'SEO',
-      tags: ['seo', 'guide', '2026'],
+      authorName: 'FunBreak SEO Team',
       metaTitle: 'Guide SEO Complet 2026 | FunBreak SEO',
       metaDescription: "Maîtrisez le SEO en 2026 : Core Web Vitals, E-E-A-T, GEO et stratégies de netlinking éprouvées.",
-      schemaMarkup: { '@context': 'https://schema.org', '@type': 'Article', headline: 'Le Guide SEO Complet 2026' },
+      jsonLd: { '@context': 'https://schema.org', '@type': 'Article', headline: 'Le Guide SEO Complet 2026' },
     },
     {
       slug: 'seo-technique-checklist-2026-fr',
@@ -2538,12 +2510,10 @@ Organik trafik artırmak; doğru teknik altyapı, kullanıcı odaklı içerik ve
       bodyHtml: '<h1>Checklist SEO Technique 2026</h1>',
       status: 'PUBLISHED' as const,
       publishedAt: new Date('2026-02-20'),
-      author: 'FunBreak SEO Team',
-      category: 'Technical SEO',
-      tags: ['seo-technique', 'checklist'],
+      authorName: 'FunBreak SEO Team',
       metaTitle: 'Checklist SEO Technique 2026 | FunBreak SEO',
       metaDescription: 'La checklist SEO technique complète en 50 points pour 2026.',
-      schemaMarkup: { '@context': 'https://schema.org', '@type': 'Article', headline: 'Checklist SEO Technique 2026' },
+      jsonLd: { '@context': 'https://schema.org', '@type': 'Article', headline: 'Checklist SEO Technique 2026' },
     },
     {
       slug: 'strategies-netlinking-2026-fr',
@@ -2554,12 +2524,10 @@ Organik trafik artırmak; doğru teknik altyapı, kullanıcı odaklı içerik ve
       bodyHtml: '<h1>Stratégies de Netlinking 2026</h1>',
       status: 'PUBLISHED' as const,
       publishedAt: new Date('2026-03-20'),
-      author: 'FunBreak SEO Team',
-      category: 'Link Building',
-      tags: ['netlinking', 'backlinks'],
+      authorName: 'FunBreak SEO Team',
       metaTitle: 'Stratégies de Netlinking 2026 | FunBreak SEO',
       metaDescription: "Découvrez des stratégies de netlinking modernes qui résistent aux mises à jour d'algorithmes.",
-      schemaMarkup: { '@context': 'https://schema.org', '@type': 'Article', headline: 'Stratégies de Netlinking 2026' },
+      jsonLd: { '@context': 'https://schema.org', '@type': 'Article', headline: 'Stratégies de Netlinking 2026' },
     },
     // ── SPANISH (3 posts) ──
     {
@@ -2571,12 +2539,10 @@ Organik trafik artırmak; doğru teknik altyapı, kullanıcı odaklı içerik ve
       bodyHtml: '<h1>La Guía SEO Completa 2026</h1>',
       status: 'PUBLISHED' as const,
       publishedAt: new Date('2026-01-28'),
-      author: 'FunBreak SEO Team',
-      category: 'SEO',
-      tags: ['seo', 'guia', '2026'],
+      authorName: 'FunBreak SEO Team',
       metaTitle: 'Guía SEO Completa 2026 | FunBreak SEO',
       metaDescription: 'Domine el SEO en 2026: Core Web Vitals, E-E-A-T, GEO y estrategias probadas de construcción de enlaces.',
-      schemaMarkup: { '@context': 'https://schema.org', '@type': 'Article', headline: 'La Guía SEO Completa 2026' },
+      jsonLd: { '@context': 'https://schema.org', '@type': 'Article', headline: 'La Guía SEO Completa 2026' },
     },
     {
       slug: 'seo-tecnico-checklist-2026-es',
@@ -2587,12 +2553,10 @@ Organik trafik artırmak; doğru teknik altyapı, kullanıcı odaklı içerik ve
       bodyHtml: '<h1>Lista de Verificación de SEO Técnico 2026</h1>',
       status: 'PUBLISHED' as const,
       publishedAt: new Date('2026-02-25'),
-      author: 'FunBreak SEO Team',
-      category: 'Technical SEO',
-      tags: ['seo-tecnico', 'checklist'],
+      authorName: 'FunBreak SEO Team',
       metaTitle: 'Lista de Verificación de SEO Técnico 2026 | FunBreak SEO',
       metaDescription: 'La lista de verificación de SEO técnico completa en 50 puntos para 2026.',
-      schemaMarkup: { '@context': 'https://schema.org', '@type': 'Article', headline: 'Lista de Verificación de SEO Técnico 2026' },
+      jsonLd: { '@context': 'https://schema.org', '@type': 'Article', headline: 'Lista de Verificación de SEO Técnico 2026' },
     },
     {
       slug: 'estrategias-construccion-enlaces-2026-es',
@@ -2603,12 +2567,10 @@ Organik trafik artırmak; doğru teknik altyapı, kullanıcı odaklı içerik ve
       bodyHtml: '<h1>Estrategias de Construcción de Enlaces 2026</h1>',
       status: 'PUBLISHED' as const,
       publishedAt: new Date('2026-03-25'),
-      author: 'FunBreak SEO Team',
-      category: 'Link Building',
-      tags: ['construccion-enlaces', 'backlinks'],
+      authorName: 'FunBreak SEO Team',
       metaTitle: 'Construcción de Enlaces 2026 | FunBreak SEO',
       metaDescription: 'Descubra estrategias modernas de construcción de enlaces que sobreviven las actualizaciones de algoritmos.',
-      schemaMarkup: { '@context': 'https://schema.org', '@type': 'Article', headline: 'Estrategias de Construcción de Enlaces 2026' },
+      jsonLd: { '@context': 'https://schema.org', '@type': 'Article', headline: 'Estrategias de Construcción de Enlaces 2026' },
     },
     // ── HINDI (4 posts) ──
     {
@@ -2620,12 +2582,10 @@ Organik trafik artırmak; doğru teknik altyapı, kullanıcı odaklı içerik ve
       bodyHtml: '<h1>SEO गाइड 2026</h1>',
       status: 'PUBLISHED' as const,
       publishedAt: new Date('2026-01-30'),
-      author: 'FunBreak SEO Team',
-      category: 'SEO',
-      tags: ['seo', 'guide', '2026'],
+      authorName: 'FunBreak SEO Team',
       metaTitle: 'SEO गाइड 2026 | FunBreak SEO',
       metaDescription: 'हमारी व्यापक गाइड के साथ 2026 में SEO में महारत हासिल करें।',
-      schemaMarkup: { '@context': 'https://schema.org', '@type': 'Article', headline: 'SEO गाइड 2026' },
+      jsonLd: { '@context': 'https://schema.org', '@type': 'Article', headline: 'SEO गाइड 2026' },
     },
     {
       slug: 'technical-seo-checklist-2026-hi',
@@ -2636,12 +2596,10 @@ Organik trafik artırmak; doğru teknik altyapı, kullanıcı odaklı içerik ve
       bodyHtml: '<h1>Technical SEO Checklist 2026</h1>',
       status: 'PUBLISHED' as const,
       publishedAt: new Date('2026-02-28'),
-      author: 'FunBreak SEO Team',
-      category: 'Technical SEO',
-      tags: ['technical-seo', 'checklist'],
+      authorName: 'FunBreak SEO Team',
       metaTitle: 'Technical SEO Checklist 2026 | FunBreak SEO',
       metaDescription: '2026 के लिए पूरी 50-item technical SEO checklist।',
-      schemaMarkup: { '@context': 'https://schema.org', '@type': 'Article', headline: 'Technical SEO Checklist 2026' },
+      jsonLd: { '@context': 'https://schema.org', '@type': 'Article', headline: 'Technical SEO Checklist 2026' },
     },
     {
       slug: 'geo-generative-engine-optimisation-hi',
@@ -2652,12 +2610,10 @@ Organik trafik artırmak; doğru teknik altyapı, kullanıcı odaklı içerik ve
       bodyHtml: '<h1>Generative Engine Optimisation (GEO)</h1>',
       status: 'PUBLISHED' as const,
       publishedAt: new Date('2026-03-10'),
-      author: 'FunBreak SEO Team',
-      category: 'GEO',
-      tags: ['geo', 'ai-seo', 'chatgpt'],
+      authorName: 'FunBreak SEO Team',
       metaTitle: 'GEO: AI Answers में Rank करें | FunBreak SEO',
       metaDescription: 'Proven GEO strategies के साथ ChatGPT, Gemini, Perplexity में appear करें।',
-      schemaMarkup: { '@context': 'https://schema.org', '@type': 'Article', headline: 'Generative Engine Optimisation (GEO)' },
+      jsonLd: { '@context': 'https://schema.org', '@type': 'Article', headline: 'Generative Engine Optimisation (GEO)' },
     },
     {
       slug: 'link-building-strategies-2026-hi',
@@ -2668,12 +2624,10 @@ Organik trafik artırmak; doğru teknik altyapı, kullanıcı odaklı içerik ve
       bodyHtml: '<h1>Link Building Strategies 2026</h1>',
       status: 'PUBLISHED' as const,
       publishedAt: new Date('2026-04-10'),
-      author: 'FunBreak SEO Team',
-      category: 'Link Building',
-      tags: ['link-building', 'backlinks'],
+      authorName: 'FunBreak SEO Team',
       metaTitle: 'Link Building Strategies 2026 | FunBreak SEO',
       metaDescription: 'Modern link-building strategies जो algorithm updates को survive करती हैं।',
-      schemaMarkup: { '@context': 'https://schema.org', '@type': 'Article', headline: 'Link Building Strategies 2026' },
+      jsonLd: { '@context': 'https://schema.org', '@type': 'Article', headline: 'Link Building Strategies 2026' },
     },
     // ── ARABIC (3 posts) ──
     {
@@ -2685,12 +2639,10 @@ Organik trafik artırmak; doğru teknik altyapı, kullanıcı odaklı içerik ve
       bodyHtml: '<h1>دليل SEO الشامل لعام 2026</h1>',
       status: 'PUBLISHED' as const,
       publishedAt: new Date('2026-02-01'),
-      author: 'فريق FunBreak SEO',
-      category: 'SEO',
-      tags: ['seo', 'دليل', '2026'],
+      authorName: 'فريق FunBreak SEO',
       metaTitle: 'دليل SEO الشامل 2026 | FunBreak SEO',
       metaDescription: 'أتقن SEO في 2026: Core Web Vitals وE-E-A-T وGEO واستراتيجيات بناء الروابط.',
-      schemaMarkup: { '@context': 'https://schema.org', '@type': 'Article', headline: 'دليل SEO الشامل لعام 2026' },
+      jsonLd: { '@context': 'https://schema.org', '@type': 'Article', headline: 'دليل SEO الشامل لعام 2026' },
     },
     {
       slug: 'geo-optimisation-ai-ar',
@@ -2701,12 +2653,10 @@ Organik trafik artırmak; doğru teknik altyapı, kullanıcı odaklı içerik ve
       bodyHtml: '<h1>تحسين محركات البحث التوليدية (GEO)</h1>',
       status: 'PUBLISHED' as const,
       publishedAt: new Date('2026-02-15'),
-      author: 'فريق FunBreak SEO',
-      category: 'GEO',
-      tags: ['geo', 'ai-seo'],
+      authorName: 'فريق FunBreak SEO',
       metaTitle: 'GEO: كيف تظهر في إجابات الذكاء الاصطناعي | FunBreak SEO',
       metaDescription: 'استراتيجيات GEO المثبتة للظهور في ChatGPT وGemini وPerplexity.',
-      schemaMarkup: { '@context': 'https://schema.org', '@type': 'Article', headline: 'تحسين محركات البحث التوليدية (GEO)' },
+      jsonLd: { '@context': 'https://schema.org', '@type': 'Article', headline: 'تحسين محركات البحث التوليدية (GEO)' },
     },
     {
       slug: 'link-building-strategies-2026-ar',
@@ -2717,12 +2667,10 @@ Organik trafik artırmak; doğru teknik altyapı, kullanıcı odaklı içerik ve
       bodyHtml: '<h1>استراتيجيات بناء الروابط 2026</h1>',
       status: 'PUBLISHED' as const,
       publishedAt: new Date('2026-03-05'),
-      author: 'فريق FunBreak SEO',
-      category: 'Link Building',
-      tags: ['بناء-الروابط', 'backlinks'],
+      authorName: 'فريق FunBreak SEO',
       metaTitle: 'استراتيجيات بناء الروابط 2026 | FunBreak SEO',
       metaDescription: 'استراتيجيات حديثة لبناء الروابط تصمد أمام تحديثات الخوارزميات.',
-      schemaMarkup: { '@context': 'https://schema.org', '@type': 'Article', headline: 'استراتيجيات بناء الروابط 2026' },
+      jsonLd: { '@context': 'https://schema.org', '@type': 'Article', headline: 'استراتيجيات بناء الروابط 2026' },
     },
     // ── RUSSIAN (3 posts) ──
     {
@@ -2734,12 +2682,10 @@ Organik trafik artırmak; doğru teknik altyapı, kullanıcı odaklı içerik ve
       bodyHtml: '<h1>Полное руководство по SEO 2026</h1>',
       status: 'PUBLISHED' as const,
       publishedAt: new Date('2026-02-05'),
-      author: 'Команда FunBreak SEO',
-      category: 'SEO',
-      tags: ['seo', 'руководство', '2026'],
+      authorName: 'Команда FunBreak SEO',
       metaTitle: 'Полное руководство по SEO 2026 | FunBreak SEO',
       metaDescription: 'Освойте SEO в 2026 году: Core Web Vitals, E-E-A-T, GEO и проверенные стратегии построения ссылок.',
-      schemaMarkup: { '@context': 'https://schema.org', '@type': 'Article', headline: 'Полное руководство по SEO 2026' },
+      jsonLd: { '@context': 'https://schema.org', '@type': 'Article', headline: 'Полное руководство по SEO 2026' },
     },
     {
       slug: 'tekhnicheskoe-seo-cheklst-2026-ru',
@@ -2750,12 +2696,10 @@ Organik trafik artırmak; doğru teknik altyapı, kullanıcı odaklı içerik ve
       bodyHtml: '<h1>Чек-лист технического SEO 2026</h1>',
       status: 'PUBLISHED' as const,
       publishedAt: new Date('2026-03-01'),
-      author: 'Команда FunBreak SEO',
-      category: 'Technical SEO',
-      tags: ['техническое-seo', 'чек-лист'],
+      authorName: 'Команда FunBreak SEO',
       metaTitle: 'Чек-лист технического SEO 2026 | FunBreak SEO',
       metaDescription: 'Полный чек-лист технического SEO из 50 пунктов на 2026 год.',
-      schemaMarkup: { '@context': 'https://schema.org', '@type': 'Article', headline: 'Чек-лист технического SEO 2026' },
+      jsonLd: { '@context': 'https://schema.org', '@type': 'Article', headline: 'Чек-лист технического SEO 2026' },
     },
     {
       slug: 'strategii-postroenia-ssylok-2026-ru',
@@ -2766,12 +2710,10 @@ Organik trafik artırmak; doğru teknik altyapı, kullanıcı odaklı içerik ve
       bodyHtml: '<h1>Стратегии построения ссылок 2026</h1>',
       status: 'PUBLISHED' as const,
       publishedAt: new Date('2026-04-01'),
-      author: 'Команда FunBreak SEO',
-      category: 'Link Building',
-      tags: ['построение-ссылок', 'backlinks'],
+      authorName: 'Команда FunBreak SEO',
       metaTitle: 'Стратегии построения ссылок 2026 | FunBreak SEO',
       metaDescription: 'Современные стратегии построения ссылок, выдерживающие обновления алгоритмов.',
-      schemaMarkup: { '@context': 'https://schema.org', '@type': 'Article', headline: 'Стратегии построения ссылок 2026' },
+      jsonLd: { '@context': 'https://schema.org', '@type': 'Article', headline: 'Стратегии построения ссылок 2026' },
     },
   ];
 
