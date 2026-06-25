@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { marketApi } from '@/lib/api';
 
 const orderStatusStyles: Record<string, string> = {
@@ -12,6 +13,7 @@ const orderStatusStyles: Record<string, string> = {
 };
 
 export default function MarketPage() {
+  const t = useTranslations('marketPage');
   const [tab, setTab] = useState<'listings' | 'orders'>('listings');
   const [categoryFilter, setCategoryFilter] = useState('all');
 
@@ -27,6 +29,16 @@ export default function MarketPage() {
     enabled: tab === 'orders',
   });
 
+  const orderStatusLabel = (status: string) => {
+    const map: Record<string, string> = {
+      PENDING: t('statusPending'),
+      IN_PROGRESS: t('statusInProgress'),
+      COMPLETED: t('statusCompleted'),
+      CANCELLED: t('statusCancelled'),
+    };
+    return map[status] ?? status;
+  };
+
   const categories = ['all', ...Array.from(new Set((listings ?? []).map((l: any) => l.category).filter(Boolean)))];
   const filtered =
     categoryFilter === 'all'
@@ -38,26 +50,26 @@ export default function MarketPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Publisher Marketplace</h1>
+          <h1 className="text-2xl font-bold">{t('title')}</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-            Buy guest posts and sponsored links from verified publishers.
+            {t('subtitle')}
           </p>
         </div>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-1 p-1 rounded-lg w-fit" style={{ background: 'var(--bg-surface)' }}>
-        {(['listings', 'orders'] as const).map((t) => (
+        {(['listings', 'orders'] as const).map((key) => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
-            className="px-5 py-2 rounded-md text-sm font-medium transition capitalize"
+            key={key}
+            onClick={() => setTab(key)}
+            className="px-5 py-2 rounded-md text-sm font-medium transition"
             style={{
-              background: tab === t ? 'var(--bg-elevated)' : 'transparent',
-              color: tab === t ? 'var(--text-primary)' : 'var(--text-muted)',
+              background: tab === key ? 'var(--bg-elevated)' : 'transparent',
+              color: tab === key ? 'var(--text-primary)' : 'var(--text-muted)',
             }}
           >
-            {t === 'listings' ? 'Browse Listings' : 'My Orders'}
+            {key === 'listings' ? t('tabListings') : t('tabOrders')}
           </button>
         ))}
       </div>
@@ -78,7 +90,7 @@ export default function MarketPage() {
                   border: '1px solid rgba(255,255,255,0.06)',
                 }}
               >
-                {cat === 'all' ? 'All Categories' : cat}
+                {cat === 'all' ? t('filterAll') : cat}
               </button>
             ))}
           </div>
@@ -90,7 +102,7 @@ export default function MarketPage() {
               ))}
             </div>
           ) : filtered.length === 0 ? (
-            <div className="text-center py-16" style={{ color: 'var(--text-muted)' }}>No listings found.</div>
+            <div className="text-center py-16" style={{ color: 'var(--text-muted)' }}>{t('noListings')}</div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {filtered.map((listing: any) => (
@@ -113,11 +125,11 @@ export default function MarketPage() {
 
                   <div className="grid grid-cols-2 gap-2">
                     <div className="rounded-lg p-2 text-center" style={{ background: 'var(--bg-elevated)' }}>
-                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>DA</p>
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('colDA')}</p>
                       <p className="font-bold text-sm">{listing.da ?? '—'}</p>
                     </div>
                     <div className="rounded-lg p-2 text-center" style={{ background: 'var(--bg-elevated)' }}>
-                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>DR</p>
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('colTraffic')}</p>
                       <p className="font-bold text-sm">{listing.dr ?? '—'}</p>
                     </div>
                   </div>
@@ -132,7 +144,7 @@ export default function MarketPage() {
                     className="w-full py-2 rounded-lg text-sm font-medium transition hover:opacity-90"
                     style={{ background: 'var(--accent)', color: '#fff' }}
                   >
-                    Order Now
+                    {t('buyBtn')}
                   </button>
                 </div>
               ))}
@@ -154,7 +166,7 @@ export default function MarketPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                  {['Domain', 'Category', 'Price', 'Status', 'Ordered'].map((h) => (
+                  {[t('colDomain'), t('colCategory'), t('colPrice'), t('colStatus'), t('colDate')].map((h) => (
                     <th key={h} className="text-left px-4 py-3 font-medium" style={{ color: 'var(--text-muted)' }}>{h}</th>
                   ))}
                 </tr>
@@ -163,7 +175,7 @@ export default function MarketPage() {
                 {(orders ?? []).length === 0 && (
                   <tr>
                     <td colSpan={5} className="px-4 py-12 text-center" style={{ color: 'var(--text-muted)' }}>
-                      No orders yet. Browse listings to place your first order.
+                      {t('noOrders')}
                     </td>
                   </tr>
                 )}
@@ -174,7 +186,7 @@ export default function MarketPage() {
                     <td className="px-4 py-3 font-medium">${order.price}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${orderStatusStyles[order.status] ?? ''}`}>
-                        {order.status?.replace('_', ' ')}
+                        {orderStatusLabel(order.status)}
                       </span>
                     </td>
                     <td className="px-4 py-3" style={{ color: 'var(--text-muted)' }}>

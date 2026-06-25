@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { outreachApi } from '@/lib/api';
 
 const PROJECT_ID = 'current';
@@ -14,6 +15,7 @@ const campaignStatusStyles: Record<string, string> = {
 };
 
 export default function OutreachPage() {
+  const t = useTranslations('outreachPage');
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState('');
   const qc = useQueryClient();
@@ -42,14 +44,26 @@ export default function OutreachPage() {
     { prospects: 0, sent: 0, opens: 0, replies: 0 }
   );
 
+  const stats = [
+    { label: t('funnelTotal'), value: totals.prospects },
+    { label: t('funnelContacted'), value: totals.sent },
+    { label: t('funnelOpens'), value: totals.opens, sub: totals.sent ? `${Math.round((totals.opens / totals.sent) * 100)}% ${t('rateLabel')}` : '—' },
+    { label: t('funnelReplied'), value: totals.replies, sub: totals.sent ? `${Math.round((totals.replies / totals.sent) * 100)}% ${t('rateLabel')}` : '—' },
+  ];
+
+  const colHeaders = [
+    t('colCampaign'), t('colStatus'), t('colProspects'),
+    t('colSent'), t('colOpens'), t('colReplies'), t('colReplyRate'),
+  ];
+
   return (
     <div className="min-h-screen p-6 space-y-6" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)' }}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Outreach</h1>
+          <h1 className="text-2xl font-bold">{t('title')}</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-            Manage link-building campaigns and prospect outreach.
+            {t('empty')}
           </p>
         </div>
         <button
@@ -57,23 +71,18 @@ export default function OutreachPage() {
           className="px-4 py-2 rounded-lg text-sm font-medium transition hover:opacity-90"
           style={{ background: 'var(--accent)', color: '#fff' }}
         >
-          + Create Campaign
+          + {t('newBtn')}
         </button>
       </div>
 
       {/* Summary stats */}
       {!isLoading && (campaigns ?? []).length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {[
-            { label: 'Total Prospects', value: totals.prospects },
-            { label: 'Emails Sent', value: totals.sent },
-            { label: 'Opens', value: totals.opens, sub: totals.sent ? `${Math.round((totals.opens / totals.sent) * 100)}%` : '—' },
-            { label: 'Replies', value: totals.replies, sub: totals.sent ? `${Math.round((totals.replies / totals.sent) * 100)}%` : '—' },
-          ].map((s) => (
+          {stats.map((s) => (
             <div key={s.label} className="rounded-xl p-4" style={{ background: 'var(--bg-surface)', border: '1px solid rgba(255,255,255,0.06)' }}>
               <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>{s.label}</p>
               <p className="text-2xl font-bold">{s.value.toLocaleString()}</p>
-              {s.sub && <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>{s.sub} rate</p>}
+              {s.sub && <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>{s.sub}</p>}
             </div>
           ))}
         </div>
@@ -91,7 +100,7 @@ export default function OutreachPage() {
           <table className="w-full text-sm">
             <thead>
               <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                {['Campaign', 'Status', 'Prospects', 'Sent', 'Opens', 'Replies', 'Reply Rate'].map((h) => (
+                {colHeaders.map((h) => (
                   <th key={h} className="text-left px-4 py-3 font-medium" style={{ color: 'var(--text-muted)' }}>{h}</th>
                 ))}
               </tr>
@@ -100,7 +109,7 @@ export default function OutreachPage() {
               {(campaigns ?? []).length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-4 py-12 text-center" style={{ color: 'var(--text-muted)' }}>
-                    No campaigns yet. Create your first outreach campaign.
+                    {t('empty')}
                   </td>
                 </tr>
               )}
@@ -112,7 +121,7 @@ export default function OutreachPage() {
                     <td className="px-4 py-3">
                       <p className="font-medium">{c.name}</p>
                       <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                        Created {c.createdAt ? new Date(c.createdAt).toLocaleDateString() : '—'}
+                        {t('createdLabel')} {c.createdAt ? new Date(c.createdAt).toLocaleDateString() : '—'}
                       </p>
                     </td>
                     <td className="px-4 py-3">
@@ -149,26 +158,28 @@ export default function OutreachPage() {
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl p-6 space-y-4" style={{ background: 'var(--bg-elevated)', border: '1px solid rgba(255,255,255,0.1)' }}>
-            <h2 className="text-lg font-semibold">Create Campaign</h2>
+            <h2 className="text-lg font-semibold">{t('modalTitle')}</h2>
             <div>
-              <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>Campaign Name</label>
+              <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>{t('nameLabel')}</label>
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Guest Post Outreach Q3"
+                placeholder={t('namePlaceholder')}
                 className="w-full px-4 py-2 rounded-lg outline-none text-sm"
                 style={{ background: 'var(--bg-base)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-primary)' }}
               />
             </div>
             <div className="flex gap-2 justify-end">
-              <button onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm rounded-lg" style={{ color: 'var(--text-secondary)' }}>Cancel</button>
+              <button onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm rounded-lg" style={{ color: 'var(--text-secondary)' }}>
+                {t('cancelBtn')}
+              </button>
               <button
                 onClick={() => createMutation.mutate(name)}
                 disabled={!name || createMutation.isPending}
                 className="px-4 py-2 text-sm rounded-lg font-medium disabled:opacity-50"
                 style={{ background: 'var(--accent)', color: '#fff' }}
               >
-                {createMutation.isPending ? 'Creating…' : 'Create'}
+                {createMutation.isPending ? t('creatingBtn') : t('createBtn')}
               </button>
             </div>
           </div>
