@@ -19,7 +19,7 @@ export class OutreachWorker extends WorkerHost {
     super()
   }
 
-  async process(job: Job<{ campaignId?: string; prospectId?: string; orderId?: string }>): Promise<void> {
+  async process(job: Job<{ campaignId?: string; prospectId?: string; step?: number; orderId?: string }>): Promise<void> {
     switch (job.name) {
       case 'find-prospects':
         return this.findProspects(job.data.campaignId!)
@@ -27,8 +27,82 @@ export class OutreachWorker extends WorkerHost {
         return this.generateEmails(job.data.campaignId!)
       case 'send-emails':
         return this.sendEmails(job.data.campaignId!)
+      case 'follow-up':
+        return this.sendFollowUp(job.data.campaignId!, job.data.prospectId!, job.data.step ?? 2)
       default:
         this.logger.warn(`Unknown job name: ${job.name}`)
+    }
+  }
+
+  // ─── follow-up ─────────────────────────────────────────────────────────────
+
+  private async sendFollowUp(campaignId: string, prospectId: string, step: number): Promise<void> {
+    const prospect = await this.prisma.prospect.findUnique({
+      where: { id: prospectId },
+      include: {
+        emails: { orderBy: { createdAt: 'desc' }, take: 1 },
+      },
+    })
+
+    const skipStatuses = ['REPLIED_POSITIVE', 'REPLIED_NEGATIVE', 'WON', 'LOST', 'BOUNCED']
+    if (!prospect || skipStatuses.includes(prospect.status)) {
+      this.logger.log(`Follow-up skipped for prospect ${prospectId} (status: ${prospect?.status ?? 'not found'})`)
+      return
+    }
+    if (!prospect.contactEmail) {
+      this.logger.warn(`Follow-up skipped for prospect ${prospectId}: no contact email`)
+      return
+    }
+
+    const campaign = await this.prisma.outreachCampaign.findUnique({ where: { id: campaignId } })
+    if (!campaign) return
+
+    const subject = step === 2
+      ? `Following up: Collaboration opportunity with ${prospect.domain}`
+      : `Last follow-up: Link opportunity for ${prospect.domain}`
+
+    const body = step === 2
+      ? `Hi,\n\nJust following up on my previous email regarding a collaboration opportunity. I'd love to discuss how linking to our page could benefit your readers.\n\nPlease let me know if you're interested.\n\nBest regards`
+      : `Hi,\n\nThis is my final follow-up. If you're not interested, no worries at all — I won't reach out again. But if there's any chance this could work, I'd love to hear from you.\n\nThanks for your time!`
+
+    try {
+      const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST ?? 'smtp.gmail.com',
+        port: parseInt(process.env.SMTP_PORT ?? '587', 10),
+        secure: false,
+        auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+      })
+
+      const threadId = `funbreak-${campaignId}-${prospectId}-followup-${step}-${Date.now()}`
+
+      await transporter.sendMail({
+        from: process.env.SMTP_USER,
+        to: prospect.contactEmail,
+        subject,
+        text: body,
+        headers: { 'Message-ID': `<${threadId}@funbreakseo.com>` },
+      })
+
+      await this.prisma.outreachEmail.create({
+        data: {
+          prospectId,
+          sequenceStep: step,
+          subject,
+          body,
+          status: 'SENT',
+          sentAt: new Date(),
+          threadId,
+        },
+      })
+
+      await this.prisma.outreachCampaign.update({
+        where: { id: campaignId },
+        data: { emailsSent: { increment: 1 } },
+      })
+
+      this.logger.log(`Follow-up step ${step} sent to ${prospect.contactEmail}`)
+    } catch (err) {
+      this.logger.error(`Follow-up failed for prospect ${prospectId}: ${(err as Error).message}`)
     }
   }
 
