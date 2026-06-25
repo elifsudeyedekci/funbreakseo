@@ -8,6 +8,8 @@ import {
   UseGuards,
 } from '@nestjs/common'
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger'
+import { IsNumber, IsOptional, IsString, MinLength } from 'class-validator'
+import { Type } from 'class-transformer'
 import { MarketService } from './market.service'
 import { JwtAuthGuard } from '../auth/jwt-auth.guard'
 import { CurrentUser } from '../auth/current-user.decorator'
@@ -15,53 +17,53 @@ import { Roles } from '../auth/roles.decorator'
 import { RolesGuard } from '../auth/roles.guard'
 
 class CreateOrderDto {
-  projectId: string = ''
-  listingId: string = ''
-  targetUrl: string = ''
-  anchorText?: string
-  contentBrief?: string
+  @IsString() projectId: string = ''
+  @IsString() listingId: string = ''
+  @IsString() targetUrl: string = ''
+  @IsOptional() @IsString() anchorText?: string
+  @IsOptional() @IsString() contentBrief?: string
 }
 
 class PublisherApplyDto {
-  domain: string = ''
-  domainRating?: number
-  organicTraffic?: number
-  category?: string
-  language?: string
-  country?: string
-  linkType?: string
-  publisherAskingPrice?: number
-  turnaroundDays?: number
-  sampleUrl?: string
-  contactEmail?: string
+  @IsString() @MinLength(3) domain: string = ''
+  @IsOptional() @IsNumber() @Type(() => Number) domainRating?: number
+  @IsOptional() @IsNumber() @Type(() => Number) organicTraffic?: number
+  @IsOptional() @IsString() category?: string
+  @IsOptional() @IsString() language?: string
+  @IsOptional() @IsString() country?: string
+  @IsOptional() @IsString() linkType?: string
+  @IsOptional() @IsNumber() @Type(() => Number) publisherAskingPrice?: number
+  @IsOptional() @IsNumber() @Type(() => Number) turnaroundDays?: number
+  @IsOptional() @IsString() sampleUrl?: string
+  @IsOptional() @IsString() contactEmail?: string
 }
 
 class ApproveOfferDto {
-  salePrice: number = 0
-  drTier?: string
+  @IsNumber() @Type(() => Number) salePrice: number = 0
+  @IsOptional() @IsString() drTier?: string
 }
 
 class RejectOfferDto {
-  note: string = ''
+  @IsString() note: string = ''
 }
 
 class DisputeOrderDto {
-  reason: string = ''
+  @IsString() reason: string = ''
 }
 
 class ListingsQueryDto {
-  drTier?: string
-  category?: string
-  language?: string
-  linkType?: string
-  minPrice?: string
-  maxPrice?: string
-  page?: string
-  limit?: string
+  @IsOptional() @IsString() drTier?: string
+  @IsOptional() @IsString() category?: string
+  @IsOptional() @IsString() language?: string
+  @IsOptional() @IsString() linkType?: string
+  @IsOptional() @IsString() minPrice?: string
+  @IsOptional() @IsString() maxPrice?: string
+  @IsOptional() @IsString() page?: string
+  @IsOptional() @IsString() limit?: string
 }
 
 class OrdersQueryDto {
-  status?: string
+  @IsOptional() @IsString() status?: string
 }
 
 @ApiTags('Market')
