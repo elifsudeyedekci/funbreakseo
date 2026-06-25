@@ -48,8 +48,9 @@ export class AutopilotService {
 
     const settings = await this.getSettings();
 
+    const locales = settings.locales as unknown as string[];
     const stats = await Promise.all(
-      settings.locales.map(async (locale: string) => {
+      locales.map(async (locale: string) => {
         const [produced, published, queued] = await Promise.all([
           this.prisma.blogPost.count({
             where: {
@@ -100,7 +101,6 @@ export class AutopilotService {
       }),
       this.prisma.autopilotKeyword.findMany({
         where: { status: 'IN_PROGRESS' },
-        include: { blogPost: true },
         take: 20,
       }),
       this.prisma.blogPost.findMany({

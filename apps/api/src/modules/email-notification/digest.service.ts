@@ -27,10 +27,10 @@ export class DigestService {
     const orgs = await this.prisma.organization.findMany({
       where: {
         status: 'ACTIVE',
-        digestFrequency: { not: 'NONE' },
+        digestFrequency: { not: 'OFF' },
       },
       include: {
-        users: { where: { role: 'OWNER' }, take: 1 },
+        users: { where: { role: 'CUSTOMER' }, take: 1 },
       },
     });
 
@@ -83,9 +83,9 @@ export class DigestService {
     const [mrrResult, newSubs, churn, apiCost, dfsCost, llmCost] =
       await Promise.all([
         this.prisma.$queryRaw<{ mrr: number }[]>`
-          SELECT COALESCE(SUM(p.price), 0) as mrr
-          FROM "Subscription" s
-          JOIN "Plan" p ON p.id = s."planId"
+          SELECT COALESCE(SUM(p."monthlyPrice"), 0) as mrr
+          FROM "subscriptions" s
+          JOIN "plans" p ON p.id = s."planId"
           WHERE s.status = 'ACTIVE'
         `,
         this.prisma.subscription.count({
@@ -135,11 +135,11 @@ export class DigestService {
     const weekAgo = new Date(Date.now() - 7 * 86400_000);
 
     const projects = await this.prisma.project.findMany({
-      where: { orgId },
+      where: { organizationId: orgId },
       include: {
         keywords: {
           include: {
-            rankHistory: { orderBy: { checkedAt: 'desc' }, take: 2 },
+            ranks: { orderBy: { checkedAt: 'desc' }, take: 2 },
           },
         },
         crawlJobs: {
@@ -148,8 +148,8 @@ export class DigestService {
           take: 1,
         },
         backlinks: { where: { createdAt: { gte: weekAgo } } },
-        blogPosts: {
-          where: { status: 'PUBLISHED', publishedAt: { gte: weekAgo } },
+        contentItems: {
+          where: { status: 'PUBLISHED', createdAt: { gte: weekAgo } },
         },
       },
     });
@@ -162,14 +162,14 @@ export class DigestService {
     let geoTotal = 0;
 
     for (const project of projects) {
-      const ranks = project.keywords
-        .map((k) => k.rankHistory[0]?.rank)
-        .filter((r): r is number => r !== undefined);
+      const ranks = (project as typeof project & { keywords: { ranks: { position: number | null }[] }[] }).keywords
+        .map((k) => k.ranks[0]?.position)
+        .filter((r): r is number => r !== null && r !== undefined);
 
       totalKeywords += ranks.length;
-      avgRank += ranks.reduce((s, r) => s + r, 0);
-      newBacklinks += project.backlinks.length;
-      newContent += project.blogPosts.length;
+      avgRank += ranks.reduce((s: number, r: number) => s + r, 0);
+      newBacklinks += (project as typeof project & { backlinks: unknown[] }).backlinks.length;
+      newContent += (project as typeof project & { contentItems: unknown[] }).contentItems.length;
 
       const geoChecks = await this.prisma.geoVisibilityCheck.findMany({
         where: {
@@ -211,14 +211,14 @@ export class DigestService {
     );
 
     const mrrResult = await this.prisma.$queryRaw<{ mrr: number }[]>`
-      SELECT COALESCE(SUM(p.price), 0) as mrr
-      FROM "Subscription" s
-      JOIN "Plan" p ON p.id = s."planId"
+      SELECT COALESCE(SUM(p."monthlyPrice"), 0) as mrr
+      FROM "subscriptions" s
+      JOIN "plans" p ON p.id = s."planId"
       WHERE s.status = 'ACTIVE'
     `;
 
     const sub = await this.prisma.subscription.findFirst({
-      where: { orgId: org.id },
+      where: { organizationId: org.id },
       include: { plan: true },
     });
 

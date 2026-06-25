@@ -21,17 +21,16 @@ export default function KeywordsPage() {
 
   const { data: keywords, isLoading: kwLoading } = useQuery({
     queryKey: ['keywords', PROJECT_ID],
-    queryFn: () => keywordApi.list(PROJECT_ID),
+    queryFn: () => keywordApi.list(PROJECT_ID).then(r => (r.data?.data || []) as any[]),
   });
 
   const { data: summary, isLoading: sumLoading } = useQuery({
     queryKey: ['keywords-summary', PROJECT_ID],
-    queryFn: () => keywordApi.summary(PROJECT_ID),
+    queryFn: () => keywordApi.summary(PROJECT_ID).then(r => r.data?.data as { top3?: number; top10?: number; top20?: number; beyond20?: number } | undefined),
   });
 
   const addMutation = useMutation({
-    mutationFn: (kw: string) =>
-      keywordApi.add ? keywordApi.add(PROJECT_ID, kw) : Promise.resolve(),
+    mutationFn: (kw: string) => keywordApi.add(PROJECT_ID, [kw]),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['keywords', PROJECT_ID] });
       setShowAdd(false);

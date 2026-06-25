@@ -77,7 +77,7 @@ export default function GeoPage() {
                 <div key={p.name} className="rounded-2xl border border-white/10 bg-white/2 p-4 text-center">
                   <div className="text-lg font-bold text-white mb-1">{p.name}</div>
                   <div className="text-xs text-white/40 mb-2">{p.company}</div>
-                  <div className={	ext-sm font-semibold text--400}>AI Pazar Payı: {p.share}</div>
+                  <div className={`text-sm font-semibold text-${p.color}-400`}>AI Pazar Payı: {p.share}</div>
                 </div>
               ))}
             </div>

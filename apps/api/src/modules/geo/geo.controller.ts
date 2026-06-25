@@ -14,7 +14,7 @@ import { CurrentUser } from '../auth/current-user.decorator'
 import { GeoService } from './geo.service'
 
 export class AddGeoQueryDto {
-  prompt: string
+  prompt: string = ''
   location?: string
   language?: string
 }

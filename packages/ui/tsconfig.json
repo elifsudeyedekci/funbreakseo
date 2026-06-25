@@ -1,5 +1,5 @@
 {
-  "extends": "@funbreakseo/config/tsconfig/nextjs.json",
+  "extends": "../config/tsconfig/nextjs.json",
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",

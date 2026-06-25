@@ -9,6 +9,7 @@ interface User {
   organizationId: string | null;
   locale: string;
   avatarUrl?: string;
+  twoFactorEnabled?: boolean;
 }
 
 interface Organization {
@@ -41,6 +42,7 @@ interface AuthState {
   refreshToken: string | null;
   isAuthenticated: boolean;
   hasPendingConsents: boolean;
+  pendingConsents: string[];
 
   setAuth: (data: {
     user: User;
@@ -48,12 +50,14 @@ interface AuthState {
     subscription: Subscription | null;
     accessToken: string;
     refreshToken: string;
+    pendingConsents?: string[];
   }) => void;
   clearAuth: () => void;
   updateUser: (user: Partial<User>) => void;
   updateOrg: (org: Partial<Organization>) => void;
   setSubscription: (sub: Subscription) => void;
   setPendingConsents: (val: boolean) => void;
+  clearPendingConsent: (type: string) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -66,13 +70,23 @@ export const useAuthStore = create<AuthState>()(
       refreshToken: null,
       isAuthenticated: false,
       hasPendingConsents: false,
+      pendingConsents: [],
 
-      setAuth: ({ user, organization, subscription, accessToken, refreshToken }) => {
+      setAuth: ({ user, organization, subscription, accessToken, refreshToken, pendingConsents }) => {
         if (typeof window !== 'undefined') {
           localStorage.setItem('access_token', accessToken);
           localStorage.setItem('refresh_token', refreshToken);
         }
-        set({ user, organization, subscription, accessToken, refreshToken, isAuthenticated: true });
+        set({
+          user,
+          organization,
+          subscription,
+          accessToken,
+          refreshToken,
+          isAuthenticated: true,
+          pendingConsents: pendingConsents || [],
+          hasPendingConsents: (pendingConsents || []).length > 0,
+        });
       },
 
       clearAuth: () => {
@@ -94,6 +108,11 @@ export const useAuthStore = create<AuthState>()(
       setSubscription: (sub) => set({ subscription: sub }),
 
       setPendingConsents: (val) => set({ hasPendingConsents: val }),
+
+      clearPendingConsent: (type) => set((state) => {
+        const remaining = state.pendingConsents.filter((t) => t !== type);
+        return { pendingConsents: remaining, hasPendingConsents: remaining.length > 0 };
+      }),
     }),
     {
       name: 'funbreakseo-auth',

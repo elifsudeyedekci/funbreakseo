@@ -1,29 +1,30 @@
 ﻿'use client';
 
-import { useState } from 'react';
+import { useState, use } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { outreachApi } from '@/lib/api';
 
 type Tab = 'profile' | 'market' | 'orders';
 
-export default function BacklinksPage({ params }: { params: { projectId: string } }) {
+export default function BacklinksPage({ params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = use(params);
   const [tab, setTab] = useState<Tab>('profile');
 
   const { data: backlinks, isLoading } = useQuery({
-    queryKey: ['backlinks', params.projectId],
-    queryFn: () => outreachApi.backlinks(params.projectId).then((r) => r.data.data),
+    queryKey: ['backlinks', projectId],
+    queryFn: () => outreachApi.backlinks(projectId).then((r) => r.data.data),
     enabled: tab === 'profile',
   });
 
   const { data: market } = useQuery({
-    queryKey: ['backlink-market', params.projectId],
-    queryFn: () => outreachApi.marketListings({ projectId: params.projectId }).then((r) => r.data.data),
+    queryKey: ['backlink-market', projectId],
+    queryFn: () => outreachApi.marketListings({ projectId }).then((r) => r.data.data),
     enabled: tab === 'market',
   });
 
   const { data: orders } = useQuery({
-    queryKey: ['backlink-orders', params.projectId],
-    queryFn: () => outreachApi.orders(params.projectId).then((r) => r.data.data),
+    queryKey: ['backlink-orders', projectId],
+    queryFn: () => outreachApi.orders(projectId).then((r) => r.data.data),
     enabled: tab === 'orders',
   });
 

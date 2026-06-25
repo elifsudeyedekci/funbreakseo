@@ -11,13 +11,14 @@ const queryClient = new QueryClient({
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="flex min-h-screen">
-        <AdminSidebar />
-        <main className="admin-content overflow-auto">
-          {children}
-        </main>
-      </div>
-      <Toaster />
+      <Toaster>
+        <div className="flex min-h-screen">
+          <AdminSidebar />
+          <main className="admin-content overflow-auto">
+            {children}
+          </main>
+        </div>
+      </Toaster>
     </QueryClientProvider>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { use } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar
 } from 'recharts';
@@ -60,11 +61,12 @@ function StatCard({
 export default function ProjectDashboardPage({
   params,
 }: {
-  params: { projectId: string };
+  params: Promise<{ projectId: string }>;
 }) {
+  const { projectId } = use(params);
   const { data, isLoading } = useQuery({
-    queryKey: ['project-dashboard', params.projectId],
-    queryFn: () => projectApi.dashboard(params.projectId).then((r) => r.data.data as DashboardData),
+    queryKey: ['project-dashboard', projectId],
+    queryFn: () => projectApi.dashboard(projectId).then((r) => r.data.data as DashboardData),
   });
 
   if (isLoading) {
@@ -80,9 +82,9 @@ export default function ProjectDashboardPage({
   }
 
   const summary = data?.summary;
-  const trend = data?.rankTrend || [];
-  const activities = data?.recentActivity || [];
-  const todos = data?.todoItems || [];
+  const trend: Array<{ date: string; avgPosition: number; geoScore: number }> = data?.rankTrend || [];
+  const activities: Array<{ id: string; type: string; message: string; createdAt: string }> = data?.recentActivity || [];
+  const todos: Array<{ id: string; category: string; severity: string; message: string }> = data?.todoItems || [];
 
   return (
     <div className="p-6 space-y-6">

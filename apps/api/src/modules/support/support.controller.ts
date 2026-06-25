@@ -28,7 +28,7 @@ export class SupportController {
     @Query('page') page = '1',
     @Query('limit') limit = '20',
   ) {
-    return this.supportService.getTickets(user.organizationId, {
+    return this.supportService.getTickets(user.organizationId!, {
       status,
       page: parseInt(page),
       limit: parseInt(limit),
@@ -46,7 +46,7 @@ export class SupportController {
       category?: string;
     },
   ) {
-    return this.supportService.createTicket(user.organizationId, user.id, dto);
+    return this.supportService.createTicket(user.organizationId!, user.id, dto);
   }
 
   @Get(':id')

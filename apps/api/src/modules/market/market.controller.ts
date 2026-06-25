@@ -15,15 +15,15 @@ import { Roles } from '../auth/roles.decorator'
 import { RolesGuard } from '../auth/roles.guard'
 
 class CreateOrderDto {
-  projectId: string
-  listingId: string
-  targetUrl: string
+  projectId: string = ''
+  listingId: string = ''
+  targetUrl: string = ''
   anchorText?: string
   contentBrief?: string
 }
 
 class PublisherApplyDto {
-  domain: string
+  domain: string = ''
   domainRating?: number
   organicTraffic?: number
   category?: string
@@ -37,16 +37,16 @@ class PublisherApplyDto {
 }
 
 class ApproveOfferDto {
-  salePrice: number
+  salePrice: number = 0
   drTier?: string
 }
 
 class RejectOfferDto {
-  note: string
+  note: string = ''
 }
 
 class DisputeOrderDto {
-  reason: string
+  reason: string = ''
 }
 
 class ListingsQueryDto {

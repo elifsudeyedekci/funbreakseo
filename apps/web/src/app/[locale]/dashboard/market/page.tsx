@@ -17,13 +17,13 @@ export default function MarketPage() {
 
   const { data: listings, isLoading: listingsLoading } = useQuery({
     queryKey: ['market-listings'],
-    queryFn: () => marketApi.listListings(),
+    queryFn: () => marketApi.listListings().then(r => (r.data?.data || []) as any[]),
     enabled: tab === 'listings',
   });
 
   const { data: orders, isLoading: ordersLoading } = useQuery({
     queryKey: ['market-orders'],
-    queryFn: () => marketApi.getOrders(),
+    queryFn: () => marketApi.getOrders().then(r => (r.data?.data || []) as any[]),
     enabled: tab === 'orders',
   });
 

@@ -3,6 +3,7 @@ import {
   Get,
   Patch,
   Post,
+  Body,
   Param,
   Query,
   UseGuards,
@@ -37,5 +38,20 @@ export class NotificationController {
   @Post('read-all')
   markAllRead(@CurrentUser() user: User) {
     return this.notificationService.markAllRead(user.id);
+  }
+
+  @Get('preferences')
+  getPreferences(@CurrentUser() user: User) {
+    return this.notificationService.getPreferences(user.id);
+  }
+
+  @Patch('preferences')
+  updatePreferences(@CurrentUser() user: User, @Body() body: Record<string, unknown>) {
+    return this.notificationService.updatePreferences(user.id, body);
+  }
+
+  @Post('unsubscribe-marketing')
+  unsubscribeMarketing(@CurrentUser() user: User) {
+    return this.notificationService.unsubscribeMarketing(user.id);
   }
 }

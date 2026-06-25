@@ -13,7 +13,7 @@ const profileSchema = z.object({
   fullName: z.string().min(2),
   email: z.string().email(),
   phone: z.string().optional(),
-  language: z.string(),
+  locale: z.string(),
 });
 
 type ProfileForm = z.infer<typeof profileSchema>;
@@ -28,13 +28,13 @@ export default function AccountPage() {
       fullName: user?.fullName || '',
       email: user?.email || '',
       phone: '',
-      language: user?.language || 'tr',
+      locale: user?.locale || 'tr',
     },
   });
 
   const updateMutation = useMutation({
     mutationFn: (data: ProfileForm) => accountApi.update(data),
-    onSuccess: (_, vars) => updateUser({ fullName: vars.fullName, language: vars.language }),
+    onSuccess: (_, vars) => updateUser({ fullName: vars.fullName, locale: vars.locale }),
   });
 
   const tabs = [
@@ -85,7 +85,7 @@ export default function AccountPage() {
           <div>
             <label className="block text-sm font-medium text-white/70 mb-1.5">Dil</label>
             <select
-              {...register('language')}
+              {...register('locale')}
               className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white focus:border-indigo-500/50 focus:outline-none"
             >
               <option value="tr">Türkçe</option>

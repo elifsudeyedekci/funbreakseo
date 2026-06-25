@@ -11,7 +11,7 @@ export class OnboardingController {
 
   @Get('status')
   getStatus(@CurrentUser() user: User) {
-    return this.onboardingService.getStatus(user.organizationId);
+    return this.onboardingService.getStatus(user.organizationId!);
   }
 
   @Post('step/:step/complete')
@@ -19,6 +19,6 @@ export class OnboardingController {
     @Param('step') step: OnboardingStep,
     @CurrentUser() user: User,
   ) {
-    return this.onboardingService.completeStep(user.organizationId, step);
+    return this.onboardingService.completeStep(user.organizationId!, step);
   }
 }

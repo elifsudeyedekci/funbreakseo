@@ -17,9 +17,20 @@ export default function SupportPage() {
   const [message, setMessage] = useState('');
   const qc = useQueryClient();
 
-  const { data: tickets, isLoading } = useQuery({
+  interface Ticket {
+    id: string;
+    ticketNumber?: string;
+    subject: string;
+    status: string;
+    latestMessage?: string;
+    updatedAt?: string;
+    createdAt?: string;
+    lastReplyAt?: string;
+  }
+
+  const { data: tickets, isLoading } = useQuery<Ticket[]>({
     queryKey: ['support-tickets'],
-    queryFn: () => supportApi.list(),
+    queryFn: () => supportApi.list().then((r) => (r.data?.data || []) as Ticket[]),
   });
 
   const createMutation = useMutation({
@@ -55,7 +66,7 @@ export default function SupportPage() {
       {!isLoading && (tickets ?? []).length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {(['OPEN', 'PENDING', 'ON_HOLD', 'CLOSED'] as const).map((status) => {
-            const count = (tickets ?? []).filter((t: any) => t.status === status).length;
+            const count = (tickets ?? []).filter((t) => t.status === status).length;
             return (
               <div key={status} className="rounded-xl p-4" style={{ background: 'var(--bg-surface)', border: '1px solid rgba(255,255,255,0.06)' }}>
                 <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>{status.replace('_', ' ')}</p>
@@ -91,7 +102,7 @@ export default function SupportPage() {
                   </td>
                 </tr>
               )}
-              {(tickets ?? []).map((ticket: any) => (
+              {(tickets ?? []).map((ticket) => (
                 <tr
                   key={ticket.id}
                   className="hover:bg-white/[0.02] transition cursor-pointer"

@@ -15,9 +15,9 @@ import { CurrentUser } from '../auth/current-user.decorator'
 import { ContentService } from './content.service'
 
 export class GenerateContentDto {
-  title: string
-  focusKeyword: string
-  type: ContentType
+  title: string = ''
+  focusKeyword: string = ''
+  type: ContentType = 'BLOG'
   secondaryKeywords?: string[]
   language?: string
   tone?: string

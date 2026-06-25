@@ -25,6 +25,7 @@ import { OnboardingModule } from './modules/onboarding/onboarding.module';
 import { SupportModule } from './modules/support/support.module';
 import { AffiliateModule } from './modules/affiliate/affiliate.module';
 import { AutopilotModule } from './modules/autopilot/autopilot.module';
+import { AbTestModule } from './modules/ab-test/ab-test.module';
 import { EmailNotificationModule } from './modules/email-notification/email-notification.module';
 import { PublicModule } from './modules/public/public.module';
 import { CustomerApiModule } from './modules/customer-api/customer-api.module';
@@ -83,6 +84,7 @@ import { HealthModule } from './modules/health/health.module';
     SupportModule,
     AffiliateModule,
     AutopilotModule,
+    AbTestModule,
     EmailNotificationModule,
     PublicModule,
     CustomerApiModule,

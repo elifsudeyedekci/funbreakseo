@@ -73,7 +73,7 @@ export class OutreachWorker extends WorkerHost {
           (item: any) => item.type === 'organic',
         ) ?? []
     } catch (err) {
-      this.logger.error(`DataForSEO call failed for campaign ${campaignId}: ${err.message}`)
+      this.logger.error(`DataForSEO call failed for campaign ${campaignId}: ${(err as Error).message}`)
     }
 
     const projectDomain = (campaign as any).project?.domain ?? ''
@@ -205,7 +205,7 @@ Respond with valid JSON only:
         })
       } catch (err) {
         this.logger.error(
-          `Email generation failed for prospect ${prospect.id}: ${err.message}`,
+          `Email generation failed for prospect ${prospect.id}: ${(err as Error).message}`,
         )
       }
     }
@@ -317,7 +317,7 @@ Respond with valid JSON only:
         )
       } catch (err) {
         this.logger.error(
-          `Failed to send email to ${prospect.contactEmail}: ${err.message}`,
+          `Failed to send email to ${prospect.contactEmail}: ${(err as Error).message}`,
         )
       }
     }

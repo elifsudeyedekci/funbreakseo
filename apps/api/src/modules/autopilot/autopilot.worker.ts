@@ -46,7 +46,7 @@ export class AutopilotWorker {
 
     await this.checkCostLimits();
 
-    for (const locale of settings.locales as string[]) {
+    for (const locale of (settings.locales as unknown as string[])) {
       try {
         await this.discoverAndQueueKeywords(locale, settings as unknown as AutopilotSettingsData);
       } catch (err) {
@@ -70,8 +70,8 @@ export class AutopilotWorker {
 
     const staleContent = await this.prisma.autopilotContentPerformance.findMany({
       where: {
-        checkedAt: { lte: sixtyDaysAgo },
-        position: { gt: 50 },
+        lastCheckedAt: { lte: sixtyDaysAgo },
+        currentPosition: { gt: 50 },
         needsRefresh: false,
       },
       include: { blogPost: { select: { id: true, title: true } } },
@@ -101,7 +101,7 @@ export class AutopilotWorker {
         type: 'AUTOPILOT_REFRESH_NEEDED',
         title: `${staleContent.length} yazı güncelleme öneriyor`,
         body: `${staleContent.length} autopilot içeriği 60+ gündür rank > 50 konumda. Güncelleme önerilir.`,
-        meta: { count: staleContent.length, postIds: staleContent.map((c) => c.blogPostId) },
+        meta: { count: staleContent.length, postIds: staleContent.map((c: { blogPostId: string }) => c.blogPostId) },
       },
     });
   }
@@ -136,7 +136,7 @@ export class AutopilotWorker {
 
       // Check if already in autopilot queue
       const existingQueueItem = await this.prisma.autopilotKeyword.findFirst({
-        where: { keyword: kw.keyword, locale },
+        where: { phrase: kw.keyword, locale },
       });
       if (existingQueueItem) continue;
 
@@ -146,6 +146,7 @@ export class AutopilotWorker {
       await this.prisma.autopilotKeyword.create({
         data: {
           keyword: kw.keyword,
+          phrase: kw.keyword,
           locale,
           searchVolume: kw.searchVolume,
           difficulty: kw.difficulty,
@@ -221,7 +222,7 @@ export class AutopilotWorker {
       try {
         await this.generateAndPublishContent(item, settings);
       } catch (err) {
-        this.logger.error(`Failed to process keyword ${item.keyword}:`, err);
+        this.logger.error(`Failed to process keyword ${item.phrase}:`, err);
         await this.prisma.autopilotKeyword.update({
           where: { id: item.id },
           data: { status: 'FAILED', retryCount: { increment: 1 } },
@@ -233,13 +234,15 @@ export class AutopilotWorker {
   private async generateAndPublishContent(
     item: {
       id: string;
-      keyword: string;
+      keyword?: string | null;
+      phrase: string;
       locale: string;
       retryCount?: number | null;
     },
     settings: AutopilotSettingsData,
   ) {
-    this.logger.log(`Generating content for keyword: ${item.keyword}`);
+    const keywordText = item.keyword ?? item.phrase;
+    this.logger.log(`Generating content for keyword: ${keywordText}`);
 
     // Mark as in progress
     await this.prisma.autopilotKeyword.update({
@@ -254,13 +257,13 @@ export class AutopilotWorker {
         endpoint: 'chat/completions',
         costUsd: 0.05, // Estimated per article
         tokens: 4000,
-        meta: { keyword: item.keyword, locale: item.locale },
+        meta: { keyword: keywordText, locale: item.locale },
       },
     });
 
     // Generate content (in production: call LlmModule.generateBlogPost)
     const generatedContent = await this.generateBlogPostContent(
-      item.keyword,
+      keywordText,
       item.locale,
     );
 
@@ -277,7 +280,7 @@ export class AutopilotWorker {
           data: { status: 'QUEUED', retryCount: { increment: 1 } },
         });
         this.logger.warn(
-          `Quality gate failed for "${item.keyword}" (SEO:${seoScore} GEO:${geoScore}), retry ${retries + 1}/${settings.maxRetries}`,
+          `Quality gate failed for "${keywordText}" (SEO:${seoScore} GEO:${geoScore}), retry ${retries + 1}/${settings.maxRetries}`,
         );
       } else {
         // Mark for admin review
@@ -286,13 +289,13 @@ export class AutopilotWorker {
           data: { status: 'NEEDS_REVIEW' },
         });
         this.logger.warn(
-          `Quality gate permanently failed for "${item.keyword}" — marked for admin review`,
+          `Quality gate permanently failed for "${keywordText}" — marked for admin review`,
         );
       }
       return;
     }
 
-    const slug = this.slugify(item.keyword, item.locale);
+    const slug = this.slugify(keywordText, item.locale);
     const publishMode = settings.publishMode;
 
     // Find a default project for autopilot (the first active project)
@@ -307,18 +310,23 @@ export class AutopilotWorker {
 
     const blogPost = await this.prisma.blogPost.create({
       data: {
-        projectId: project.id,
         title: generatedContent.title,
+        h1: generatedContent.title,
         slug,
         locale: item.locale,
         content: generatedContent.content,
         excerpt: generatedContent.excerpt,
-        faqSection: generatedContent.faq as unknown as Record<string, unknown>,
+        faqSection: generatedContent.faq ? (generatedContent.faq as object) : undefined,
         seoScore,
         geoScore,
         autopilot: true,
         status: publishMode === 'AUTO' ? 'PUBLISHED' : 'REVIEW',
-        publishedAt: publishMode === 'AUTO' ? new Date() : null,
+        publishedAt: publishMode === 'AUTO' ? new Date() : undefined,
+        metaTitle: generatedContent.title,
+        metaDescription: generatedContent.excerpt ?? '',
+        focusKeyword: keywordText,
+        bodyMarkdown: generatedContent.content ?? '',
+        bodyHtml: generatedContent.content ?? '',
       },
     });
 
@@ -329,7 +337,7 @@ export class AutopilotWorker {
     });
 
     if (publishMode === 'AUTO') {
-      await this.postPublishActions(blogPost.id, item.keyword);
+      await this.postPublishActions(blogPost.id, keywordText);
     }
 
     this.logger.log(

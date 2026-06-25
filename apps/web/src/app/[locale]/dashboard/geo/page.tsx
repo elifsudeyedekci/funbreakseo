@@ -43,12 +43,17 @@ export default function GeoPage() {
 
   const { data: overview, isLoading } = useQuery({
     queryKey: ['geo-overview', PROJECT_ID],
-    queryFn: () => geoApi.overview(PROJECT_ID),
+    queryFn: () => geoApi.overview(PROJECT_ID).then(r => r.data?.data as {
+      overallScore?: number;
+      totalMentions?: number;
+      totalCitations?: number;
+      platforms?: Record<string, { visibilityScore?: number; mentionCount?: number; citationCount?: number }>;
+      queries?: any[];
+    } | undefined),
   });
 
   const addMutation = useMutation({
-    mutationFn: (q: string) =>
-      geoApi.addQuery ? geoApi.addQuery(PROJECT_ID, q) : Promise.resolve(),
+    mutationFn: (q: string) => geoApi.addQuery(PROJECT_ID, { query: q }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['geo-overview', PROJECT_ID] });
       setShowAdd(false);

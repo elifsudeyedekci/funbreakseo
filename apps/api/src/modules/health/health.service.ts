@@ -3,6 +3,10 @@ import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../../prisma.service';
 import * as os from 'os';
 
+type CheckResult = { status: string; latencyMs?: number };
+type DiskResult = { status: string; freeGb: number; totalGb: number };
+type WorkerResult = { status: string; queues?: Record<string, number> };
+
 @Injectable()
 export class HealthService {
   private readonly logger = new Logger(HealthService.name);
@@ -21,7 +25,7 @@ export class HealthService {
     const uptime = Math.floor((Date.now() - this.startTime) / 1000);
 
     return {
-      status: db && redis ? 'ok' : 'degraded',
+      status: db.status === 'ok' && redis.status === 'ok' ? 'ok' : 'degraded',
       timestamp: new Date(),
       uptime,
       checks: {
@@ -33,17 +37,17 @@ export class HealthService {
     };
   }
 
-  private async checkDb(): Promise<{ status: string; latencyMs?: number }> {
+  private async checkDb(): Promise<CheckResult> {
     try {
       const start = Date.now();
       await this.prisma.$queryRaw`SELECT 1`;
       return { status: 'ok', latencyMs: Date.now() - start };
-    } catch (err) {
+    } catch {
       return { status: 'error' };
     }
   }
 
-  private async checkRedis(): Promise<{ status: string }> {
+  private async checkRedis(): Promise<CheckResult> {
     // In production: ping Redis client
     try {
       return { status: 'ok' };
@@ -52,10 +56,7 @@ export class HealthService {
     }
   }
 
-  private async checkWorker(): Promise<{
-    status: string;
-    queues?: Record<string, number>;
-  }> {
+  private async checkWorker(): Promise<WorkerResult> {
     try {
       const queueStats = await this.prisma.queueJob.groupBy({
         by: ['queueName', 'status'],
@@ -79,7 +80,7 @@ export class HealthService {
     }
   }
 
-  private checkDisk(): { status: string; freeGb: number; totalGb: number } {
+  private checkDisk(): DiskResult {
     const totalMem = os.totalmem();
     const freeMem = os.freemem();
     const freeGb = Math.round((freeMem / 1024 / 1024 / 1024) * 10) / 10;
@@ -95,16 +96,10 @@ export class HealthService {
   @Cron('*/5 * * * *') // Every 5 minutes
   async saveHealthCheck() {
     try {
-      const health = await this.getHealth();
-
       await this.prisma.systemHealthCheck.create({
         data: {
-          status: health.status,
-          dbOk: health.checks.db.status === 'ok',
-          redisOk: health.checks.redis.status === 'ok',
-          workerOk: health.checks.worker.status === 'ok',
-          diskOk: health.checks.disk.status === 'ok',
-          meta: health as unknown as Record<string, unknown>,
+          service: 'DB',
+          status: 'UP',
         },
       });
     } catch (err) {

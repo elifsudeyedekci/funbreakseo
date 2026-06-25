@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
@@ -68,7 +70,7 @@ export default function InvoicesPage() {
     onError: () => toast('İade başarısız', 'error'),
   });
 
-  const { register, handleSubmit, formState: { errors }, reset } = useForm({
+  const { register, handleSubmit, formState: { errors }, reset } = useForm<{ amount: number; type: 'full' | 'partial' }>({
     resolver: zodResolver(RefundSchema),
     defaultValues: { type: 'full' },
   });

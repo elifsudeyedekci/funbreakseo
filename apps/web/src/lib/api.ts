@@ -67,6 +67,7 @@ export const authApi = {
   me: () => api.get('/auth/me'),
   pendingConsents: () => api.get('/auth/pending-consents'),
   acceptConsents: (d: Record<string, unknown>) => api.post('/auth/accept-consents', d),
+  verify2fa: (code: string) => api.post('/auth/2fa/verify', { code }),
 };
 
 export const billingApi = {
@@ -79,6 +80,11 @@ export const billingApi = {
   getInvoicePdf: (id: string) => api.get(`/billing/invoices/${id}/pdf`),
   walletTopup: (amount: number) => api.post('/billing/wallet/topup', { amount }),
   getWalletTx: () => api.get('/billing/wallet/transactions'),
+  // Aliases used in billing page
+  subscription: () => api.get('/billing/subscription'),
+  usage: () => api.get('/billing/usage'),
+  invoices: (params?: Record<string, unknown>) => api.get('/billing/invoices', { params }),
+  wallet: () => api.get('/billing/wallet'),
 };
 
 export const projectApi = {
@@ -88,12 +94,13 @@ export const projectApi = {
   update: (id: string, d: Record<string, unknown>) => api.patch(`/projects/${id}`, d),
   delete: (id: string) => api.delete(`/projects/${id}`),
   overview: (id: string) => api.get(`/projects/${id}/overview`),
+  dashboard: (id: string) => api.get(`/projects/${id}/dashboard`),
   connectGsc: (id: string) => api.post(`/projects/${id}/connect-gsc`),
 };
 
 export const keywordApi = {
   list: (projectId: string, p?: Record<string, unknown>) => api.get(`/projects/${projectId}/keywords`, { params: p }),
-  add: (projectId: string, d: Record<string, unknown>) => api.post(`/projects/${projectId}/keywords`, d),
+  add: (projectId: string, d: Record<string, unknown> | string[]) => api.post(`/projects/${projectId}/keywords`, Array.isArray(d) ? { keywords: d } : d),
   bulkAdd: (projectId: string, keywords: unknown[]) => api.post(`/projects/${projectId}/keywords/bulk`, { keywords }),
   delete: (id: string) => api.delete(`/keywords/${id}`),
   history: (id: string) => api.get(`/keywords/${id}/history`),
@@ -155,6 +162,9 @@ export const notificationApi = {
   list: () => api.get('/notifications'),
   markRead: (id: string) => api.patch(`/notifications/${id}/read`),
   markAllRead: () => api.post('/notifications/read-all'),
+  preferences: () => api.get('/notifications/preferences'),
+  updatePreferences: (d: Record<string, unknown>) => api.patch('/notifications/preferences', d),
+  unsubscribeMarketing: () => api.post('/notifications/unsubscribe-marketing'),
 };
 
 export const supportApi = {
@@ -218,3 +228,26 @@ export const backlinkApi = {
   orders: (projectId: string) => api.get(`/projects/${projectId}/backlink-orders`),
   createOrder: (projectId: string, d: Record<string, unknown>) => api.post(`/projects/${projectId}/backlink-orders`, d),
 };
+
+export const auditApi = {
+  get: (projectId: string) => api.get(`/projects/${projectId}/audit`),
+  start: (projectId: string) => api.post(`/projects/${projectId}/audit/start`),
+  history: (projectId: string) => api.get(`/projects/${projectId}/audit/history`),
+};
+
+export const abTestApi = {
+  list: (projectId: string) => api.get('/ab-tests', { params: { projectId } }),
+  create: (d: Record<string, unknown>) => api.post('/ab-tests', d),
+  get: (id: string) => api.get(`/ab-tests/${id}`),
+  activate: (id: string) => api.patch(`/ab-tests/${id}/activate`),
+  stop: (id: string, winnerVariantId?: string) => api.patch(`/ab-tests/${id}/stop`, { winnerVariantId }),
+  results: (id: string) => api.get(`/ab-tests/${id}/results`),
+  recordImpression: (id: string, variantId: string, sessionId: string) =>
+    api.post(`/ab-tests/${id}/impression`, { variantId, sessionId }),
+  recordConversion: (id: string, variantId: string, sessionId: string, conversionType: string) =>
+    api.post(`/ab-tests/${id}/conversion`, { variantId, sessionId, conversionType }),
+  assignVariant: (id: string, sessionId: string) =>
+    api.post(`/ab-tests/${id}/assign`, { sessionId }),
+};
+
+export const apiClient = api;

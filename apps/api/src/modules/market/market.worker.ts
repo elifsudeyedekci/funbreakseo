@@ -49,7 +49,7 @@ export class MarketWorker extends WorkerHost {
     try {
       const targetUrl =
         order.publishedUrl ??
-        `https://${(order as any).listing.publisherSite.domain}`
+        `https://${order.listing?.publisherSite?.domain ?? ''}`
 
       const response = await axios.get(targetUrl, {
         timeout: 15000,
@@ -78,11 +78,11 @@ export class MarketWorker extends WorkerHost {
         )
         const linkContext = html.match(linkContextPattern) ?? []
         isDofollow =
-          linkContext.length > 0 && !linkContext[0].includes('nofollow')
+          linkContext.length > 0 && !linkContext[0]!.includes('nofollow')
 
         // Check anchor text
         if (order.anchorText && linkContext.length > 0) {
-          anchorMatched = linkContext[0]
+          anchorMatched = linkContext[0]!
             .toLowerCase()
             .includes(order.anchorText.toLowerCase())
         } else {
@@ -91,7 +91,7 @@ export class MarketWorker extends WorkerHost {
       }
     } catch (err) {
       this.logger.warn(
-        `Verification fetch failed for order ${orderId}: ${err.message}`,
+        `Verification fetch failed for order ${orderId}: ${(err as Error).message}`,
       )
       httpStatus = 0
     }

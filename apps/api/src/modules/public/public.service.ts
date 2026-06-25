@@ -13,16 +13,15 @@ export class PublicService {
 
   async getPlans() {
     return this.prisma.plan.findMany({
-      where: { isPublic: true },
-      orderBy: { price: 'asc' },
+      where: { isActive: true },
+      orderBy: { monthlyPrice: 'asc' },
       select: {
         id: true,
         name: true,
-        price: true,
-        currency: true,
-        interval: true,
-        features: true,
-        trialDays: true,
+        slug: true,
+        monthlyPrice: true,
+        yearlyPrice: true,
+        limits: true,
       },
     });
   }

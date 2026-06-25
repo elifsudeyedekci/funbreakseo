@@ -6,6 +6,84 @@ import { contentApi } from '@/lib/api';
 
 const PROJECT_ID = 'current';
 
+type TabType = 'list' | 'calendar';
+
+// Simple content calendar — shows scheduled/published content by month
+function ContentCalendar({ content }: { content: Record<string, unknown>[] }) {
+  const now = new Date();
+  const [viewMonth, setViewMonth] = useState(now.getMonth());
+  const [viewYear, setViewYear] = useState(now.getFullYear());
+
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+
+  const MONTH_NAMES = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+  const DAY_NAMES = ['Pz', 'Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct'];
+
+  function getItemsForDay(day: number) {
+    const date = new Date(viewYear, viewMonth, day);
+    return content.filter((item) => {
+      const scheduled = item.scheduledAt ? new Date(item.scheduledAt as string) : item.publishedAt ? new Date(item.publishedAt as string) : null;
+      if (!scheduled) return false;
+      return scheduled.getFullYear() === date.getFullYear() &&
+        scheduled.getMonth() === date.getMonth() &&
+        scheduled.getDate() === date.getDate();
+    });
+  }
+
+  function prevMonth() {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear((y) => y - 1); }
+    else setViewMonth((m) => m - 1);
+  }
+
+  function nextMonth() {
+    if (viewMonth === 11) { setViewMonth(0); setViewYear((y) => y + 1); }
+    else setViewMonth((m) => m + 1);
+  }
+
+  return (
+    <div className="rounded-xl p-4 space-y-4" style={{ background: 'var(--bg-surface)', border: '1px solid rgba(255,255,255,0.06)' }}>
+      {/* Calendar Header */}
+      <div className="flex items-center justify-between">
+        <button onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-white/5 transition text-sm" style={{ color: 'var(--text-secondary)' }}>‹ Önceki</button>
+        <span className="font-semibold text-sm">{MONTH_NAMES[viewMonth]} {viewYear}</span>
+        <button onClick={nextMonth} className="p-1.5 rounded-lg hover:bg-white/5 transition text-sm" style={{ color: 'var(--text-secondary)' }}>Sonraki ›</button>
+      </div>
+      {/* Day Names */}
+      <div className="grid grid-cols-7 gap-1">
+        {DAY_NAMES.map((d) => (
+          <div key={d} className="text-center text-xs py-1" style={{ color: 'var(--text-muted)' }}>{d}</div>
+        ))}
+        {/* Empty cells before first day */}
+        {Array.from({ length: firstDay }).map((_, i) => <div key={`empty-${i}`} />)}
+        {/* Day cells */}
+        {Array.from({ length: daysInMonth }).map((_, i) => {
+          const day = i + 1;
+          const items = getItemsForDay(day);
+          const isToday = day === now.getDate() && viewMonth === now.getMonth() && viewYear === now.getFullYear();
+          return (
+            <div
+              key={day}
+              className={`min-h-[60px] rounded-lg p-1 text-xs space-y-0.5 transition ${isToday ? 'bg-indigo-500/20 ring-1 ring-indigo-500/40' : 'bg-white/[0.02] hover:bg-white/5'}`}
+            >
+              <span className={`block mb-1 font-medium ${isToday ? 'text-indigo-400' : ''}`} style={{ color: isToday ? undefined : 'var(--text-secondary)' }}>{day}</span>
+              {items.slice(0, 2).map((item, idx) => (
+                <div key={idx} className="truncate rounded px-1 py-0.5 text-[10px]" style={{ background: 'var(--accent)', color: '#fff', opacity: 0.85 }}>
+                  {item.title as string || 'İçerik'}
+                </div>
+              ))}
+              {items.length > 2 && <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>+{items.length - 2}</span>}
+            </div>
+          );
+        })}
+      </div>
+      {content.length === 0 && (
+        <p className="text-center text-sm py-4" style={{ color: 'var(--text-muted)' }}>Bu ayda planlanmış içerik yok.</p>
+      )}
+    </div>
+  );
+}
+
 type ContentStatus = 'DRAFT' | 'IN_REVIEW' | 'APPROVED' | 'PUBLISHED';
 
 const statusStyles: Record<ContentStatus, string> = {
@@ -26,13 +104,14 @@ const ScoreBar = ({ value, color }: { value: number; color: string }) => (
 
 export default function ContentPage() {
   const [showGenerate, setShowGenerate] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabType>('list');
   const [genTopic, setGenTopic] = useState('');
   const [genKeyword, setGenKeyword] = useState('');
   const qc = useQueryClient();
 
   const { data: content, isLoading } = useQuery({
     queryKey: ['content', PROJECT_ID],
-    queryFn: () => contentApi.list(PROJECT_ID),
+    queryFn: () => contentApi.list(PROJECT_ID).then((r) => r.data.data as Record<string, unknown>[]),
   });
 
   const generateMutation = useMutation({
@@ -73,18 +152,42 @@ export default function ContentPage() {
         </button>
       </div>
 
-      {/* Status Summary */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {(['DRAFT', 'IN_REVIEW', 'APPROVED', 'PUBLISHED'] as ContentStatus[]).map((s) => (
-          <div key={s} className="rounded-xl p-4" style={{ background: 'var(--bg-surface)', border: '1px solid rgba(255,255,255,0.06)' }}>
-            <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>{s.replace('_', ' ')}</p>
-            <p className="text-2xl font-bold">{statusCounts[s] ?? 0}</p>
-          </div>
+      {/* Tabs */}
+      <div className="flex gap-1 p-1 rounded-lg w-fit" style={{ background: 'var(--bg-surface)' }}>
+        {(['list', 'calendar'] as TabType[]).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className="px-4 py-1.5 rounded-md text-sm font-medium transition"
+            style={{
+              background: activeTab === tab ? 'var(--accent)' : 'transparent',
+              color: activeTab === tab ? '#fff' : 'var(--text-secondary)',
+            }}
+          >
+            {tab === 'list' ? 'Liste' : 'Takvim'}
+          </button>
         ))}
       </div>
 
-      {/* Content List */}
-      <div className="rounded-xl overflow-hidden" style={{ background: 'var(--bg-surface)', border: '1px solid rgba(255,255,255,0.06)' }}>
+      {/* Calendar View */}
+      {activeTab === 'calendar' && (
+        <ContentCalendar content={content ?? []} />
+      )}
+
+      {/* Status Summary + Content List (list view only) */}
+      {activeTab === 'list' && (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {(['DRAFT', 'IN_REVIEW', 'APPROVED', 'PUBLISHED'] as ContentStatus[]).map((s) => (
+              <div key={s} className="rounded-xl p-4" style={{ background: 'var(--bg-surface)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>{s.replace('_', ' ')}</p>
+                <p className="text-2xl font-bold">{statusCounts[s] ?? 0}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Content List */}
+          <div className="rounded-xl overflow-hidden" style={{ background: 'var(--bg-surface)', border: '1px solid rgba(255,255,255,0.06)' }}>
         {isLoading ? (
           <div className="p-6 space-y-3">
             {[...Array(5)].map((_, i) => (
@@ -137,8 +240,10 @@ export default function ContentPage() {
               ))}
             </tbody>
           </table>
-        )}
-      </div>
+          )}
+        </div>
+        </>
+      )}
 
       {/* Generate Dialog */}
       {showGenerate && (

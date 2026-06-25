@@ -21,15 +21,23 @@ interface ToastContextValue {
   warning: (message: string) => void;
 }
 
-const ToastContext = createContext<ToastContextValue | null>(null);
+const noop = () => {};
+
+const defaultCtx: ToastContextValue = {
+  toast: noop,
+  success: noop,
+  error: noop,
+  info: noop,
+  warning: noop,
+};
+
+const ToastContext = createContext<ToastContextValue>(defaultCtx);
 
 export function useToast() {
-  const ctx = useContext(ToastContext);
-  if (!ctx) throw new Error('useToast must be inside Toaster');
-  return ctx;
+  return useContext(ToastContext);
 }
 
-export function Toaster() {
+export function Toaster({ children }: { children?: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const dismiss = useCallback((id: string) => {
@@ -63,6 +71,7 @@ export function Toaster() {
 
   return (
     <ToastContext.Provider value={{ toast, success, error, info, warning }}>
+      {children}
       <div className="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2 max-w-sm w-full pointer-events-none">
         {toasts.map((t) => (
           <div

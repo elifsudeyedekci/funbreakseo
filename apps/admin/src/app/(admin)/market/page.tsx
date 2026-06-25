@@ -1,4 +1,5 @@
 'use client';
+export const dynamic = 'force-dynamic';
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -135,7 +136,7 @@ export default function MarketPage() {
     }},
     { header: 'Tarih', accessorKey: 'createdAt', cell: ({ getValue }) => <span className="text-xs text-[var(--text-muted)]">{format(new Date(getValue() as string), 'dd MMM', { locale: tr })}</span> },
     { header: '', id: 'actions', cell: ({ row }) => row.original.status === 'DISPUTED' ? (
-      <Button size="xs" variant="warning" onClick={(e) => { e.stopPropagation(); }}>Çöz</Button>
+      <Button size="xs" variant="outline" onClick={(e) => { e.stopPropagation(); }}>Çöz</Button>
     ) : null },
   ];
 
@@ -209,7 +210,7 @@ export default function MarketPage() {
               <div className="flex justify-between"><span className="text-[var(--text-muted)]">Maliyet:</span><span className="font-medium">${approveOffer.costPrice}</span></div>
               <div className="flex justify-between"><span className="text-[var(--text-muted)]">DR:</span><span className="font-medium">{approveOffer.dr}</span></div>
             </div>
-            <Input label="Satış Fiyatı ($)" type="number" step="1" {...register('salePrice')} error={errors.salePrice?.message} />
+            <Input label="Satış Fiyatı ($)" type="number" step="1" {...register('salePrice')} error={errors.salePrice?.message as string | undefined} />
             <Input label="Admin Notu (opsiyonel)" placeholder="İç not..." {...register('adminNote')} />
           </form>
         )}

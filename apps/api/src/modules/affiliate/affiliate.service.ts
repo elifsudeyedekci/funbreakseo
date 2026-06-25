@@ -15,12 +15,12 @@ export class AffiliateService {
   }
 
   async getOrCreateAffiliate(orgId: string) {
-    let affiliate = await this.prisma.affiliate.findFirst({ where: { orgId } });
+    let affiliate = await this.prisma.affiliate.findFirst({ where: { organizationId: orgId } });
 
     if (!affiliate) {
       affiliate = await this.prisma.affiliate.create({
         data: {
-          orgId,
+          organizationId: orgId,
           code: this.generateCode(),
           commissionRate: 0.2, // 20% default
           status: 'ACTIVE',
@@ -117,7 +117,7 @@ export class AffiliateService {
     const plan = await this.prisma.plan.findUnique({ where: { id: planId } });
     if (!plan) return;
 
-    const commission = Number(plan.price) * affiliate.commissionRate;
+    const commission = Number(plan.monthlyPrice) * Number(affiliate.commissionRate);
 
     await this.prisma.$transaction([
       this.prisma.affiliateConversion.create({
@@ -126,7 +126,7 @@ export class AffiliateService {
           referredOrgId: orgId,
           type: 'SALE',
           planId,
-          amount: Number(plan.price),
+          amount: Number(plan.monthlyPrice),
         },
       }),
       this.prisma.affiliateCommission.create({
@@ -168,7 +168,7 @@ export class AffiliateService {
   }
 
   async getReferrals(orgId: string) {
-    const affiliate = await this.prisma.affiliate.findFirst({ where: { orgId } });
+    const affiliate = await this.prisma.affiliate.findFirst({ where: { organizationId: orgId } });
     if (!affiliate) return [];
 
     return this.prisma.affiliateConversion.findMany({
@@ -211,11 +211,11 @@ export class AffiliateService {
 
     // Also credit the wallet
     let wallet = await this.prisma.wallet.findFirst({
-      where: { orgId: affiliate.orgId },
+      where: { organizationId: affiliate.organizationId },
     });
     if (!wallet) {
       wallet = await this.prisma.wallet.create({
-        data: { orgId: affiliate.orgId, balance: 0 },
+        data: { organizationId: affiliate.organizationId, balance: 0 },
       });
     }
 

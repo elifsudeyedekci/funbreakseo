@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 import { Request } from 'express';
+import { createHash } from 'crypto';
 
 @Injectable()
 export class ApiKeyGuard implements CanActivate {
@@ -24,8 +25,10 @@ export class ApiKeyGuard implements CanActivate {
       throw new UnauthorizedException('X-API-Key header is required');
     }
 
+    const keyHash = createHash('sha256').update(apiKey).digest('hex');
+
     const keyRecord = await this.prisma.developerApiKey.findFirst({
-      where: { key: apiKey, isActive: true },
+      where: { keyHash, revokedAt: null },
       include: {
         organization: {
           include: { subscription: { include: { plan: true } } },
@@ -47,7 +50,7 @@ export class ApiKeyGuard implements CanActivate {
 
     const requestsToday = await this.prisma.apiKeyUsage.count({
       where: {
-        apiKeyId: keyRecord.id,
+        developerApiKeyId: keyRecord.id,
         createdAt: { gte: startOfDay },
       },
     });
@@ -64,10 +67,16 @@ export class ApiKeyGuard implements CanActivate {
     // Log usage
     await this.prisma.apiKeyUsage.create({
       data: {
-        apiKeyId: keyRecord.id,
+        developerApiKeyId: keyRecord.id,
         endpoint: request.path,
         method: request.method,
       },
+    });
+
+    // Update lastUsedAt
+    await this.prisma.developerApiKey.update({
+      where: { id: keyRecord.id },
+      data: { lastUsedAt: now },
     });
 
     // Attach org to request

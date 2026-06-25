@@ -1,4 +1,4 @@
-import { CURRENCY_SYMBOLS, LOCALE_CURRENCY } from '../constants';
+import { CURRENCY_SYMBOLS, LOCALE_CURRENCY } from '../types';
 import type { Locale } from '../types';
 
 export function formatPrice(amount: number, currency: string, locale: string = 'tr-TR'): string {

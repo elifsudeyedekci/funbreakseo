@@ -20,12 +20,11 @@ export default function OutreachPage() {
 
   const { data: campaigns, isLoading } = useQuery({
     queryKey: ['outreach', PROJECT_ID],
-    queryFn: () => outreachApi.list(PROJECT_ID),
+    queryFn: () => outreachApi.list(PROJECT_ID).then(r => (r.data?.data || []) as any[]),
   });
 
   const createMutation = useMutation({
-    mutationFn: (campaignName: string) =>
-      outreachApi.create ? outreachApi.create(PROJECT_ID, { name: campaignName }) : Promise.resolve(),
+    mutationFn: (campaignName: string) => outreachApi.create(PROJECT_ID, { name: campaignName }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['outreach', PROJECT_ID] });
       setShowCreate(false);

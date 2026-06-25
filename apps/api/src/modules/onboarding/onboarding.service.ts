@@ -17,10 +17,10 @@ export class OnboardingService {
 
   async getStatus(orgId: string) {
     const record = await this.prisma.onboardingStatus.findFirst({
-      where: { orgId },
+      where: { organizationId: orgId },
     });
 
-    const completedSteps: string[] = (record?.completedSteps as string[]) ?? [];
+    const completedSteps: string[] = (record?.steps as string[]) ?? [];
 
     const steps = ONBOARDING_STEPS.map((step) => ({
       step,
@@ -45,10 +45,10 @@ export class OnboardingService {
     }
 
     const existing = await this.prisma.onboardingStatus.findFirst({
-      where: { orgId },
+      where: { organizationId: orgId },
     });
 
-    const completedSteps: string[] = (existing?.completedSteps as string[]) ?? [];
+    const completedSteps: string[] = (existing?.steps as string[]) ?? [];
 
     if (!completedSteps.includes(step)) {
       completedSteps.push(step);
@@ -57,11 +57,11 @@ export class OnboardingService {
     if (existing) {
       await this.prisma.onboardingStatus.update({
         where: { id: existing.id },
-        data: { completedSteps },
+        data: { steps: completedSteps },
       });
     } else {
       await this.prisma.onboardingStatus.create({
-        data: { orgId, completedSteps },
+        data: { organizationId: orgId, steps: completedSteps },
       });
     }
 

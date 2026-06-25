@@ -1,4 +1,5 @@
 'use client';
+export const dynamic = 'force-dynamic';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { type ColumnDef } from '@tanstack/react-table';
@@ -69,7 +70,7 @@ export default function SubscriptionsPage() {
       accessorKey: 'organizationName',
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
-          {row.original.isComplimentary && <Gift className="w-3.5 h-3.5 text-purple-400" title="Complimentary" />}
+          {row.original.isComplimentary && <span title="Complimentary"><Gift className="w-3.5 h-3.5 text-purple-400" /></span>}
           <span className="font-medium">{row.original.organizationName}</span>
         </div>
       ),

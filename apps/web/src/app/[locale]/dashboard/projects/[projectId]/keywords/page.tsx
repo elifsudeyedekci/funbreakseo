@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, use } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   createColumnHelper,
@@ -43,7 +43,8 @@ const INTENT_LABELS: Record<KeywordIntent, string> = {
 
 const columnHelper = createColumnHelper<Keyword>();
 
-export default function KeywordsPage({ params }: { params: { projectId: string } }) {
+export default function KeywordsPage({ params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = use(params);
   const queryClient = useQueryClient();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -51,14 +52,14 @@ export default function KeywordsPage({ params }: { params: { projectId: string }
   const [addError, setAddError] = useState('');
 
   const { data, isLoading } = useQuery({
-    queryKey: ['keywords', params.projectId],
-    queryFn: () => keywordApi.list(params.projectId).then((r) => r.data.data as Keyword[]),
+    queryKey: ['keywords', projectId],
+    queryFn: () => keywordApi.list(projectId).then((r) => r.data.data as Keyword[]),
   });
 
   const addMutation = useMutation({
-    mutationFn: (keywords: string[]) => keywordApi.add(params.projectId, keywords),
+    mutationFn: (keywords: string[]) => keywordApi.add(projectId, keywords),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['keywords', params.projectId] });
+      queryClient.invalidateQueries({ queryKey: ['keywords', projectId] });
       setShowAddModal(false);
       setKeywordInput('');
     },

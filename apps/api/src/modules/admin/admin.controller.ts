@@ -139,7 +139,7 @@ export class AdminController {
   @Post('admin/customers/:id/set-digest-frequency')
   setDigestFrequency(
     @Param('id') orgId: string,
-    @Body('frequency') frequency: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'NONE',
+    @Body('frequency') frequency: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'OFF',
   ) {
     return this.adminService.setDigestFrequency(orgId, frequency);
   }

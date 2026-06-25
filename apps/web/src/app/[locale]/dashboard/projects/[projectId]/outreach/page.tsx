@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useState } from 'react';
+import { useState, use } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 import { outreachApi } from '@/lib/api';
@@ -16,21 +16,22 @@ interface Campaign {
   createdAt: string;
 }
 
-export default function OutreachPage({ params }: { params: { projectId: string } }) {
+export default function OutreachPage({ params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = use(params);
   const qc = useQueryClient();
   const [showModal, setShowModal] = useState(false);
   const [name, setName] = useState('');
   const [goal, setGoal] = useState('BACKLINK');
 
   const { data, isLoading } = useQuery({
-    queryKey: ['outreach', params.projectId],
-    queryFn: () => outreachApi.campaigns(params.projectId).then((r) => r.data.data as Campaign[]),
+    queryKey: ['outreach', projectId],
+    queryFn: () => outreachApi.campaigns(projectId).then((r) => r.data.data as Campaign[]),
   });
 
   const createMutation = useMutation({
-    mutationFn: () => outreachApi.createCampaign(params.projectId, { name, goal }),
+    mutationFn: () => outreachApi.createCampaign(projectId, { name, goal }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['outreach', params.projectId] });
+      qc.invalidateQueries({ queryKey: ['outreach', projectId] });
       setShowModal(false);
       setName('');
     },

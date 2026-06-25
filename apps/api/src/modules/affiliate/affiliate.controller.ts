@@ -21,12 +21,12 @@ export class AffiliateController {
 
   @Get('me')
   getMyAffiliate(@CurrentUser() user: User) {
-    return this.affiliateService.getMyAffiliate(user.organizationId);
+    return this.affiliateService.getMyAffiliate(user.organizationId!);
   }
 
   @Get('referrals')
   getReferrals(@CurrentUser() user: User) {
-    return this.affiliateService.getReferrals(user.organizationId);
+    return this.affiliateService.getReferrals(user.organizationId!);
   }
 
   @Post('payout')

@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { use } from 'react';
 import { Brain, TrendingUp, Quote, AlertTriangle } from 'lucide-react';
 import { geoApi } from '@/lib/api';
 import type { GeoVisibilityData, GeoPlatform } from '@funbreakseo/shared';
@@ -28,14 +29,15 @@ interface GeoData {
   recommendations: Array<{ id: string; title: string; priority: string; description: string }>;
 }
 
-export default function GeoPage({ params }: { params: { projectId: string } }) {
+export default function GeoPage({ params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = use(params);
   const { data, isLoading } = useQuery({
-    queryKey: ['geo', params.projectId],
-    queryFn: () => geoApi.summary(params.projectId).then((r) => r.data.data as GeoData),
+    queryKey: ['geo', projectId],
+    queryFn: () => geoApi.overview(projectId).then((r) => r.data.data as GeoData),
   });
 
   const visibility = data?.visibility;
-  const recommendations = data?.recommendations || [];
+  const recommendations: Array<{ id: string; title: string; priority: string; description: string }> = data?.recommendations || [];
 
   const platforms = Object.entries(PLATFORM_LABELS) as Array<[GeoPlatform, string]>;
 

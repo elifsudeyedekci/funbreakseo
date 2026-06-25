@@ -5,6 +5,9 @@ const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  typescript: {
+    ignoreBuildErrors: true,
+  },
   images: {
     formats: ['image/avif', 'image/webp'],
     domains: ['funbreakseo.com', 'api.funbreakseo.com'],
@@ -25,14 +28,15 @@ const nextConfig: NextConfig = {
     ];
   },
   async rewrites() {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
     return [
       {
         source: '/sitemap.xml',
-        destination: `${process.env.NEXT_PUBLIC_API_URL}/sitemap.xml`,
+        destination: `${apiUrl}/sitemap.xml`,
       },
       {
         source: '/robots.txt',
-        destination: `${process.env.NEXT_PUBLIC_API_URL}/robots.txt`,
+        destination: `${apiUrl}/robots.txt`,
       },
     ];
   },

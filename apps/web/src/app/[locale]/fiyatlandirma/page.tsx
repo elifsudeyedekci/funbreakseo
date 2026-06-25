@@ -11,7 +11,14 @@ import { cn } from '@/lib/utils';
 
 type BillingCycle = 'monthly' | 'yearly';
 
-const PLANS = [
+const PLANS: Array<{
+  key: string;
+  name: string;
+  desc: string;
+  color: string;
+  popular: boolean;
+  custom?: boolean;
+}> = [
   {
     key: 'starter',
     name: 'Başlangıç',
@@ -41,7 +48,7 @@ const PLANS = [
     popular: false,
     custom: true,
   },
-] as const;
+];
 
 const COMPARISON_ROWS = [
   { label: 'Proje (site)', key: 'projects' as const },

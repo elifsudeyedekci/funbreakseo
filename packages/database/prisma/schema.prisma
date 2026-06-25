@@ -56,6 +56,7 @@ enum WalletTxType {
   TOPUP
   SPEND
   REFUND
+  CREDIT
   ESCROW_HOLD
   ESCROW_RELEASE
 }
@@ -241,6 +242,8 @@ enum ReportFrequency {
 enum ReportFormat {
   PDF
   EMAIL
+  HTML
+  JSON
 }
 
 enum TicketPriority {
@@ -255,6 +258,8 @@ enum TicketStatus {
   PENDING
   RESOLVED
   CLOSED
+  WAITING_CUSTOMER
+  IN_PROGRESS
 }
 
 enum PendingProjectStatus {
@@ -271,9 +276,13 @@ enum AutopilotPublishMode {
 enum AutopilotKeywordStatus {
   DISCOVERED
   QUEUED
+  IN_PROGRESS
   GENERATED
   PUBLISHED
   SKIPPED
+  FAILED
+  NEEDS_REVIEW
+  COMPLETED
 }
 
 enum AutopilotRunStatus {
@@ -402,16 +411,21 @@ model User {
   auditLogs         AuditLog[]      @relation("Actor")
   consentRecords    ConsentRecord[]
   notifications     Notification[]
-  supportTickets    SupportTicket[]
-  supportMessages   SupportMessage[]
+  supportTickets        SupportTicket[]
+  supportMessages       SupportMessage[]  @relation("MessageSender")
+  supportMessagesUser   SupportMessage[]  @relation("MessageUser")
+  createdTickets        SupportTicket[]   @relation("TicketCreatedBy")
+  assignedTickets       SupportTicket[]   @relation("TicketAssignedTo")
   contentItems      ContentItem[]   @relation("CreatedBy")
   contentReviewed   ContentItem[]   @relation("ReviewedBy")
-  orgMemberships    OrganizationMember[]
-  createdProjects   Project[]
-  emailCampaigns    EmailCampaign[]
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
-  deletedAt         DateTime?
+  orgMemberships      OrganizationMember[]
+  createdProjects     Project[]
+  emailCampaigns      EmailCampaign[]
+  buyerDisputes       MarketplaceDispute[] @relation("BuyerDisputes")
+  sellerDisputes      MarketplaceDispute[] @relation("SellerDisputes")
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  deletedAt           DateTime?
 
   @@map("users")
 }
@@ -427,6 +441,9 @@ model Organization {
   ownerUserId           String
   walletBalance         Decimal                @default(0) @db.Decimal(18, 2)
   status                OrganizationStatus     @default(ACTIVE)
+  referralCode          String?
+  referredByAffiliateId String?
+  digestFrequency       DigestFrequency        @default(WEEKLY)
   users                 User[]
   members               OrganizationMember[]
   projects              Project[]
@@ -447,6 +464,14 @@ model Organization {
   couponRedemptions     CouponRedemption[]
   customerHealthScore   CustomerHealthScore?
   consentRecords        ConsentRecord[]
+  backlinkOrders        BacklinkOrder[]
+  wallet                Wallet?
+  apiUsageLogs          ApiUsageLog[]
+  quotaOverrides        QuotaOverride[]
+  emailLogs             EmailLog[]
+  developerApiKeys      DeveloperApiKey[]
+  affiliateConversions  AffiliateConversion[]
+  onboardingStatus      OnboardingStatus?
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
 
@@ -482,15 +507,17 @@ model RefreshToken {
 }
 
 model AuditLog {
-  id           String   @id @default(uuid())
-  actorUserId  String?
-  actor        User?    @relation("Actor", fields: [actorUserId], references: [id])
-  action       String
-  entityType   String
-  entityId     String?
-  meta         Json?
-  ip           String?
-  createdAt    DateTime @default(now())
+  id             String   @id @default(uuid())
+  actorUserId    String?
+  actor          User?    @relation("Actor", fields: [actorUserId], references: [id])
+  userId         String?
+  organizationId String?
+  action         String
+  entityType     String   @default("system")
+  entityId       String?
+  meta           Json?
+  ip             String?
+  createdAt      DateTime @default(now())
 
   @@index([actorUserId])
   @@index([entityType, entityId])
@@ -571,6 +598,7 @@ model Subscription {
   isComplimentary         Boolean            @default(false)
   complimentaryReason     String?
   complimentaryUntil      DateTime?
+  canceledAt              DateTime?
   createdAt               DateTime           @default(now())
   updatedAt               DateTime           @updatedAt
 
@@ -592,6 +620,7 @@ model Invoice {
   paymentProviderRef  String?
   parasutInvoiceId    String?
   parasutStatus       String?
+  refundedAmount      Decimal?      @db.Decimal(10, 2)
   issuedAt            DateTime      @default(now())
   paidAt              DateTime?
   createdAt           DateTime      @default(now())
@@ -726,6 +755,8 @@ model Project {
   scheduledReports      ScheduledReport[]
   apiIntegrations       ApiIntegration[]
   contentProject        ContentProject?
+  reportRecords         ReportRecord[]
+  internalLinkSuggestions InternalLinkSuggestion[]
   createdAt             DateTime            @default(now())
   updatedAt             DateTime            @updatedAt
   deletedAt             DateTime?
@@ -765,11 +796,12 @@ model Keyword {
   intent         KeywordIntent @default(INFORMATIONAL)
   trackingDepth  TrackingDepth @default(FIRST_PAGE)
   isStarred      Boolean       @default(false)
-  tagId          String?
-  tag            KeywordTag?   @relation(fields: [tagId], references: [id])
-  ranks          KeywordRank[]
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  tagId               String?
+  tag                 KeywordTag?          @relation(fields: [tagId], references: [id])
+  ranks               KeywordRank[]
+  geoVisibilityChecks GeoVisibilityCheck[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
 
   @@unique([projectId, phrase, location])
   @@index([projectId])
@@ -1096,6 +1128,7 @@ model OutreachCampaign {
   createdByUserId String?
   prospects       Prospect[]
   publisherOffers PublisherOffer[]
+  outreachEmails  OutreachEmail[]
   createdAt       DateTime                @default(now())
   updatedAt       DateTime                @updatedAt
 
@@ -1123,20 +1156,23 @@ model Prospect {
 }
 
 model OutreachEmail {
-  id            String      @id @default(uuid())
-  prospectId    String
-  prospect      Prospect    @relation(fields: [prospectId], references: [id], onDelete: Cascade)
-  sequenceStep  Int         @default(1)
-  subject       String
-  body          String      @db.Text
-  status        EmailStatus @default(QUEUED)
-  sentAt        DateTime?
-  openedAt      DateTime?
-  repliedAt     DateTime?
-  threadId      String?
-  replies       OutreachReply[]
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  id              String          @id @default(uuid())
+  prospectId      String
+  prospect        Prospect        @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  outreachCampaignId String?
+  outreachCampaign OutreachCampaign? @relation(fields: [outreachCampaignId], references: [id])
+  sequenceStep    Int             @default(1)
+  subject         String
+  body            String          @db.Text
+  status          EmailStatus     @default(QUEUED)
+  sentAt          DateTime?
+  openedAt        DateTime?
+  repliedAt       DateTime?
+  reviewedAt      DateTime?
+  threadId        String?
+  replies         OutreachReply[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 
   @@index([prospectId])
   @@map("outreach_emails")
@@ -1181,6 +1217,7 @@ model PublisherOffer {
   adminNote           String?
   publisherSite       PublisherSite?
   listing             MarketListing?
+  disputes            MarketplaceDispute[]
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
 
@@ -1278,16 +1315,18 @@ model BacklinkVerification {
 // ============================================================
 
 model Notification {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   type      String
   title     String
   body      String
-  isRead    Boolean  @default(false)
+  isRead    Boolean   @default(false)
+  read      Boolean   @default(false)
+  readAt    DateTime?
   link      String?
   meta      Json?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 
   @@index([userId, isRead])
   @@map("notifications")
@@ -1310,17 +1349,19 @@ model ApiIntegration {
 }
 
 model ScheduledReport {
-  id             String         @id @default(uuid())
+  id             String          @id @default(uuid())
   projectId      String
-  project        Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  organizationId String
-  organization   Organization   @relation(fields: [organizationId], references: [id])
-  frequency      ReportFrequency
-  recipients     Json
+  project        Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  organizationId String?
+  organization   Organization?   @relation(fields: [organizationId], references: [id])
+  frequency      ReportFrequency @default(WEEKLY)
+  cronExpression String?
+  recipients     Json            @default("[]")
   lastSentAt     DateTime?
-  format         ReportFormat   @default(PDF)
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  format         ReportFormat    @default(PDF)
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 
   @@map("scheduled_reports")
 }
@@ -1351,19 +1392,26 @@ model BlogPost {
   slug             String   @unique
   locale           String   @default("tr")
   title            String
-  h1               String
-  metaTitle        String
-  metaDescription  String
-  focusKeyword     String
-  bodyMarkdown     String   @db.Text
-  bodyHtml         String   @db.Text
+  h1               String   @default("")
+  metaTitle        String   @default("")
+  metaDescription  String   @default("")
+  focusKeyword     String   @default("")
+  bodyMarkdown     String   @db.Text @default("")
+  bodyHtml         String   @db.Text @default("")
+  content          String?  @db.Text
+  excerpt          String?  @db.Text
+  faqSection       Json?
   coverImageUrl    String?
   jsonLd           Json?
   authorName       String   @default("FunBreak SEO Ekibi")
   status           String   @default("PUBLISHED")
-  publishedAt      DateTime @default(now())
+  publishedAt      DateTime? @default(now())
   readingMinutes   Int      @default(5)
   viewCount        Int      @default(0)
+  seoScore         Int?
+  geoScore         Int?
+  autopilot        Boolean  @default(false)
+  contentPerformance AutopilotContentPerformance[]
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -1387,19 +1435,25 @@ model OnboardingProgress {
 }
 
 model SupportTicket {
-  id               String        @id @default(uuid())
+  id               String         @id @default(uuid())
   organizationId   String
-  organization     Organization  @relation(fields: [organizationId], references: [id])
+  organization     Organization   @relation(fields: [organizationId], references: [id])
   userId           String
-  user             User          @relation(fields: [userId], references: [id])
+  user             User           @relation(fields: [userId], references: [id])
+  createdById      String?
+  createdBy        User?          @relation("TicketCreatedBy", fields: [createdById], references: [id])
   subject          String
   category         String?
   priority         TicketPriority @default(MEDIUM)
-  status           TicketStatus  @default(OPEN)
+  status           TicketStatus   @default(OPEN)
   assignedToUserId String?
+  assignedToId     String?
+  assignedTo       User?          @relation("TicketAssignedTo", fields: [assignedToId], references: [id])
+  closedAt         DateTime?
+  assignedAt       DateTime?
   messages         SupportMessage[]
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
   @@index([organizationId])
   @@map("support_tickets")
@@ -1409,8 +1463,10 @@ model SupportMessage {
   id            String       @id @default(uuid())
   ticketId      String
   ticket        SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  senderUserId  String
-  sender        User         @relation(fields: [senderUserId], references: [id])
+  senderUserId  String?
+  sender        User?        @relation("MessageSender", fields: [senderUserId], references: [id])
+  userId        String?
+  user          User?        @relation("MessageUser", fields: [userId], references: [id])
   body          String       @db.Text
   attachments   Json?
   isStaff       Boolean      @default(false)
@@ -1421,19 +1477,24 @@ model SupportMessage {
 }
 
 model Affiliate {
-  id              String             @id @default(uuid())
-  organizationId  String             @unique
-  organization    Organization       @relation(fields: [organizationId], references: [id])
-  code            String             @unique
-  clicks          Int                @default(0)
-  signups         Int                @default(0)
-  conversions     Int                @default(0)
-  totalEarned     Decimal            @default(0) @db.Decimal(10, 2)
-  balance         Decimal            @default(0) @db.Decimal(10, 2)
-  commissionRate  Decimal            @default(0.15) @db.Decimal(5, 4)
+  id              String               @id @default(uuid())
+  organizationId  String               @unique
+  organization    Organization         @relation(fields: [organizationId], references: [id])
+  code            String               @unique
+  status          String               @default("ACTIVE")
+  clicks          Int                  @default(0)
+  signups         Int                  @default(0)
+  conversions     Int                  @default(0)
+  totalEarned     Decimal              @default(0) @db.Decimal(10, 2)
+  balance         Decimal              @default(0) @db.Decimal(10, 2)
+  commissionRate  Decimal              @default(0.15) @db.Decimal(5, 4)
   referrals       AffiliateReferral[]
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
+  affiliateClicks AffiliateClick[]
+  affiliateConversions AffiliateConversion[]
+  commissions     AffiliateCommission[]
+  payouts         AffiliatePayout[]
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
 
   @@map("affiliates")
 }
@@ -1474,14 +1535,19 @@ model ApiKey {
 
 model AutopilotSettings {
   id                   String               @id @default(uuid())
+  isEnabled            Boolean              @default(false)
+  isActive             Boolean              @default(false)
   enabledLocales       Json                 @default("[\"tr\"]")
-  weeklyTargetPerLocale Json                @default("{\"tr\":5,\"en\":5}")
+  locales              Json                 @default("[\"tr\",\"en\"]")
+  weeklyTarget         Int                  @default(5)
+  weeklyTargetPerLocale Json               @default("{\"tr\":5,\"en\":5}")
   publishMode          AutopilotPublishMode @default(SEMI_AUTO)
   minSeoScore          Int                  @default(75)
   minGeoScore          Int                  @default(60)
+  maxRetries           Int                  @default(2)
   nicheTopics          Json?
+  nichKeywords         Json?
   monthlyBudgetUsd     Decimal              @default(100) @db.Decimal(10, 2)
-  isActive             Boolean              @default(false)
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
 
@@ -1491,10 +1557,14 @@ model AutopilotSettings {
 model AutopilotKeyword {
   id               String                 @id @default(uuid())
   locale           String
+  keyword          String?
   phrase           String
   searchVolume     Int?
   difficulty       Int?
+  cpc              Float?
   opportunityScore Float?
+  retryCount       Int?                   @default(0)
+  blogPostId       String?
   status           AutopilotKeywordStatus @default(DISCOVERED)
   discoveredAt     DateTime               @default(now())
 
@@ -1522,11 +1592,14 @@ model AutopilotContentPerformance {
   keyword         String
   publishedAt     DateTime
   currentPosition Int?
+  position        Int?
   bestPosition    Int?
   geoCitations    Int       @default(0)
   organicClicks   Int       @default(0)
   lastCheckedAt   DateTime?
+  checkedAt       DateTime?
   needsRefresh    Boolean   @default(false)
+  blogPost        BlogPost? @relation(fields: [blogPostId], references: [id], onDelete: Cascade)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -1656,4 +1729,327 @@ model EmailCampaign {
   updatedAt       DateTime            @updatedAt
 
   @@map("email_campaigns")
+}
+
+// ============================================================
+// WALLET (separate from Organization.walletBalance)
+// ============================================================
+
+model Wallet {
+  id             String             @id @default(uuid())
+  organizationId String             @unique
+  organization   Organization       @relation(fields: [organizationId], references: [id])
+  balance        Decimal            @default(0) @db.Decimal(18, 2)
+  transactions   WalletEntry[]
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@map("wallets")
+}
+
+model WalletEntry {
+  id          String   @id @default(uuid())
+  walletId    String
+  wallet      Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  amount      Decimal  @db.Decimal(18, 2)
+  type        String
+  description String?
+  createdAt   DateTime @default(now())
+
+  @@index([walletId])
+  @@map("wallet_entries")
+}
+
+// ============================================================
+// API USAGE LOG
+// ============================================================
+
+model ApiUsageLog {
+  id             String        @id @default(uuid())
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  provider       String
+  model          String?
+  tokens         Int           @default(0)
+  costUsd        Decimal       @default(0) @db.Decimal(12, 6)
+  endpoint       String?
+  meta           Json?
+  createdAt      DateTime      @default(now())
+
+  @@index([organizationId])
+  @@index([createdAt])
+  @@map("api_usage_logs")
+}
+
+// ============================================================
+// QUEUE JOB
+// ============================================================
+
+model QueueJob {
+  id        String   @id @default(uuid())
+  queueName String
+  jobName   String
+  status    String   @default("WAITING")
+  payload   Json?
+  result    Json?
+  error     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([queueName, status])
+  @@map("queue_jobs")
+}
+
+// ============================================================
+// QUOTA OVERRIDE
+// ============================================================
+
+model QuotaOverride {
+  id             String   @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  metric         String
+  value          Int
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([organizationId, metric], name: "orgId_metric")
+  @@map("quota_overrides")
+}
+
+// ============================================================
+// EMAIL LOG
+// ============================================================
+
+model EmailLog {
+  id             String   @id @default(uuid())
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  to             String
+  subject        String
+  body           String   @db.Text
+  type           String   @default("SYSTEM")
+  sentAt         DateTime @default(now())
+
+  @@index([organizationId])
+  @@map("email_logs")
+}
+
+// ============================================================
+// DEVELOPER API KEY & USAGE
+// ============================================================
+
+model DeveloperApiKey {
+  id             String   @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  name           String
+  keyHash        String   @unique
+  scopes         Json?
+  rateLimit      Int      @default(1000)
+  revokedAt      DateTime?
+  lastUsedAt     DateTime?
+  usageLogs      ApiKeyUsage[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId])
+  @@map("developer_api_keys")
+}
+
+model ApiKeyUsage {
+  id              String          @id @default(uuid())
+  developerApiKeyId String
+  developerApiKey DeveloperApiKey @relation(fields: [developerApiKeyId], references: [id], onDelete: Cascade)
+  endpoint        String
+  method          String          @default("GET")
+  statusCode      Int?
+  createdAt       DateTime        @default(now())
+
+  @@index([developerApiKeyId])
+  @@map("api_key_usages")
+}
+
+// ============================================================
+// LEAD
+// ============================================================
+
+model Lead {
+  id        String   @id @default(uuid())
+  email     String
+  name      String?
+  domain    String?
+  phone     String?
+  source    String?
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@map("leads")
+}
+
+// ============================================================
+// REPORT RECORD
+// ============================================================
+
+model ReportRecord {
+  id        String      @id @default(uuid())
+  projectId String
+  project   Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  format    ReportFormat
+  data      Json
+  createdAt DateTime    @default(now())
+
+  @@index([projectId])
+  @@map("report_records")
+}
+
+// ============================================================
+// AFFILIATE CLICK / CONVERSION / COMMISSION / PAYOUT
+// ============================================================
+
+model AffiliateClick {
+  id          String    @id @default(uuid())
+  affiliateId String
+  affiliate   Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  userAgent   String?
+  ip          String?
+  createdAt   DateTime  @default(now())
+
+  @@index([affiliateId])
+  @@map("affiliate_clicks")
+}
+
+model AffiliateConversion {
+  id             String    @id @default(uuid())
+  affiliateId    String
+  affiliate      Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  referredOrgId  String?
+  referredOrg    Organization? @relation(fields: [referredOrgId], references: [id])
+  type           String    @default("SIGNUP")
+  planId         String?
+  amount         Decimal?  @db.Decimal(10, 2)
+  createdAt      DateTime  @default(now())
+
+  @@index([affiliateId])
+  @@map("affiliate_conversions")
+}
+
+model AffiliateCommission {
+  id          String    @id @default(uuid())
+  affiliateId String
+  affiliate   Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  amount      Decimal   @db.Decimal(10, 2)
+  status      String    @default("PENDING")
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([affiliateId])
+  @@map("affiliate_commissions")
+}
+
+model AffiliatePayout {
+  id          String    @id @default(uuid())
+  affiliateId String
+  affiliate   Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  amount      Decimal   @db.Decimal(10, 2)
+  status      String    @default("PENDING")
+  processedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([affiliateId])
+  @@map("affiliate_payouts")
+}
+
+// ============================================================
+// MARKETPLACE DISPUTE
+// ============================================================
+
+model MarketplaceDispute {
+  id        String   @id @default(uuid())
+  orderId   String?
+  offerId   String?
+  buyerId   String?
+  buyer     User?    @relation("BuyerDisputes", fields: [buyerId], references: [id])
+  sellerId  String?
+  seller    User?    @relation("SellerDisputes", fields: [sellerId], references: [id])
+  offer     PublisherOffer? @relation(fields: [offerId], references: [id])
+  reason    String?
+  status    String   @default("OPEN")
+  resolvedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("marketplace_disputes")
+}
+
+// ============================================================
+// INTERNAL LINK SUGGESTION
+// ============================================================
+
+model InternalLinkSuggestion {
+  id                String   @id @default(uuid())
+  projectId         String?
+  project           Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sourceBlogPostId  String?
+  targetBlogPostId  String?
+  sourceUrl         String?
+  targetUrl         String?
+  anchorText        String?
+  relevance         Float?
+  score             Float?
+  isApplied         Boolean  @default(false)
+  createdAt         DateTime @default(now())
+
+  @@index([projectId])
+  @@map("internal_link_suggestions")
+}
+
+model AdminNotification {
+  id        String   @id @default(uuid())
+  type      String
+  title     String
+  body      String
+  meta      Json?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("admin_notifications")
+}
+
+// ============================================================
+// GEO VISIBILITY CHECK
+// ============================================================
+
+model GeoVisibilityCheck {
+  id          String   @id @default(uuid())
+  keywordId   String
+  keyword     Keyword  @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+  platform    String
+  query       String
+  isMentioned Boolean  @default(false)
+  position    Int?
+  excerpt     String?  @db.Text
+  checkedAt   DateTime @default(now())
+
+  @@index([keywordId])
+  @@map("geo_visibility_checks")
+}
+
+// ============================================================
+// ONBOARDING STATUS
+// ============================================================
+
+model OnboardingStatus {
+  id             String       @id @default(uuid())
+  organizationId String       @unique
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  isComplete     Boolean      @default(false)
+  currentStep    String       @default("welcome")
+  steps          Json?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@map("onboarding_statuses")
 }

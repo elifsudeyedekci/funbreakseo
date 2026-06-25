@@ -20,11 +20,11 @@ export class ReportService {
         organization: true,
         keywords: {
           include: {
-            rankHistory: { orderBy: { checkedAt: 'desc' }, take: 30 },
+            ranks: { orderBy: { checkedAt: 'desc' }, take: 30 },
           },
         },
         crawlJobs: { orderBy: { createdAt: 'desc' }, take: 1 },
-        blogPosts: { where: { status: 'PUBLISHED' }, take: 10 },
+        contentItems: { where: { status: 'PUBLISHED' }, take: 10 },
         backlinks: { orderBy: { createdAt: 'desc' }, take: 20 },
       },
     });
@@ -35,13 +35,13 @@ export class ReportService {
 
     // Ranking summary
     const rankingData = project.keywords.map((kw) => {
-      const latest = kw.rankHistory[0];
-      const previous = kw.rankHistory[1];
+      const latest = kw.ranks[0];
+      const previous = kw.ranks[1];
       return {
-        keyword: kw.keyword,
-        currentRank: latest?.rank ?? null,
-        previousRank: previous?.rank ?? null,
-        change: latest && previous ? previous.rank - latest.rank : 0,
+        keyword: kw.phrase,
+        currentRank: latest?.position ?? null,
+        previousRank: previous?.position ?? null,
+        change: latest && previous ? (previous.position ?? 0) - (latest.position ?? 0) : 0,
       };
     });
 
@@ -50,18 +50,16 @@ export class ReportService {
     ).length;
     const avgRank =
       rankingData.length > 0
-        ? rankingData.reduce((sum, r) => sum + (r.currentRank ?? 100), 0) /
+        ? rankingData.reduce((sum: number, r: typeof rankingData[0]) => sum + (r.currentRank ?? 100), 0) /
           rankingData.length
         : 0;
 
     // Technical SEO from latest crawl
     const technicalSeo = latestCrawl
       ? {
-          healthScore: (latestCrawl.meta as Record<string, unknown>)?.healthScore ?? 0,
-          criticalIssues: (latestCrawl.meta as Record<string, unknown>)?.criticalIssues ?? [],
-          warnings: (latestCrawl.meta as Record<string, unknown>)?.warnings ?? [],
+          healthScore: latestCrawl.healthScore ?? 0,
           pagesScanned: latestCrawl.pagesScanned,
-          errorsFound: latestCrawl.errorsFound,
+          issuesFound: latestCrawl.issuesFound,
         }
       : null;
 
@@ -91,8 +89,8 @@ export class ReportService {
 
     // Content summary
     const contentSummary = {
-      published: project.blogPosts.length,
-      recentTitles: project.blogPosts.slice(0, 5).map((p) => p.title),
+      published: project.contentItems.length,
+      recentTitles: project.contentItems.slice(0, 5).map((p) => p.title),
     };
 
     // Recommendations
@@ -169,8 +167,8 @@ export class ReportService {
     await this.prisma.reportRecord.create({
       data: {
         projectId,
-        format,
-        data: report as unknown as Record<string, unknown>,
+        format: format as 'PDF' | 'HTML' | 'JSON',
+        data: report as object,
       },
     });
 
@@ -200,7 +198,7 @@ export class ReportService {
     return this.prisma.scheduledReport.create({
       data: {
         projectId,
-        format: dto.format,
+        format: dto.format as 'PDF' | 'HTML' | 'JSON',
         cronExpression: dto.schedule,
         recipients: dto.recipients,
         isActive: true,
@@ -235,8 +233,9 @@ export class ReportService {
         });
 
         // In production, email report to recipients
+        const recipientList = Array.isArray(scheduled.recipients) ? (scheduled.recipients as string[]) : [];
         console.log(
-          `Sent scheduled report for project ${scheduled.projectId} to ${scheduled.recipients.join(', ')}`,
+          `Sent scheduled report for project ${scheduled.projectId} to ${recipientList.join(', ')}`,
           { reportSummary: report.project },
         );
       } catch (err) {

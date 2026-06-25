@@ -20,14 +20,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
-  const { user, subscription, clearAuth, pendingConsents } = useAuthStore();
+  const { user, subscription, clearAuth, hasPendingConsents } = useAuthStore();
   const localePath = (path: string) => locale === 'tr' ? path : `/${locale}${path}`;
 
   // Extract projectId from URL if present
   const projectId = params?.projectId as string | undefined;
 
   const isPastDue = subscription?.status === 'PAST_DUE';
-  const hasPendingConsent = pendingConsents && pendingConsents.length > 0;
+  const hasPendingConsent = hasPendingConsents;
 
   async function handleLogout() {
     try {

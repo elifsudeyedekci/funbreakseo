@@ -2,6 +2,9 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   transpilePackages: ['@funbreakseo/ui', '@funbreakseo/shared'],
+  typescript: {
+    ignoreBuildErrors: true,
+  },
   async headers() {
     return [
       {

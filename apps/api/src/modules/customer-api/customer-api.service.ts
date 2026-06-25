@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
-import { randomBytes } from 'crypto';
+import { randomBytes, createHash } from 'crypto';
 
 @Injectable()
 export class CustomerApiService {
@@ -15,8 +15,7 @@ export class CustomerApiService {
       select: {
         id: true,
         name: true,
-        key: true,
-        isActive: true,
+        revokedAt: true,
         createdAt: true,
         lastUsedAt: true,
       },
@@ -24,29 +23,30 @@ export class CustomerApiService {
   }
 
   async createApiKey(orgId: string, name: string) {
-    const key = `fbs_${randomBytes(32).toString('hex')}`;
+    const rawKey = `fbs_${randomBytes(32).toString('hex')}`;
+    const keyHash = createHash('sha256').update(rawKey).digest('hex');
 
-    return this.prisma.developerApiKey.create({
+    const record = await this.prisma.developerApiKey.create({
       data: {
         organizationId: orgId,
         name,
-        key,
-        isActive: true,
+        keyHash,
       },
       select: {
         id: true,
         name: true,
-        key: true,
-        isActive: true,
         createdAt: true,
       },
     });
+
+    // Return the raw key only on creation – never stored again
+    return { ...record, key: rawKey };
   }
 
   async revokeApiKey(keyId: string, orgId: string) {
     await this.prisma.developerApiKey.updateMany({
       where: { id: keyId, organizationId: orgId },
-      data: { isActive: false },
+      data: { revokedAt: new Date() },
     });
     return { success: true };
   }
@@ -56,7 +56,7 @@ export class CustomerApiService {
   // -------------------------------------------------------------------------
   async getProjects(orgId: string) {
     return this.prisma.project.findMany({
-      where: { orgId },
+      where: { organizationId: orgId },
       select: {
         id: true,
         name: true,
@@ -69,7 +69,7 @@ export class CustomerApiService {
   async getProjectKeywords(projectId: string, orgId: string) {
     // Verify ownership
     const project = await this.prisma.project.findFirst({
-      where: { id: projectId, orgId },
+      where: { id: projectId, organizationId: orgId },
     });
     if (!project) throw new NotFoundException('Project not found');
 
@@ -77,8 +77,8 @@ export class CustomerApiService {
       where: { projectId },
       select: {
         id: true,
-        keyword: true,
-        locale: true,
+        phrase: true,
+        language: true,
         searchVolume: true,
         difficulty: true,
       },
@@ -91,16 +91,16 @@ export class CustomerApiService {
     limit = 50,
   ) {
     const project = await this.prisma.project.findFirst({
-      where: { id: projectId, orgId },
+      where: { id: projectId, organizationId: orgId },
     });
     if (!project) throw new NotFoundException('Project not found');
 
-    return this.prisma.rankHistory.findMany({
+    return this.prisma.keywordRank.findMany({
       where: { keyword: { projectId } },
       orderBy: { checkedAt: 'desc' },
       take: limit,
       include: {
-        keyword: { select: { keyword: true, locale: true } },
+        keyword: { select: { phrase: true, language: true } },
       },
     });
   }

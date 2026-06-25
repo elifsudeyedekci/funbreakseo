@@ -263,7 +263,7 @@ const RefundSchema = z.object({
 function RefundModal({ open, onClose, onConfirm, loading }: {
   open: boolean; onClose: () => void; onConfirm: (d: Record<string, unknown>) => void; loading: boolean;
 }) {
-  const { register, handleSubmit } = useForm({ resolver: zodResolver(RefundSchema), defaultValues: { type: 'full' } });
+  const { register, handleSubmit } = useForm<{ invoiceId?: string; amount: number; type: 'full' | 'partial' }>({ resolver: zodResolver(RefundSchema), defaultValues: { type: 'full' } });
   return (
     <Modal open={open} onClose={onClose} title="Ücret İadesi" size="sm"
       footer={

@@ -2,7 +2,6 @@ import {
   Injectable,
   BadRequestException,
   NotFoundException,
-  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 import { ConfigService } from '@nestjs/config';
@@ -41,9 +40,9 @@ export class AdminService {
 
     // MRR: sum of active subscription amounts
     const mrrResult = await this.prisma.$queryRaw<{ mrr: number }[]>`
-      SELECT COALESCE(SUM(p.price), 0) as mrr
-      FROM "Subscription" s
-      JOIN "Plan" p ON p.id = s."planId"
+      SELECT COALESCE(SUM(p."monthlyPrice"), 0) as mrr
+      FROM "subscriptions" s
+      JOIN "plans" p ON p.id = s."planId"
       WHERE s.status = 'ACTIVE'
     `;
     const mrr = Number(mrrResult[0]?.mrr ?? 0);
@@ -118,7 +117,7 @@ export class AdminService {
         take: limit,
         include: {
           users: {
-            select: { id: true, email: true, name: true, role: true },
+            select: { id: true, email: true, fullName: true, role: true },
           },
           subscription: {
             include: { plan: true },
@@ -142,7 +141,6 @@ export class AdminService {
         subscription: { include: { plan: true } },
         invoices: { orderBy: { createdAt: 'desc' }, take: 20 },
         wallet: true,
-        auditLogs: { orderBy: { createdAt: 'desc' }, take: 50 },
       },
     });
 
@@ -152,7 +150,7 @@ export class AdminService {
     const usageStats = await this.prisma.apiUsageLog.aggregate({
       _sum: { costUsd: true, tokens: true },
       _count: { id: true },
-      where: { orgId },
+      where: { organizationId: orgId },
     });
 
     // Health score: projects with active crawl, keyword count, content count
@@ -164,11 +162,11 @@ export class AdminService {
   private async computeOrgHealthScore(orgId: string): Promise<number> {
     const [projectCount, keywordCount, contentCount, crawlCount] =
       await Promise.all([
-        this.prisma.project.count({ where: { orgId } }),
-        this.prisma.keyword.count({ where: { project: { orgId } } }),
-        this.prisma.blogPost.count({ where: { project: { orgId } } }),
+        this.prisma.project.count({ where: { organizationId: orgId } }),
+        this.prisma.keyword.count({ where: { project: { organizationId: orgId } } }),
+        this.prisma.contentItem.count({ where: { project: { organizationId: orgId } } }),
         this.prisma.crawlJob.count({
-          where: { project: { orgId }, status: 'COMPLETED' },
+          where: { project: { organizationId: orgId }, status: 'DONE' },
         }),
       ]);
 
@@ -194,7 +192,7 @@ export class AdminService {
 
     await this.prisma.auditLog.create({
       data: {
-        orgId,
+        organizationId: orgId,
         userId,
         action: 'ACCOUNT_SUSPENDED',
         meta: { reason },
@@ -215,7 +213,7 @@ export class AdminService {
 
   async cancelSubscription(orgId: string, immediately: boolean) {
     const sub = await this.prisma.subscription.findFirst({
-      where: { orgId },
+      where: { organizationId: orgId },
     });
 
     if (!sub) throw new NotFoundException('Subscription not found');
@@ -264,7 +262,7 @@ export class AdminService {
     if (!plan) throw new NotFoundException('Plan not found');
 
     const sub = await this.prisma.subscription.findFirst({
-      where: { orgId },
+      where: { organizationId: orgId },
     });
 
     if (sub) {
@@ -280,7 +278,7 @@ export class AdminService {
     } else {
       await this.prisma.subscription.create({
         data: {
-          orgId,
+          organizationId: orgId,
           planId,
           status: 'ACTIVE',
           isComplimentary,
@@ -296,10 +294,10 @@ export class AdminService {
   }
 
   async addCredit(orgId: string, amount: number, description: string) {
-    let wallet = await this.prisma.wallet.findFirst({ where: { orgId } });
+    let wallet = await this.prisma.wallet.findFirst({ where: { organizationId: orgId } });
     if (!wallet) {
       wallet = await this.prisma.wallet.create({
-        data: { orgId, balance: 0 },
+        data: { organizationId: orgId, balance: 0 },
       });
     }
 
@@ -310,10 +308,11 @@ export class AdminService {
       }),
       this.prisma.walletTransaction.create({
         data: {
-          walletId: wallet.id,
+          organizationId: orgId,
           amount,
           type: 'CREDIT',
           description,
+          balanceAfter: Number(wallet.balance) + amount,
         },
       }),
     ]);
@@ -323,8 +322,8 @@ export class AdminService {
 
   async setQuotaOverride(orgId: string, metric: string, value: number) {
     await this.prisma.quotaOverride.upsert({
-      where: { orgId_metric: { orgId, metric } },
-      create: { orgId, metric, value },
+      where: { orgId_metric: { organizationId: orgId, metric } },
+      create: { organizationId: orgId, metric, value },
       update: { value },
     });
 
@@ -334,7 +333,7 @@ export class AdminService {
   async impersonateUser(adminUserId: string, targetUserId: string) {
     await this.prisma.auditLog.create({
       data: {
-        userId: adminUserId,
+        actorUserId: adminUserId,
         action: 'IMPERSONATE_USER',
         meta: { targetUserId },
       },
@@ -353,7 +352,7 @@ export class AdminService {
   async sendCustomEmail(orgId: string, subject: string, body: string) {
     const org = await this.prisma.organization.findUnique({
       where: { id: orgId },
-      include: { users: { where: { role: 'OWNER' }, take: 1 } },
+      include: { users: { where: { role: 'CUSTOMER' }, take: 1 } },
     });
 
     if (!org) throw new NotFoundException('Organization not found');
@@ -368,7 +367,7 @@ export class AdminService {
         subject,
         body,
         type: 'CUSTOM_ADMIN',
-        orgId,
+        organizationId: orgId,
       },
     });
 
@@ -379,11 +378,11 @@ export class AdminService {
     orgId: string,
     filters: { type?: string; from?: Date; to?: Date },
   ) {
-    const where: Record<string, unknown> = { orgId };
+    const where: Record<string, unknown> = { organizationId: orgId };
 
-    if (filters.type) where.type = filters.type;
+    if (filters.type) where.consentType = filters.type;
     if (filters.from || filters.to) {
-      where.createdAt = {
+      where.acceptedAt = {
         ...(filters.from ? { gte: filters.from } : {}),
         ...(filters.to ? { lte: filters.to } : {}),
       };
@@ -391,12 +390,12 @@ export class AdminService {
 
     return this.prisma.consentRecord.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { acceptedAt: 'desc' },
     });
   }
 
   async exportConsentsPdf(orgId: string, consentId?: string) {
-    const where: Record<string, unknown> = { orgId };
+    const where: Record<string, unknown> = { organizationId: orgId };
     if (consentId) where.id = consentId;
 
     const records = await this.prisma.consentRecord.findMany({ where });
@@ -411,10 +410,10 @@ export class AdminService {
     to?: Date;
   }) {
     const where: Record<string, unknown> = {};
-    if (filters.orgId) where.orgId = filters.orgId;
-    if (filters.type) where.type = filters.type;
+    if (filters.orgId) where.organizationId = filters.orgId;
+    if (filters.type) where.consentType = filters.type;
     if (filters.from || filters.to) {
-      where.createdAt = {
+      where.acceptedAt = {
         ...(filters.from ? { gte: filters.from } : {}),
         ...(filters.to ? { lte: filters.to } : {}),
       };
@@ -423,10 +422,10 @@ export class AdminService {
     const records = await this.prisma.consentRecord.findMany({ where });
 
     const csv = [
-      'id,orgId,type,accepted,ip,userAgent,createdAt',
+      'id,organizationId,consentType,acceptedAt,ip,userAgent',
       ...records.map(
         (r) =>
-          `${r.id},${r.orgId},${r.type},${r.accepted},${r.ip ?? ''},${r.userAgent ?? ''},${r.createdAt.toISOString()}`,
+          `${r.id},${r.organizationId ?? ''},${r.consentType},${r.acceptedAt.toISOString()},${r.ip ?? ''},${r.userAgent ?? ''}`,
       ),
     ].join('\n');
 
@@ -435,7 +434,7 @@ export class AdminService {
 
   async setDigestFrequency(
     orgId: string,
-    frequency: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'NONE',
+    frequency: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'OFF',
   ) {
     await this.prisma.organization.update({
       where: { id: orgId },
@@ -460,7 +459,7 @@ export class AdminService {
     const skip = (page - 1) * limit;
     const where: Record<string, unknown> = {};
 
-    if (filters.orgId) where.orgId = filters.orgId;
+    if (filters.orgId) where.organizationId = filters.orgId;
     if (filters.action) where.action = filters.action;
     if (filters.from || filters.to) {
       where.createdAt = {
@@ -476,9 +475,6 @@ export class AdminService {
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
-        include: {
-          user: { select: { id: true, email: true, name: true } },
-        },
       }),
     ]);
 
@@ -500,7 +496,7 @@ export class AdminService {
         where: { createdAt: { gte: startOfMonth } },
       }),
       this.prisma.apiUsageLog.groupBy({
-        by: ['orgId'],
+        by: ['organizationId'],
         _sum: { costUsd: true, tokens: true },
         _count: { id: true },
         where: { createdAt: { gte: startOfMonth } },
@@ -510,7 +506,7 @@ export class AdminService {
     ]);
 
     const totalCost = byProvider.reduce(
-      (sum, r) => sum + Number(r._sum.costUsd ?? 0),
+      (sum: number, r: typeof byProvider[0]) => sum + Number(r._sum.costUsd ?? 0),
       0,
     );
 
@@ -573,9 +569,6 @@ export class AdminService {
   async getPendingContentReview() {
     return this.prisma.blogPost.findMany({
       where: { status: 'REVIEW' },
-      include: {
-        project: { include: { organization: true } },
-      },
       orderBy: { createdAt: 'asc' },
     });
   }
@@ -609,21 +602,32 @@ export class AdminService {
   // Plans CRUD
   // -------------------------------------------------------------------------
   async getPlans() {
-    return this.prisma.plan.findMany({ orderBy: { price: 'asc' } });
+    return this.prisma.plan.findMany({ orderBy: { monthlyPrice: 'asc' } });
   }
 
   async createPlan(dto: {
     name: string;
-    price: number;
+    slug: string;
+    monthlyPrice: number;
+    yearlyPrice: number;
     currency: string;
-    interval: string;
-    features: Record<string, unknown>;
+    limits: Record<string, unknown>;
+    features?: Record<string, unknown>;
   }) {
-    return this.prisma.plan.create({ data: dto });
+    return this.prisma.plan.create({
+      data: {
+        name: dto.name,
+        slug: dto.slug,
+        monthlyPrice: dto.monthlyPrice,
+        yearlyPrice: dto.yearlyPrice,
+        currency: dto.currency,
+        limits: dto.limits as object,
+      },
+    });
   }
 
   async updatePlan(planId: string, dto: Partial<Parameters<typeof this.createPlan>[0]>) {
-    return this.prisma.plan.update({ where: { id: planId }, data: dto });
+    return this.prisma.plan.update({ where: { id: planId }, data: dto as Record<string, unknown> });
   }
 
   async deletePlan(planId: string) {

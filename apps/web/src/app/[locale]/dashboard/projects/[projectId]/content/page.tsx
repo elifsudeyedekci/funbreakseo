@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, use } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, FileText, Sparkles, X } from 'lucide-react';
 import { contentApi } from '@/lib/api';
@@ -27,15 +27,16 @@ const STATUS_CONFIG: Record<ContentStatus, { label: string; color: string }> = {
   REJECTED: { label: 'Reddedildi', color: 'bg-red-500/20 text-red-400' },
 };
 
-export default function ContentPage({ params }: { params: { projectId: string } }) {
+export default function ContentPage({ params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = use(params);
   const queryClient = useQueryClient();
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ keyword: '', contentType: 'BLOG', language: 'tr', tone: 'professional' });
   const [filterStatus, setFilterStatus] = useState<ContentStatus | 'ALL'>('ALL');
 
   const { data, isLoading } = useQuery({
-    queryKey: ['content', params.projectId],
-    queryFn: () => contentApi.list(params.projectId).then((r) => r.data.data as Content[]),
+    queryKey: ['content', projectId],
+    queryFn: () => contentApi.list(projectId).then((r) => r.data.data as Content[]),
     refetchInterval: (query) => {
       const items = query.state.data as Content[] | undefined;
       return items?.some((c) => c.status === 'GENERATING') ? 5000 : false;
@@ -43,9 +44,9 @@ export default function ContentPage({ params }: { params: { projectId: string } 
   });
 
   const generateMutation = useMutation({
-    mutationFn: () => contentApi.generate(params.projectId, { ...form }),
+    mutationFn: () => contentApi.generate(projectId, { ...form }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['content', params.projectId] });
+      queryClient.invalidateQueries({ queryKey: ['content', projectId] });
       setShowModal(false);
       setForm({ keyword: '', contentType: 'BLOG', language: 'tr', tone: 'professional' });
     },

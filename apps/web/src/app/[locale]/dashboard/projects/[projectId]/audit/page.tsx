@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, use } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Play, AlertCircle, AlertTriangle, Info, RefreshCw } from 'lucide-react';
 import { auditApi } from '@/lib/api';
@@ -36,13 +36,14 @@ const SEVERITY_CONFIG = {
   NOTICE: { icon: Info, color: 'text-yellow-400', bg: 'bg-yellow-500/10 border-yellow-500/20', label: 'Bilgi' },
 };
 
-export default function AuditPage({ params }: { params: { projectId: string } }) {
+export default function AuditPage({ params }: { params: Promise<{ projectId: string }> }) {
+  const { projectId } = use(params);
   const [selectedIssue, setSelectedIssue] = useState<AuditIssue | null>(null);
   const [severityFilter, setSeverityFilter] = useState<IssueSeverity | 'ALL'>('ALL');
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['audit', params.projectId],
-    queryFn: () => auditApi.latest(params.projectId).then((r) => r.data.data as AuditData),
+    queryKey: ['audit', projectId],
+    queryFn: () => auditApi.get(projectId).then((r) => r.data.data as AuditData),
     refetchInterval: (query) => {
       const status = query.state.data?.status;
       return status === 'RUNNING' || status === 'PENDING' ? 3000 : false;
@@ -50,7 +51,7 @@ export default function AuditPage({ params }: { params: { projectId: string } })
   });
 
   const crawlMutation = useMutation({
-    mutationFn: () => auditApi.startCrawl(params.projectId),
+    mutationFn: () => auditApi.start(projectId),
     onSuccess: () => refetch(),
   });
 

@@ -24,20 +24,20 @@ export class DeveloperKeyController {
 
   @Get()
   getApiKeys(@CurrentUser() user: User) {
-    return this.customerApiService.getApiKeys(user.organizationId);
+    return this.customerApiService.getApiKeys(user.organizationId!);
   }
 
   @Post()
   createApiKey(@CurrentUser() user: User, @Body('name') name: string) {
     return this.customerApiService.createApiKey(
-      user.organizationId,
+      user.organizationId!,
       name ?? 'Default Key',
     );
   }
 
   @Delete(':id')
   revokeApiKey(@Param('id') id: string, @CurrentUser() user: User) {
-    return this.customerApiService.revokeApiKey(id, user.organizationId);
+    return this.customerApiService.revokeApiKey(id, user.organizationId!);
   }
 }
 

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 
 @Injectable()
@@ -12,15 +12,16 @@ export class SupportService {
   ) {
     return this.prisma.supportTicket.create({
       data: {
-        orgId,
+        organizationId: orgId,
+        userId,
         createdById: userId,
         subject: dto.subject,
         status: 'OPEN',
-        priority: dto.priority ?? 'NORMAL',
+        priority: (dto.priority as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT') ?? 'MEDIUM',
         category: dto.category ?? 'GENERAL',
         messages: {
           create: {
-            userId,
+            senderUserId: userId,
             body: dto.body,
             isStaff: false,
           },
@@ -45,7 +46,7 @@ export class SupportService {
     const message = await this.prisma.supportMessage.create({
       data: {
         ticketId,
-        userId,
+        senderUserId: userId,
         body,
         attachments: attachments ?? [],
         isStaff,
@@ -77,7 +78,7 @@ export class SupportService {
   ) {
     const { page = 1, limit = 20 } = filters;
     const skip = (page - 1) * limit;
-    const where: Record<string, unknown> = { orgId };
+    const where: Record<string, unknown> = { organizationId: orgId };
     if (filters.status) where.status = filters.status;
 
     const [total, tickets] = await Promise.all([
@@ -89,7 +90,7 @@ export class SupportService {
         orderBy: { updatedAt: 'desc' },
         include: {
           messages: { orderBy: { createdAt: 'desc' }, take: 1 },
-          assignedTo: { select: { id: true, name: true, email: true } },
+          assignedTo: { select: { id: true, fullName: true, email: true } },
         },
       }),
     ]);
@@ -104,12 +105,12 @@ export class SupportService {
         messages: {
           orderBy: { createdAt: 'asc' },
           include: {
-            user: { select: { id: true, name: true, email: true } },
+            sender: { select: { id: true, fullName: true, email: true } },
           },
         },
         organization: true,
-        createdBy: { select: { id: true, name: true, email: true } },
-        assignedTo: { select: { id: true, name: true, email: true } },
+        createdBy: { select: { id: true, fullName: true, email: true } },
+        assignedTo: { select: { id: true, fullName: true, email: true } },
       },
     });
 
@@ -120,7 +121,10 @@ export class SupportService {
   async updateStatus(ticketId: string, status: string) {
     return this.prisma.supportTicket.update({
       where: { id: ticketId },
-      data: { status, ...(status === 'CLOSED' ? { closedAt: new Date() } : {}) },
+      data: {
+        status: status as 'OPEN' | 'PENDING' | 'RESOLVED' | 'CLOSED' | 'WAITING_CUSTOMER' | 'IN_PROGRESS',
+        ...(status === 'CLOSED' ? { closedAt: new Date() } : {}),
+      },
     });
   }
 
@@ -144,7 +148,7 @@ export class SupportService {
     const where: Record<string, unknown> = {};
 
     if (filters.status) where.status = filters.status;
-    if (filters.orgId) where.orgId = filters.orgId;
+    if (filters.orgId) where.organizationId = filters.orgId;
     if (filters.assignedToId) where.assignedToId = filters.assignedToId;
 
     const [total, tickets] = await Promise.all([
@@ -156,8 +160,8 @@ export class SupportService {
         orderBy: { updatedAt: 'desc' },
         include: {
           organization: { select: { id: true, name: true } },
-          createdBy: { select: { id: true, name: true, email: true } },
-          assignedTo: { select: { id: true, name: true, email: true } },
+          createdBy: { select: { id: true, fullName: true, email: true } },
+          assignedTo: { select: { id: true, fullName: true, email: true } },
           messages: { orderBy: { createdAt: 'desc' }, take: 1 },
         },
       }),

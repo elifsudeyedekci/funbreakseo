@@ -24,7 +24,7 @@ export class NotificationService {
     meta?: Record<string, unknown>,
   ) {
     const notification = await this.prisma.notification.create({
-      data: { userId, type, title, body, link, meta: meta ?? {}, read: false },
+      data: { userId, type, title, body, link, meta: (meta ?? {}) as object, read: false },
     });
 
     // Emit via WebSocket
@@ -70,5 +70,37 @@ export class NotificationService {
 
   async getUnreadCount(userId: string): Promise<number> {
     return this.prisma.notification.count({ where: { userId, read: false } });
+  }
+
+  async getPreferences(userId: string) {
+    const setting = await this.prisma.systemSetting.findUnique({
+      where: { key: `notification_prefs_${userId}` },
+    });
+    if (setting) {
+      return setting.value;
+    }
+    // Return defaults
+    return {
+      emailOnNewMention: true,
+      emailOnRankDrop: true,
+      emailWeeklyDigest: true,
+      marketingEmails: true,
+      pushNotifications: true,
+    };
+  }
+
+  async updatePreferences(userId: string, prefs: Record<string, unknown>) {
+    // Persist preferences in SystemSetting as a JSON blob keyed per user
+    await this.prisma.systemSetting.upsert({
+      where: { key: `notification_prefs_${userId}` },
+      update: { value: prefs as object },
+      create: { key: `notification_prefs_${userId}`, value: prefs as object },
+    });
+    return { updated: true, preferences: prefs };
+  }
+
+  async unsubscribeMarketing(userId: string) {
+    await this.updatePreferences(userId, { marketingEmails: false });
+    return { unsubscribed: true };
   }
 }

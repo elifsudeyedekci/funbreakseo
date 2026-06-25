@@ -12,8 +12,8 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard'
 import { CurrentUser } from '../auth/current-user.decorator'
 
 class CreateCampaignDto {
-  name: string
-  targetUrl: string
+  name: string = ''
+  targetUrl: string = ''
   anchorText?: string
   topic?: string
 }
