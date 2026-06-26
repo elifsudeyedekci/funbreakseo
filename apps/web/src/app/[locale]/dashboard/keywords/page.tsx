@@ -10,11 +10,31 @@ const difficultyColor = (d: number) =>
 const changeColor = (c: number) =>
   c > 0 ? 'text-green-400' : c < 0 ? 'text-red-400' : 'text-[var(--text-muted)]';
 
+const intentBadge: Record<string, string> = {
+  INFORMATIONAL: 'bg-blue-500/15 text-blue-400',
+  NAVIGATIONAL: 'bg-purple-500/15 text-purple-400',
+  TRANSACTIONAL: 'bg-green-500/15 text-green-400',
+  COMMERCIAL: 'bg-orange-500/15 text-orange-400',
+};
+
+interface ResearchResult {
+  keyword: string;
+  search_volume?: number;
+  keyword_difficulty?: number;
+  cpc?: number;
+  intent?: string;
+}
+
 export default function KeywordsPage() {
   const [tagFilter, setTagFilter] = useState<string>('all');
   const [showImport, setShowImport] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
+  const [showDiscover, setShowDiscover] = useState(false);
   const [newKeyword, setNewKeyword] = useState('');
+  const [bulkText, setBulkText] = useState('');
+  const [seedInput, setSeedInput] = useState('');
+  const [discoverResults, setDiscoverResults] = useState<ResearchResult[]>([]);
+  const [selectedKws, setSelectedKws] = useState<Set<string>>(new Set());
   const qc = useQueryClient();
 
   const { data: projects } = useQuery({
@@ -26,7 +46,7 @@ export default function KeywordsPage() {
   const { data: keywords, isLoading: kwLoading } = useQuery({
     queryKey: ['keywords', projectId],
     enabled: !!projectId,
-    queryFn: () => keywordApi.list(projectId!).then(r => (r.data?.data || []) as any[]),
+    queryFn: () => keywordApi.list(projectId!).then(r => (r.data?.data || r.data || []) as any[]),
   });
 
   const { data: summary, isLoading: sumLoading } = useQuery({
@@ -44,11 +64,47 @@ export default function KeywordsPage() {
     },
   });
 
+  const bulkImportMutation = useMutation({
+    mutationFn: (phrases: string[]) => keywordApi.add(projectId!, phrases),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['keywords', projectId] });
+      setShowImport(false);
+      setBulkText('');
+    },
+  });
+
+  const researchMutation = useMutation({
+    mutationFn: (seeds: string[]) =>
+      keywordApi.research(projectId!, { seedKeywords: seeds }).then(r => r.data?.data ?? r.data),
+    onSuccess: (data) => {
+      const items: ResearchResult[] = [
+        ...(data?.keywordData ?? []),
+        ...(data?.relatedKeywords ?? []).map((k: any) =>
+          typeof k === 'string' ? { keyword: k } : k,
+        ),
+      ];
+      const unique = Array.from(new Map(items.map(i => [i.keyword, i])).values());
+      setDiscoverResults(unique);
+      setSelectedKws(new Set());
+    },
+  });
+
+  const addSelectedMutation = useMutation({
+    mutationFn: (phrases: string[]) => keywordApi.add(projectId!, phrases),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['keywords', projectId] });
+      setShowDiscover(false);
+      setDiscoverResults([]);
+      setSelectedKws(new Set());
+      setSeedInput('');
+    },
+  });
+
   const rankBuckets = [
-    { label: 'Top 3', value: summary?.top3 ?? 0, color: 'text-green-400', bg: 'bg-green-400/10' },
-    { label: '4–10', value: summary?.top10 ?? 0, color: 'text-blue-400', bg: 'bg-blue-400/10' },
-    { label: '11–20', value: summary?.top20 ?? 0, color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
-    { label: '20+', value: summary?.beyond20 ?? 0, color: 'text-[var(--text-muted)]', bg: 'bg-white/5' },
+    { label: 'Top 3', value: summary?.top3 ?? 0, color: 'text-green-400' },
+    { label: '4–10', value: summary?.top10 ?? 0, color: 'text-blue-400' },
+    { label: '11–20', value: summary?.top20 ?? 0, color: 'text-yellow-400' },
+    { label: '20+', value: summary?.beyond20 ?? 0, color: 'text-[var(--text-muted)]' },
   ];
 
   const tags: string[] = ['all', ...Array.from(new Set((keywords ?? []).flatMap((k: any) => k.tags ?? [])))];
@@ -56,6 +112,32 @@ export default function KeywordsPage() {
     tagFilter === 'all'
       ? (keywords ?? [])
       : (keywords ?? []).filter((k: any) => k.tags?.includes(tagFilter));
+
+  const toggleKw = (kw: string) => {
+    setSelectedKws(prev => {
+      const next = new Set(prev);
+      next.has(kw) ? next.delete(kw) : next.add(kw);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (selectedKws.size === discoverResults.length) {
+      setSelectedKws(new Set());
+    } else {
+      setSelectedKws(new Set(discoverResults.map(r => r.keyword)));
+    }
+  };
+
+  const handleResearch = () => {
+    const seeds = seedInput
+      .split(/[\n,]+/)
+      .map(s => s.trim())
+      .filter(Boolean)
+      .slice(0, 5);
+    if (seeds.length === 0) return;
+    researchMutation.mutate(seeds);
+  };
 
   return (
     <div className="min-h-screen p-6 space-y-6" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)' }}>
@@ -68,6 +150,13 @@ export default function KeywordsPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <button
+            onClick={() => setShowDiscover(true)}
+            className="px-4 py-2 rounded-lg text-sm border border-white/10 hover:border-white/20 transition flex items-center gap-1.5"
+            style={{ background: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}
+          >
+            <span>✦</span> Keşfet
+          </button>
           <button
             onClick={() => setShowImport(true)}
             className="px-4 py-2 rounded-lg text-sm border border-white/10 hover:border-white/20 transition"
@@ -142,19 +231,23 @@ export default function KeywordsPage() {
               {filtered.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-4 py-12 text-center" style={{ color: 'var(--text-muted)' }}>
-                    No keywords yet. Add your first keyword above.
+                    No keywords yet.{' '}
+                    <button onClick={() => setShowDiscover(true)} className="underline" style={{ color: 'var(--accent)' }}>
+                      Keşfet
+                    </button>{' '}
+                    ile anahtar kelime bul ya da manuel ekle.
                   </td>
                 </tr>
               )}
               {filtered.map((kw: any) => (
                 <tr key={kw.id} className="hover:bg-white/[0.02] transition" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                  <td className="px-4 py-3 font-medium">{kw.keyword}</td>
-                  <td className="px-4 py-3">{kw.rank ?? '—'}</td>
+                  <td className="px-4 py-3 font-medium">{kw.phrase ?? kw.keyword}</td>
+                  <td className="px-4 py-3">{kw.rank ?? kw.ranks?.[0]?.position ?? '—'}</td>
                   <td className={`px-4 py-3 font-medium ${changeColor(kw.change ?? 0)}`}>
                     {kw.change > 0 ? `+${kw.change}` : kw.change ?? '—'}
                   </td>
                   <td className="px-4 py-3" style={{ color: 'var(--text-secondary)' }}>
-                    {kw.volume?.toLocaleString() ?? '—'}
+                    {(kw.searchVolume ?? kw.volume)?.toLocaleString() ?? '—'}
                   </td>
                   <td className={`px-4 py-3 font-medium ${difficultyColor(kw.difficulty ?? 0)}`}>
                     {kw.difficulty ?? '—'}
@@ -184,6 +277,145 @@ export default function KeywordsPage() {
         )}
       </div>
 
+      {/* ── Discover Keywords Modal ── */}
+      {showDiscover && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-2xl rounded-2xl flex flex-col" style={{ background: 'var(--bg-elevated)', border: '1px solid rgba(255,255,255,0.1)', maxHeight: '90vh' }}>
+            {/* Modal header */}
+            <div className="p-6 pb-4 shrink-0">
+              <div className="flex items-center justify-between mb-1">
+                <h2 className="text-lg font-semibold">Anahtar Kelime Keşfet</h2>
+                <button onClick={() => { setShowDiscover(false); setDiscoverResults([]); setSeedInput(''); }} style={{ color: 'var(--text-muted)' }}>✕</button>
+              </div>
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                1–5 seed kelime gir (virgül ya da alt satır ile ayır). DataForSEO'dan arama hacmi ve ilgili öneriler gelir.
+              </p>
+            </div>
+
+            {/* Seed input */}
+            <div className="px-6 pb-4 shrink-0">
+              <textarea
+                rows={2}
+                value={seedInput}
+                onChange={(e) => setSeedInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleResearch(); }}
+                placeholder="seo araçları, backlink analizi, anahtar kelime takibi"
+                className="w-full px-4 py-2.5 rounded-lg outline-none text-sm resize-none"
+                style={{ background: 'var(--bg-base)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-primary)' }}
+              />
+              <div className="flex justify-end mt-2">
+                <button
+                  onClick={handleResearch}
+                  disabled={!seedInput.trim() || researchMutation.isPending}
+                  className="px-5 py-2 rounded-lg text-sm font-medium disabled:opacity-50 transition hover:opacity-90"
+                  style={{ background: 'var(--accent)', color: '#fff' }}
+                >
+                  {researchMutation.isPending ? (
+                    <span className="flex items-center gap-2">
+                      <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Araştırılıyor…
+                    </span>
+                  ) : 'Araştır'}
+                </button>
+              </div>
+            </div>
+
+            {/* Results */}
+            {discoverResults.length > 0 && (
+              <>
+                <div className="px-6 pb-2 shrink-0 flex items-center justify-between">
+                  <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                    {discoverResults.length} öneri — {selectedKws.size} seçili
+                  </span>
+                  <button onClick={toggleAll} className="text-xs underline" style={{ color: 'var(--accent)' }}>
+                    {selectedKws.size === discoverResults.length ? 'Seçimi Kaldır' : 'Tümünü Seç'}
+                  </button>
+                </div>
+
+                <div className="overflow-y-auto flex-1 px-6 pb-4">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0" style={{ background: 'var(--bg-elevated)' }}>
+                      <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                        <th className="py-2 pr-3 w-8" />
+                        <th className="text-left py-2 font-medium" style={{ color: 'var(--text-muted)' }}>Kelime</th>
+                        <th className="text-right py-2 font-medium" style={{ color: 'var(--text-muted)' }}>Hacim</th>
+                        <th className="text-right py-2 font-medium" style={{ color: 'var(--text-muted)' }}>Zorluk</th>
+                        <th className="text-right py-2 font-medium" style={{ color: 'var(--text-muted)' }}>CPC</th>
+                        <th className="text-right py-2 font-medium" style={{ color: 'var(--text-muted)' }}>Niyet</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {discoverResults.map((r) => (
+                        <tr
+                          key={r.keyword}
+                          onClick={() => toggleKw(r.keyword)}
+                          className="cursor-pointer hover:bg-white/[0.03] transition"
+                          style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+                        >
+                          <td className="py-2.5 pr-3">
+                            <input
+                              type="checkbox"
+                              checked={selectedKws.has(r.keyword)}
+                              onChange={() => toggleKw(r.keyword)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="rounded"
+                              style={{ accentColor: 'var(--accent)' }}
+                            />
+                          </td>
+                          <td className="py-2.5 font-medium">{r.keyword}</td>
+                          <td className="py-2.5 text-right" style={{ color: 'var(--text-secondary)' }}>
+                            {r.search_volume?.toLocaleString() ?? '—'}
+                          </td>
+                          <td className={`py-2.5 text-right font-medium ${difficultyColor(r.keyword_difficulty ?? 0)}`}>
+                            {r.keyword_difficulty ?? '—'}
+                          </td>
+                          <td className="py-2.5 text-right" style={{ color: 'var(--text-secondary)' }}>
+                            {r.cpc ? `$${r.cpc.toFixed(2)}` : '—'}
+                          </td>
+                          <td className="py-2.5 text-right">
+                            {r.intent ? (
+                              <span className={`px-2 py-0.5 rounded-full text-xs ${intentBadge[r.intent?.toUpperCase()] ?? 'bg-white/10 text-white/50'}`}>
+                                {r.intent}
+                              </span>
+                            ) : '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="px-6 pb-6 pt-3 border-t shrink-0 flex justify-end gap-2" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+                  <button
+                    onClick={() => { setShowDiscover(false); setDiscoverResults([]); setSeedInput(''); }}
+                    className="px-4 py-2 text-sm rounded-lg"
+                    style={{ color: 'var(--text-secondary)' }}
+                  >
+                    İptal
+                  </button>
+                  <button
+                    onClick={() => addSelectedMutation.mutate(Array.from(selectedKws))}
+                    disabled={selectedKws.size === 0 || addSelectedMutation.isPending}
+                    className="px-5 py-2 text-sm rounded-lg font-medium disabled:opacity-50 transition hover:opacity-90"
+                    style={{ background: 'var(--accent)', color: '#fff' }}
+                  >
+                    {addSelectedMutation.isPending
+                      ? 'Ekleniyor…'
+                      : `${selectedKws.size} Kelime Ekle`}
+                  </button>
+                </div>
+              </>
+            )}
+
+            {researchMutation.isError && (
+              <p className="px-6 pb-4 text-sm text-red-400">
+                DataForSEO'dan veri alınamadı. API anahtarınızı ve kredinizi kontrol edin.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Add Keyword Dialog */}
       {showAdd && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
@@ -192,6 +424,7 @@ export default function KeywordsPage() {
             <input
               value={newKeyword}
               onChange={(e) => setNewKeyword(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && newKeyword) addMutation.mutate(newKeyword); }}
               placeholder="Enter keyword..."
               className="w-full px-4 py-2 rounded-lg outline-none text-sm"
               style={{ background: 'var(--bg-base)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-primary)' }}
@@ -223,7 +456,9 @@ export default function KeywordsPage() {
             </p>
             <textarea
               rows={8}
-              placeholder="keyword one&#10;keyword two&#10;keyword three"
+              value={bulkText}
+              onChange={(e) => setBulkText(e.target.value)}
+              placeholder={'keyword one\nkeyword two\nkeyword three'}
               className="w-full px-4 py-2 rounded-lg outline-none text-sm resize-none"
               style={{ background: 'var(--bg-base)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-primary)' }}
             />
@@ -232,11 +467,15 @@ export default function KeywordsPage() {
                 Cancel
               </button>
               <button
-                onClick={() => setShowImport(false)}
-                className="px-4 py-2 text-sm rounded-lg font-medium"
+                onClick={() => {
+                  const phrases = bulkText.split('\n').map(s => s.trim()).filter(Boolean);
+                  if (phrases.length) bulkImportMutation.mutate(phrases);
+                }}
+                disabled={!bulkText.trim() || bulkImportMutation.isPending}
+                className="px-4 py-2 text-sm rounded-lg font-medium disabled:opacity-50"
                 style={{ background: 'var(--accent)', color: '#fff' }}
               >
-                Import
+                {bulkImportMutation.isPending ? 'Importing…' : 'Import'}
               </button>
             </div>
           </div>
