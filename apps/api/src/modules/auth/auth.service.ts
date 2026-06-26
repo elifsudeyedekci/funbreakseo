@@ -163,15 +163,15 @@ export class AuthService {
     // Send verify email — non-fatal so registration succeeds even without SMTP locally
     try {
       const baseUrl = this.config.get<string>(
-        'APP_BASE_URL',
-        'https://app.funbreakseo.com',
+        'FRONTEND_URL',
+        'https://funbreakseo.com',
       );
       await this.mailer.sendMail({
         from: `"FunBreak SEO" <${this.config.get('SMTP_FROM', 'noreply@funbreakseo.com')}>`,
         to: user.email,
         subject: 'E-posta adresinizi doğrulayın',
         html: `<p>Merhaba ${user.fullName},</p>
-               <p><a href="${baseUrl}/auth/verify-email?token=${emailVerifyToken}">E-postanızı doğrulamak için tıklayın</a></p>`,
+               <p><a href="${baseUrl}/email-dogrula?token=${emailVerifyToken}">E-postanızı doğrulamak için tıklayın</a></p>`,
       });
     } catch {
       // SMTP not configured (local dev) — registration still succeeds
@@ -264,15 +264,15 @@ export class AuthService {
     });
 
     const baseUrl = this.config.get<string>(
-      'APP_BASE_URL',
-      'https://app.funbreakseo.com',
+      'FRONTEND_URL',
+      'https://funbreakseo.com',
     );
 
     await this.mailer.sendMail({
       from: `"FunBreak SEO" <${this.config.get('SMTP_FROM', 'noreply@funbreakseo.com')}>`,
       to: user.email,
       subject: 'Şifre Sıfırlama',
-      html: `<p>Şifrenizi sıfırlamak için <a href="${baseUrl}/auth/reset-password?token=${resetToken}">tıklayın</a>. Bu link 1 saat geçerlidir.</p>`,
+      html: `<p>Şifrenizi sıfırlamak için <a href="${baseUrl}/sifremi-sifirla?token=${resetToken}">tıklayın</a>. Bu link 1 saat geçerlidir.</p>`,
     });
 
     return { message: 'If that email exists, a reset link has been sent.' };

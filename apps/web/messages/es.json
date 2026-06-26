@@ -959,6 +959,22 @@
     "saving": "Guardando...",
     "acceptAndContinue": "Acepto y continúo"
   },
+  "dashBacklinks": {
+    "title": "Backlinks",
+    "subtitle": "Rastrea los backlinks que apuntan a tu sitio",
+    "tabAll": "Todos",
+    "tabNew": "Nuevos",
+    "tabLost": "Perdidos",
+    "empty": "Aún no hay backlinks",
+    "emptyDesc": "Inicia campañas de outreach para ganar nuevos backlinks.",
+    "colDomain": "Dominio origen",
+    "colTarget": "URL destino",
+    "colDR": "DR",
+    "colType": "Tipo",
+    "colStatus": "Estado",
+    "active": "Activo",
+    "lost": "Perdido"
+  },
   "dashContent": {
     "title": "Contenido",
     "subtitle": "Gestión de contenido impulsada por IA con puntuación SEO + GEO.",

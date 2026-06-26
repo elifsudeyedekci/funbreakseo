@@ -105,7 +105,7 @@ export const keywordApi = {
   bulkAdd: (projectId: string, keywords: string[]) => api.post(`/projects/${projectId}/keywords`, { phrases: keywords }),
   delete: (projectId: string, id: string) => api.delete(`/projects/${projectId}/keywords/${id}`),
   history: (id: string) => api.get(`/keywords/${id}/history`),
-  research: (projectId: string, d: Record<string, unknown>) => api.post('/keywords/research', { projectId, ...d }),
+  research: (projectId: string, d: Record<string, unknown>) => api.post('/keywords/research', d),
   summary: (projectId: string) => api.get(`/projects/${projectId}/keywords/summary`),
   refreshRank: (id: string) => api.post(`/keywords/${id}/refresh-rank`),
 };

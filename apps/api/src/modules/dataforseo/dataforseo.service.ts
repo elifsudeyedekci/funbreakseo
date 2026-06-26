@@ -292,9 +292,9 @@ export class DataForSeoService {
       tasks: Array<{
         result?: RelatedKeyword[];
       }>;
-    }>('/keywords_data/google_ads/keywords_for_site/live', [
+    }>('/keywords_data/google_ads/keywords_for_keywords/live', [
       {
-        target: seed,
+        keywords: [seed],
         location_code: 2792,
         language_code: 'tr',
         limit: 50,

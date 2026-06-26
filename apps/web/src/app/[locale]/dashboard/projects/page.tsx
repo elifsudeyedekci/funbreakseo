@@ -17,10 +17,12 @@ interface Project {
   country: string;
   language: string;
   healthScore: number;
-  geoScore: number;
-  keywordsCount: number;
-  lastCrawlDate: string | null;
+  geoVisibilityScore: number;
+  _count?: { keywords: number; crawlJobs: number };
   status: string;
+  // legacy aliases
+  geoScore?: number;
+  keywordsCount?: number;
 }
 
 function ScoreRing({ score, color }: { score: number; color: string }) {
@@ -156,7 +158,6 @@ export default function ProjectsPage() {
                   </h3>
                   <p className="text-xs text-white/40 mt-0.5">
                     {project.country} · {project.language}
-                    {project.lastCrawlDate && ` · ${formatDate(project.lastCrawlDate)}`}
                   </p>
                 </div>
                 <span className={cn(
@@ -173,13 +174,13 @@ export default function ProjectsPage() {
                   <p className="text-[10px] text-white/40 mt-1">SEO</p>
                 </div>
                 <div className="text-center">
-                  <ScoreRing score={project.geoScore || 0} color="#a855f7" />
+                  <ScoreRing score={project.geoVisibilityScore ?? project.geoScore ?? 0} color="#a855f7" />
                   <p className="text-[10px] text-white/40 mt-1">GEO</p>
                 </div>
                 <div className="ml-auto text-right">
                   <div className="flex items-center gap-1 text-sm text-white/70">
                     <Search className="h-3.5 w-3.5" />
-                    <span>{(project.keywordsCount || 0).toLocaleString()}</span>
+                    <span>{(project._count?.keywords ?? project.keywordsCount ?? 0).toLocaleString()}</span>
                   </div>
                   <p className="text-[10px] text-white/30 mt-0.5">{t('wordLabel')}</p>
                 </div>

@@ -186,7 +186,7 @@ export default function ContentPage() {
                     className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-white focus:border-indigo-500/50 focus:outline-none"
                   >
                     <option value="BLOG">{t('typeBlog')}</option>
-                    <option value="PRODUCT">{t('typeProduct')}</option>
+                    <option value="PRODUCT_DESC">{t('typeProduct')}</option>
                     <option value="LANDING">{t('typeLanding')}</option>
                     <option value="FAQ">{t('typeFaq')}</option>
                   </select>

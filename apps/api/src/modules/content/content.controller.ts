@@ -18,7 +18,7 @@ import { ContentService } from './content.service'
 export class GenerateContentDto {
   @IsString() @MinLength(3) title: string = ''
   @IsString() @MinLength(1) focusKeyword: string = ''
-  @IsOptional() @IsEnum(['BLOG', 'PILLAR', 'LANDING', 'FAQ', 'PRODUCT']) type: ContentType = 'BLOG'
+  @IsOptional() @IsEnum(['BLOG', 'PRODUCT_DESC', 'META', 'FAQ', 'LANDING']) type: ContentType = 'BLOG'
   @IsOptional() @IsArray() @IsString({ each: true }) secondaryKeywords?: string[]
   @IsOptional() @IsString() language?: string
   @IsOptional() @IsString() tone?: string

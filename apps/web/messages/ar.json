@@ -959,6 +959,22 @@
     "saving": "جارٍ الحفظ...",
     "acceptAndContinue": "أوافق وأستمر"
   },
+  "dashBacklinks": {
+    "title": "الروابط الخلفية",
+    "subtitle": "تتبع الروابط الخلفية المشيرة إلى موقعك",
+    "tabAll": "الكل",
+    "tabNew": "جديد",
+    "tabLost": "مفقود",
+    "empty": "لا توجد روابط خلفية بعد",
+    "emptyDesc": "ابدأ حملات التواصل للحصول على روابط خلفية جديدة.",
+    "colDomain": "النطاق المصدر",
+    "colTarget": "رابط الهدف",
+    "colDR": "DR",
+    "colType": "النوع",
+    "colStatus": "الحالة",
+    "active": "نشط",
+    "lost": "مفقود"
+  },
   "dashContent": {
     "title": "المحتوى",
     "subtitle": "إدارة المحتوى بالذكاء الاصطناعي مع تقييم SEO + GEO.",

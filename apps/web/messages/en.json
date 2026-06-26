@@ -960,6 +960,22 @@
     "saving": "Saving...",
     "acceptAndContinue": "I Accept and Continue"
   },
+  "dashBacklinks": {
+    "title": "Backlinks",
+    "subtitle": "Track backlinks pointing to your site",
+    "tabAll": "All",
+    "tabNew": "New",
+    "tabLost": "Lost",
+    "empty": "No backlinks yet",
+    "emptyDesc": "Start outreach campaigns to earn new backlinks.",
+    "colDomain": "Source Domain",
+    "colTarget": "Target URL",
+    "colDR": "DR",
+    "colType": "Type",
+    "colStatus": "Status",
+    "active": "Active",
+    "lost": "Lost"
+  },
   "dashContent": {
     "title": "Content",
     "subtitle": "AI-powered content management with SEO + GEO scoring.",

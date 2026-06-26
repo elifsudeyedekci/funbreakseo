@@ -66,9 +66,9 @@ export const admin = {
   dashboard: () => adminApi.get('/admin/dashboard'),
   customers: (p?: Record<string, unknown>) => adminApi.get('/admin/customers', { params: p }),
   getCustomer: (id: string) => adminApi.get(`/admin/customers/${id}`),
-  adjustCredits: (id: string, d: Record<string, unknown>) => adminApi.post(`/admin/customers/${id}/credits`, d),
+  adjustCredits: (id: string, d: Record<string, unknown>) => adminApi.post(`/admin/customers/${id}/add-credit`, d),
   impersonate: (id: string) => adminApi.post(`/admin/customers/${id}/impersonate`),
-  suspendOrg: (id: string, d: Record<string, unknown>) => adminApi.post(`/admin/orgs/${id}/suspend`, d),
+  suspendOrg: (id: string, d: Record<string, unknown>) => adminApi.post(`/admin/customers/${id}/suspend`, d),
 
   plans: () => adminApi.get('/admin/plans'),
   createPlan: (d: Record<string, unknown>) => adminApi.post('/admin/plans', d),

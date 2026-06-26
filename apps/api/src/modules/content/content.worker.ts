@@ -140,7 +140,7 @@ Return ONLY valid Markdown. Do not include front matter or code fences around th
       const claudeResponse = await axios.post(
         'https://api.anthropic.com/v1/messages',
         {
-          model: 'claude-3-5-sonnet-20241022',
+          model: this.config.get('DEFAULT_CONTENT_MODEL', 'claude-sonnet-4-6'),
           max_tokens: 4096,
           messages: [{ role: 'user', content: contentPrompt }],
         },
@@ -179,7 +179,7 @@ Respond in this exact JSON format (no markdown fences):
       const metaResponse = await axios.post(
         'https://api.anthropic.com/v1/messages',
         {
-          model: 'claude-3-5-sonnet-20241022',
+          model: this.config.get('DEFAULT_CONTENT_MODEL', 'claude-sonnet-4-6'),
           max_tokens: 300,
           messages: [{ role: 'user', content: metaPrompt }],
         },
@@ -287,7 +287,7 @@ Respond in this exact JSON format (no markdown fences):
           jsonLd,
           h1: h1Text,
           headingsOutline,
-          aiModel: 'claude-3-5-sonnet-20241022',
+          aiModel: this.config.get('DEFAULT_CONTENT_MODEL', 'claude-sonnet-4-6'),
           generationCost,
         },
       })
@@ -384,7 +384,7 @@ Return ONLY the rewritten section content (including its heading), nothing else.
       const response = await axios.post(
         'https://api.anthropic.com/v1/messages',
         {
-          model: 'claude-3-5-sonnet-20241022',
+          model: this.config.get('DEFAULT_CONTENT_MODEL', 'claude-sonnet-4-6'),
           max_tokens: 1024,
           messages: [{ role: 'user', content: sectionPrompt }],
         },

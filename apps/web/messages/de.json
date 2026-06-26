@@ -959,6 +959,22 @@
     "saving": "Wird gespeichert...",
     "acceptAndContinue": "Ich akzeptiere und fahre fort"
   },
+  "dashBacklinks": {
+    "title": "Backlinks",
+    "subtitle": "Verfolgen Sie Backlinks, die auf Ihre Website verweisen",
+    "tabAll": "Alle",
+    "tabNew": "Neu",
+    "tabLost": "Verloren",
+    "empty": "Noch keine Backlinks",
+    "emptyDesc": "Starten Sie Outreach-Kampagnen, um neue Backlinks zu gewinnen.",
+    "colDomain": "Quelldomain",
+    "colTarget": "Ziel-URL",
+    "colDR": "DR",
+    "colType": "Typ",
+    "colStatus": "Status",
+    "active": "Aktiv",
+    "lost": "Verloren"
+  },
   "dashContent": {
     "title": "Inhalt",
     "subtitle": "KI-gestütztes Content-Management mit SEO + GEO-Bewertung.",

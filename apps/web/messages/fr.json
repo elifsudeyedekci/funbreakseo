@@ -959,6 +959,22 @@
     "saving": "Enregistrement...",
     "acceptAndContinue": "J'accepte et continue"
   },
+  "dashBacklinks": {
+    "title": "Backlinks",
+    "subtitle": "Suivez les backlinks pointant vers votre site",
+    "tabAll": "Tous",
+    "tabNew": "Nouveaux",
+    "tabLost": "Perdus",
+    "empty": "Aucun backlink pour l'instant",
+    "emptyDesc": "Lancez des campagnes d'outreach pour gagner de nouveaux backlinks.",
+    "colDomain": "Domaine source",
+    "colTarget": "URL cible",
+    "colDR": "DR",
+    "colType": "Type",
+    "colStatus": "Statut",
+    "active": "Actif",
+    "lost": "Perdu"
+  },
   "dashContent": {
     "title": "Contenu",
     "subtitle": "Gestion de contenu alimentée par l'IA avec notation SEO + GEO.",
