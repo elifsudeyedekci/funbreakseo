@@ -179,6 +179,10 @@ export class CrawlerWorker extends WorkerHost {
         ? project.domain
         : `https://${project.domain}`
 
+      // Pre-load rule definitions to get correct UUIDs for FK reference
+      const ruleDefs = await this.prisma.seoRuleDefinition.findMany({ select: { id: true, code: true } })
+      const ruleIdByCode = new Map(ruleDefs.map((r) => [r.code, r.id]))
+
       // Step 1: Discover URLs
       const urls = await this.discoverUrls(domain)
       this.logger.log(`[Job ${job.id}] Discovered ${urls.length} URLs`)
@@ -240,7 +244,7 @@ export class CrawlerWorker extends WorkerHost {
             data: issues.map((issue) => ({
               crawlJobId,
               crawledPageId: crawledPage.id,
-              ruleId: issue.ruleId,
+              ruleId: ruleIdByCode.get(issue.code) ?? null,
               category: issue.category,
               severity: issue.severity,
               code: issue.code,

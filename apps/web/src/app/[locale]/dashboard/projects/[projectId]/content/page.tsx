@@ -34,7 +34,7 @@ export default function ContentPage() {
     REJECTED: { label: t('statusRejected'), color: 'bg-red-500/20 text-red-400' },
   };
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ keyword: '', contentType: 'BLOG', language: 'tr', tone: 'professional' });
+  const [form, setForm] = useState({ title: '', focusKeyword: '', type: 'BLOG', language: 'tr', tone: 'professional' });
   const [filterStatus, setFilterStatus] = useState<ContentStatus | 'ALL'>('ALL');
 
   const { data, isLoading } = useQuery({
@@ -51,7 +51,7 @@ export default function ContentPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['content', projectId] });
       setShowModal(false);
-      setForm({ keyword: '', contentType: 'BLOG', language: 'tr', tone: 'professional' });
+      setForm({ title: '', focusKeyword: '', type: 'BLOG', language: 'tr', tone: 'professional' });
     },
   });
 
@@ -160,10 +160,19 @@ export default function ContentPage() {
 
             <div className="space-y-4">
               <div>
+                <label className="block text-sm font-medium text-white/70 mb-1.5">{t('titleLabel') ?? 'Makale Başlığı'}</label>
+                <input
+                  value={form.title}
+                  onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-white/30 focus:border-indigo-500/50 focus:outline-none"
+                  placeholder={t('titlePlaceholder') ?? 'Örn: 2025 Yılının En İyi SEO Araçları'}
+                />
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-white/70 mb-1.5">{t('keywordLabel')}</label>
                 <input
-                  value={form.keyword}
-                  onChange={(e) => setForm((p) => ({ ...p, keyword: e.target.value }))}
+                  value={form.focusKeyword}
+                  onChange={(e) => setForm((p) => ({ ...p, focusKeyword: e.target.value }))}
                   className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-white/30 focus:border-indigo-500/50 focus:outline-none"
                   placeholder={t('keywordPlaceholder')}
                 />
@@ -172,8 +181,8 @@ export default function ContentPage() {
                 <div>
                   <label className="block text-sm font-medium text-white/70 mb-1.5">{t('typeLabel')}</label>
                   <select
-                    value={form.contentType}
-                    onChange={(e) => setForm((p) => ({ ...p, contentType: e.target.value }))}
+                    value={form.type}
+                    onChange={(e) => setForm((p) => ({ ...p, type: e.target.value }))}
                     className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-white focus:border-indigo-500/50 focus:outline-none"
                   >
                     <option value="BLOG">{t('typeBlog')}</option>
@@ -205,7 +214,7 @@ export default function ContentPage() {
                 </button>
                 <button
                   onClick={() => generateMutation.mutate()}
-                  disabled={!form.keyword || generateMutation.isPending}
+                  disabled={!form.title || !form.focusKeyword || generateMutation.isPending}
                   className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
                 >
                   {generateMutation.isPending ? (

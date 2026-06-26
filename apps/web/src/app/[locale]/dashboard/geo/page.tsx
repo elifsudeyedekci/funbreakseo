@@ -2,9 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { geoApi } from '@/lib/api';
-
-const PROJECT_ID = 'current';
+import { geoApi, projectApi } from '@/lib/api';
 
 const PLATFORMS = [
   { key: 'chatgpt', label: 'ChatGPT', icon: '🤖' },
@@ -41,9 +39,16 @@ export default function GeoPage() {
   const [query, setQuery] = useState('');
   const qc = useQueryClient();
 
+  const { data: projects } = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => projectApi.list().then(r => (Array.isArray(r.data) ? r.data : (r.data?.data ?? [])) as { id: string }[]),
+  });
+  const projectId = projects?.[0]?.id;
+
   const { data: overview, isLoading } = useQuery({
-    queryKey: ['geo-overview', PROJECT_ID],
-    queryFn: () => geoApi.overview(PROJECT_ID).then(r => r.data?.data as {
+    queryKey: ['geo-overview', projectId],
+    enabled: !!projectId,
+    queryFn: () => geoApi.overview(projectId!).then(r => r.data?.data as {
       overallScore?: number;
       totalMentions?: number;
       totalCitations?: number;
@@ -53,9 +58,9 @@ export default function GeoPage() {
   });
 
   const addMutation = useMutation({
-    mutationFn: (q: string) => geoApi.addQuery(PROJECT_ID, { query: q }),
+    mutationFn: (q: string) => geoApi.addQuery(projectId!, { prompt: q }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['geo-overview', PROJECT_ID] });
+      qc.invalidateQueries({ queryKey: ['geo-overview', projectId] });
       setShowAdd(false);
       setQuery('');
     },

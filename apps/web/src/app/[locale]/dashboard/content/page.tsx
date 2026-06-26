@@ -3,9 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations, useLocale } from 'next-intl';
-import { contentApi } from '@/lib/api';
-
-const PROJECT_ID = 'current';
+import { contentApi, projectApi } from '@/lib/api';
 
 type TabType = 'list' | 'calendar';
 
@@ -117,16 +115,23 @@ export default function ContentPage() {
   const [genKeyword, setGenKeyword] = useState('');
   const qc = useQueryClient();
 
+  const { data: projects } = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => projectApi.list().then(r => (Array.isArray(r.data) ? r.data : (r.data?.data ?? [])) as { id: string }[]),
+  });
+  const projectId = projects?.[0]?.id;
+
   const { data: content, isLoading } = useQuery({
-    queryKey: ['content', PROJECT_ID],
-    queryFn: () => contentApi.list(PROJECT_ID).then((r) => (r.data?.data ?? []) as Record<string, unknown>[]),
+    queryKey: ['content', projectId],
+    enabled: !!projectId,
+    queryFn: () => contentApi.list(projectId!).then((r) => (r.data?.data ?? []) as Record<string, unknown>[]),
   });
 
   const generateMutation = useMutation({
-    mutationFn: (data: { topic: string; keyword: string }) =>
-      contentApi.generate(PROJECT_ID, data),
+    mutationFn: (data: { title: string; focusKeyword: string }) =>
+      contentApi.generate(projectId!, data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['content', PROJECT_ID] });
+      qc.invalidateQueries({ queryKey: ['content', projectId] });
       setShowGenerate(false);
       setGenTopic('');
       setGenKeyword('');
@@ -288,7 +293,7 @@ export default function ContentPage() {
                 Cancel
               </button>
               <button
-                onClick={() => generateMutation.mutate({ topic: genTopic, keyword: genKeyword })}
+                onClick={() => generateMutation.mutate({ title: genTopic, focusKeyword: genKeyword })}
                 disabled={!genTopic || generateMutation.isPending}
                 className="px-4 py-2 text-sm rounded-lg font-medium disabled:opacity-50"
                 style={{ background: 'var(--accent)', color: '#fff' }}

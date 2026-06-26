@@ -46,13 +46,27 @@ export class CrawlerService {
       include: {
         _count: { select: { issues: true, pages: true } },
         issues: {
-          take: 20,
+          take: 50,
           orderBy: { severity: 'asc' },
           select: { id: true, severity: true, category: true, code: true, message: true, recommendation: true, crawledPage: { select: { url: true } } },
         },
       },
     })
-    return latest ?? null
+    if (!latest) return null
+    return {
+      ...latest,
+      crawledPages: latest._count.pages,
+      totalIssues: latest._count.issues,
+      criticalCount: latest.issues.filter((i) => i.severity === 'CRITICAL').length,
+      warningCount: latest.issues.filter((i) => i.severity === 'WARNING').length,
+      noticeCount: latest.issues.filter((i) => i.severity === 'NOTICE').length,
+      issues: latest.issues.map((i) => ({
+        ...i,
+        url: i.crawledPage?.url,
+        howToFix: i.recommendation,
+        count: 1,
+      })),
+    }
   }
 
   async getCrawlHistory(projectId: string) {

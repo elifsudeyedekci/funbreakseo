@@ -2,9 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { crawlerApi } from '@/lib/api';
-
-const PROJECT_ID = 'current';
+import { crawlerApi, projectApi } from '@/lib/api';
 
 const ISSUE_CATEGORIES = [
   { key: 'title', label: 'Title Tags' },
@@ -29,15 +27,22 @@ export default function CrawlPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const qc = useQueryClient();
 
+  const { data: projects } = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => projectApi.list().then(r => (Array.isArray(r.data) ? r.data : (r.data?.data ?? [])) as { id: string }[]),
+  });
+  const projectId = projects?.[0]?.id;
+
   const { data: history, isLoading } = useQuery({
-    queryKey: ['crawl-history', PROJECT_ID],
-    queryFn: () => crawlerApi.history(PROJECT_ID).then(r => (r.data?.data || []) as any[]),
+    queryKey: ['crawl-history', projectId],
+    enabled: !!projectId,
+    queryFn: () => crawlerApi.history(projectId!).then(r => (r.data?.data || []) as any[]),
     refetchInterval: 10_000,
   });
 
   const startMutation = useMutation({
-    mutationFn: () => crawlerApi.start(PROJECT_ID),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['crawl-history', PROJECT_ID] }),
+    mutationFn: () => crawlerApi.start(projectId!),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['crawl-history', projectId] }),
   });
 
   const activeCrawl = selected

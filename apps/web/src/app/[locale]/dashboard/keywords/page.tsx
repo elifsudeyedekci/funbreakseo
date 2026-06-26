@@ -2,9 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { keywordApi } from '@/lib/api';
-
-const PROJECT_ID = 'current';
+import { keywordApi, projectApi } from '@/lib/api';
 
 const difficultyColor = (d: number) =>
   d < 30 ? 'text-green-400' : d < 60 ? 'text-yellow-400' : 'text-red-400';
@@ -19,20 +17,28 @@ export default function KeywordsPage() {
   const [newKeyword, setNewKeyword] = useState('');
   const qc = useQueryClient();
 
+  const { data: projects } = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => projectApi.list().then(r => (Array.isArray(r.data) ? r.data : (r.data?.data ?? [])) as { id: string }[]),
+  });
+  const projectId = projects?.[0]?.id;
+
   const { data: keywords, isLoading: kwLoading } = useQuery({
-    queryKey: ['keywords', PROJECT_ID],
-    queryFn: () => keywordApi.list(PROJECT_ID).then(r => (r.data?.data || []) as any[]),
+    queryKey: ['keywords', projectId],
+    enabled: !!projectId,
+    queryFn: () => keywordApi.list(projectId!).then(r => (r.data?.data || []) as any[]),
   });
 
   const { data: summary, isLoading: sumLoading } = useQuery({
-    queryKey: ['keywords-summary', PROJECT_ID],
-    queryFn: () => keywordApi.summary(PROJECT_ID).then(r => r.data?.data as { top3?: number; top10?: number; top20?: number; beyond20?: number } | undefined),
+    queryKey: ['keywords-summary', projectId],
+    enabled: !!projectId,
+    queryFn: () => keywordApi.summary(projectId!).then(r => r.data?.data as { top3?: number; top10?: number; top20?: number; beyond20?: number } | undefined),
   });
 
   const addMutation = useMutation({
-    mutationFn: (kw: string) => keywordApi.add(PROJECT_ID, [kw]),
+    mutationFn: (kw: string) => keywordApi.add(projectId!, [kw]),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['keywords', PROJECT_ID] });
+      qc.invalidateQueries({ queryKey: ['keywords', projectId] });
       setShowAdd(false);
       setNewKeyword('');
     },
