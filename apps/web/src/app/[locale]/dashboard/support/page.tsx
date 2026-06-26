@@ -32,7 +32,7 @@ export default function SupportPage() {
 
   const { data: tickets, isLoading } = useQuery<Ticket[]>({
     queryKey: ['support-tickets'],
-    queryFn: () => supportApi.list().then((r) => (r.data?.data || []) as Ticket[]),
+    queryFn: () => supportApi.list().then((r) => (Array.isArray(r.data) ? r.data : (r.data?.data ?? [])) as Ticket[]),
   });
 
   const createMutation = useMutation({

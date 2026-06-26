@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { authApi, api } from '@/lib/api';
@@ -38,27 +38,37 @@ export default function SettingsPage() {
   const [email, setEmail] = useState('');
   const [locale, setLocale] = useState('en');
   const [currency, setCurrency] = useState('USD');
+  const [orgName, setOrgName] = useState('');
 
-  useState(() => {
+  useEffect(() => {
     if (me) {
-      setName(me.name ?? '');
-      setEmail(me.email ?? '');
-      setLocale(me.locale ?? 'en');
-      setCurrency(me.currency ?? 'USD');
+      setName((me as any).fullName ?? (me as any).name ?? '');
+      setEmail((me as any).email ?? '');
+      setLocale((me as any).locale ?? 'en');
+      setCurrency((me as any).currency ?? 'USD');
+      setOrgName((me as any).organization?.name ?? '');
     }
-  });
+  }, [me]);
 
   const profileMutation = useMutation({
-    mutationFn: (data: any) => api.patch('/auth/profile', data),
+    mutationFn: (data: any) => api.patch('/account/me', { fullName: data.name, email: data.email, locale: data.locale, currency: data.currency }),
   });
 
   const passwordMutation = useMutation({
-    mutationFn: (data: any) => api.patch('/auth/password', data),
+    mutationFn: (data: any) => api.post('/account/change-password', { currentPassword: data.currentPassword, newPassword: data.newPassword }),
     onSuccess: () => {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     },
+  });
+
+  const orgMutation = useMutation({
+    mutationFn: (orgNameVal: string) => api.patch('/account/organization', { name: orgNameVal }),
+  });
+
+  const twoFaMutation = useMutation({
+    mutationFn: () => (me as any)?.twoFactorEnabled ? api.post('/account/2fa/disable', {}) : api.post('/account/2fa/enable'),
   });
 
   const tabs: { key: Tab; label: string }[] = [
@@ -187,16 +197,21 @@ export default function SettingsPage() {
           <div>
             <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>{t('orgNameLabel')}</label>
             <input
+              value={orgName}
+              onChange={(e) => setOrgName(e.target.value)}
               placeholder={t('orgNamePlaceholder')}
               className="w-full px-4 py-2 rounded-lg outline-none text-sm"
               style={{ background: 'var(--bg-elevated)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-primary)' }}
             />
           </div>
+          {orgMutation.isSuccess && <p className="text-xs text-green-400">{t('profileSaved')}</p>}
           <button
-            className="px-4 py-2 rounded-lg text-sm font-medium transition hover:opacity-90"
+            onClick={() => orgMutation.mutate(orgName)}
+            disabled={orgMutation.isPending}
+            className="px-4 py-2 rounded-lg text-sm font-medium transition hover:opacity-90 disabled:opacity-50"
             style={{ background: 'var(--accent)', color: '#fff' }}
           >
-            {t('saveOrgBtn')}
+            {orgMutation.isPending ? t('savingBtn') : t('saveOrgBtn')}
           </button>
         </div>
       )}
@@ -260,10 +275,12 @@ export default function SettingsPage() {
             <h2 className="text-sm font-semibold">{t('twoFaTitle')}</h2>
             <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{t('twoFaDesc')}</p>
             <button
-              className="px-4 py-2 rounded-lg text-sm font-medium transition hover:opacity-90"
-              style={{ background: me?.twoFactorEnabled ? '#ef4444' : 'var(--accent)', color: '#fff' }}
+              onClick={() => twoFaMutation.mutate()}
+              disabled={twoFaMutation.isPending}
+              className="px-4 py-2 rounded-lg text-sm font-medium transition hover:opacity-90 disabled:opacity-50"
+              style={{ background: (me as any)?.twoFactorEnabled ? '#ef4444' : 'var(--accent)', color: '#fff' }}
             >
-              {me?.twoFactorEnabled ? t('twoFaDisableBtn') : t('twoFaEnableBtn')}
+              {twoFaMutation.isPending ? '...' : ((me as any)?.twoFactorEnabled ? t('twoFaDisableBtn') : t('twoFaEnableBtn'))}
             </button>
           </div>
         </div>

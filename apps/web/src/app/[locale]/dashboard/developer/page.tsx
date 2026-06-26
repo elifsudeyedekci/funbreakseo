@@ -33,7 +33,7 @@ export default function DeveloperPage() {
 
   const { data } = useQuery({
     queryKey: ["api-keys"],
-    queryFn: () => developerApi.apiKeys().then((r) => (r.data?.data ?? []) as ApiKey[]),
+    queryFn: () => developerApi.apiKeys().then((r) => (Array.isArray(r.data) ? r.data : (r.data?.data ?? [])) as ApiKey[]),
   });
 
   const createMutation = useMutation({

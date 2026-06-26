@@ -4,9 +4,7 @@ import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { Download, Plus, FileText } from 'lucide-react';
-import { reportsApi } from '@/lib/api';
-
-const PROJECT_ID = 'current';
+import { reportsApi, projectApi } from '@/lib/api';
 
 interface Report {
   id: string;
@@ -36,13 +34,20 @@ export default function ReportsPage() {
     FAILED: t('statusFailed'),
   };
 
+  const { data: projects } = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => projectApi.list().then(r => (Array.isArray(r.data) ? r.data : (r.data?.data ?? [])) as { id: string }[]),
+  });
+  const projectId = projects?.[0]?.id;
+
   const { data: reports, isLoading, refetch } = useQuery<Report[]>({
-    queryKey: ['reports', PROJECT_ID],
-    queryFn: () => reportsApi.list(PROJECT_ID).then(r => r.data?.data ?? []),
+    queryKey: ['reports', projectId],
+    enabled: !!projectId,
+    queryFn: () => reportsApi.list(projectId!).then(r => Array.isArray(r.data) ? r.data : (r.data?.data ?? [])),
   });
 
   const create = useMutation({
-    mutationFn: () => reportsApi.generate(PROJECT_ID, { name: form.name, format: form.format, frequency: form.frequency }),
+    mutationFn: () => reportsApi.generate(projectId!, { name: form.name, format: form.format, frequency: form.frequency }),
     onSuccess: () => { setShowCreate(false); refetch(); },
   });
 

@@ -48,13 +48,33 @@ export default function GeoPage() {
   const { data: overview, isLoading } = useQuery({
     queryKey: ['geo-overview', projectId],
     enabled: !!projectId,
-    queryFn: () => geoApi.overview(projectId!).then(r => r.data?.data as {
-      overallScore?: number;
-      totalMentions?: number;
-      totalCitations?: number;
-      platforms?: Record<string, { visibilityScore?: number; mentionCount?: number; citationCount?: number }>;
-      queries?: any[];
-    } | undefined),
+    queryFn: async () => {
+      const [ov, qs] = await Promise.all([
+        geoApi.overview(projectId!),
+        geoApi.listQueries(projectId!),
+      ]);
+      const d = (ov.data?.data ?? ov.data) as any;
+      if (!d) return undefined;
+      const byPlatform = d.byPlatform ?? {};
+      const platforms: Record<string, { visibilityScore: number; mentionCount: number; citationCount: number }> = {};
+      for (const [k, v] of Object.entries(byPlatform)) {
+        const p = v as { mentions: number; citations: number };
+        const total = (p.mentions ?? 0) + (p.citations ?? 0);
+        platforms[k] = {
+          mentionCount: p.mentions ?? 0,
+          citationCount: p.citations ?? 0,
+          visibilityScore: total > 0 ? Math.round(((p.citations ?? 0) / total) * 100) : 0,
+        };
+      }
+      const queriesRaw = Array.isArray(qs.data) ? qs.data : (qs.data?.data ?? []);
+      return {
+        overallScore: d.overallScore as number | undefined,
+        totalMentions: (d.mentionCount ?? 0) as number,
+        totalCitations: (d.citationCount ?? 0) as number,
+        platforms,
+        queries: queriesRaw as any[],
+      };
+    },
   });
 
   const addMutation = useMutation({

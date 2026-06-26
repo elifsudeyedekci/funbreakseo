@@ -52,16 +52,17 @@ export default function BillingPage() {
         billingApi.wallet(),
       ]);
       return {
-        subscription: sub.data.data,
-        usage: usage.data.data,
-        invoices: invoices.data.data || [],
-        wallet: wallet.data.data,
+        subscription: sub.data?.data ?? sub.data,
+        usage: usage.data?.data ?? usage.data,
+        invoices: Array.isArray(invoices.data) ? invoices.data : (invoices.data?.data ?? invoices.data ?? []),
+        wallet: wallet.data?.data ?? wallet.data,
       };
     },
   });
 
   const subscription = data?.subscription as {
-    planKey: string;
+    planKey?: string;
+    plan?: { key: string };
     status: SubscriptionStatus;
     billingCycle: 'MONTHLY' | 'YEARLY';
     currentPeriodEnd: string;
@@ -79,7 +80,7 @@ export default function BillingPage() {
     id: string; amount: number; currency: string; status: string; dueDate: string; pdfUrl: string;
   }>;
 
-  const planKey = subscription?.planKey || 'starter';
+  const planKey = (subscription?.plan as any)?.key ?? (subscription as any)?.planKey ?? 'starter';
   const limits = DEFAULT_PLAN_LIMITS[planKey as keyof typeof DEFAULT_PLAN_LIMITS];
   const prices = PLAN_PRICES_TRY[planKey as keyof typeof PLAN_PRICES_TRY];
   const status = subscription?.status;

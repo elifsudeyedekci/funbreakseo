@@ -32,7 +32,7 @@ export default function NotificationsPage() {
 
   const { data } = useQuery({
     queryKey: ['notification-prefs'],
-    queryFn: () => notificationApi.preferences().then((r) => (r.data?.data ?? null) as Record<string, boolean>),
+    queryFn: () => notificationApi.preferences().then((r) => (r.data?.data ?? r.data ?? null) as Record<string, boolean>),
     initialData: {} as Record<string, boolean>,
   });
 
