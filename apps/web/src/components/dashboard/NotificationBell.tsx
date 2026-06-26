@@ -11,7 +11,7 @@ import { formatDate } from '@/lib/utils';
 interface Notification {
   id: string;
   title: string;
-  message: string;
+  body: string;
   type: string;
   read: boolean;
   createdAt: string;
@@ -111,7 +111,7 @@ export function NotificationBell() {
                   <div className={cn('mt-1 h-2 w-2 rounded-full flex-shrink-0', TYPE_COLORS[n.type] || 'bg-gray-500')} />
                   <div className="min-w-0">
                     <p className="text-xs font-medium text-white truncate">{n.title}</p>
-                    <p className="text-xs text-white/50 mt-0.5 leading-relaxed">{n.message}</p>
+                    <p className="text-xs text-white/50 mt-0.5 leading-relaxed">{n.body}</p>
                     <p className="text-[10px] text-white/25 mt-1">{formatDate(n.createdAt)}</p>
                   </div>
                 </div>

@@ -129,7 +129,8 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Refresh access token' })
   async refreshToken(@Body() dto: RefreshTokenDto) {
-    return this.authService.refreshToken(dto.refreshToken);
+    const tokens = await this.authService.refreshToken(dto.refreshToken);
+    return { data: tokens };
   }
 
   @Post('logout')

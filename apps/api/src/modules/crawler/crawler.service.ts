@@ -60,6 +60,7 @@ export class CrawlerService {
       criticalCount: latest.issues.filter((i) => i.severity === 'CRITICAL').length,
       warningCount: latest.issues.filter((i) => i.severity === 'WARNING').length,
       noticeCount: latest.issues.filter((i) => i.severity === 'NOTICE').length,
+      completedAt: latest.finishedAt,
       issues: latest.issues.map((i) => ({
         ...i,
         url: i.crawledPage?.url,
