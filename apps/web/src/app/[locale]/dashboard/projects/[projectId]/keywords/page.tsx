@@ -29,12 +29,30 @@ interface Keyword {
   updatedAt: string;
 }
 
+interface ResearchResult {
+  keyword: string;
+  search_volume?: number;
+  keyword_difficulty?: number;
+  cpc?: number;
+  intent?: string;
+}
+
 const INTENT_COLORS: Record<KeywordIntent, string> = {
   INFORMATIONAL: 'bg-blue-500/20 text-blue-400',
   NAVIGATIONAL: 'bg-emerald-500/20 text-emerald-400',
   TRANSACTIONAL: 'bg-orange-500/20 text-orange-400',
   COMMERCIAL: 'bg-purple-500/20 text-purple-400',
 };
+
+const intentBadge: Record<string, string> = {
+  INFORMATIONAL: 'bg-blue-500/15 text-blue-400',
+  NAVIGATIONAL: 'bg-purple-500/15 text-purple-400',
+  TRANSACTIONAL: 'bg-green-500/15 text-green-400',
+  COMMERCIAL: 'bg-orange-500/15 text-orange-400',
+};
+
+const difficultyColor = (d: number) =>
+  d < 30 ? 'text-green-400' : d < 60 ? 'text-yellow-400' : 'text-red-400';
 
 const columnHelper = createColumnHelper<Keyword>();
 
@@ -44,12 +62,31 @@ export default function KeywordsPage() {
   const t = useTranslations('keywordsPage');
   const [sorting, setSorting] = useState<SortingState>([]);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showDiscover, setShowDiscover] = useState(false);
   const [keywordInput, setKeywordInput] = useState('');
   const [addError, setAddError] = useState('');
+  const [seedInput, setSeedInput] = useState('');
+  const [discoverResults, setDiscoverResults] = useState<ResearchResult[]>([]);
+  const [selectedKws, setSelectedKws] = useState<Set<string>>(new Set());
 
   const { data, isLoading } = useQuery({
     queryKey: ['keywords', projectId],
-    queryFn: () => keywordApi.list(projectId).then((r) => (r.data?.data ?? []) as Keyword[]),
+    queryFn: () =>
+      keywordApi.list(projectId).then((r) => {
+        // Backend returns a plain array, not { data: [...] }
+        const raw: any[] = Array.isArray(r.data) ? r.data : (r.data?.data ?? r.data ?? []);
+        return raw.map((k: any): Keyword => ({
+          id: k.id,
+          keyword: k.phrase ?? k.keyword ?? '',
+          position: k.ranks?.[0]?.position ?? null,
+          positionDelta: null,
+          searchVolume: k.searchVolume ?? 0,
+          difficulty: k.difficulty ?? 0,
+          intent: (k.intent as KeywordIntent) ?? 'INFORMATIONAL',
+          labels: k.tag ? [k.tag.name] : [],
+          updatedAt: k.updatedAt,
+        }));
+      }),
   });
 
   const addMutation = useMutation({
@@ -60,6 +97,33 @@ export default function KeywordsPage() {
       setKeywordInput('');
     },
     onError: () => setAddError(t('addModalErrorFailed')),
+  });
+
+  const researchMutation = useMutation({
+    mutationFn: (seeds: string[]) =>
+      keywordApi.research(projectId, { seedKeywords: seeds }).then(r => r.data?.data ?? r.data),
+    onSuccess: (data) => {
+      const items: ResearchResult[] = [
+        ...(data?.keywordData ?? []),
+        ...(data?.relatedKeywords ?? []).map((k: any) =>
+          typeof k === 'string' ? { keyword: k } : k,
+        ),
+      ];
+      const unique = Array.from(new Map(items.map(i => [i.keyword, i])).values());
+      setDiscoverResults(unique);
+      setSelectedKws(new Set());
+    },
+  });
+
+  const addSelectedMutation = useMutation({
+    mutationFn: (phrases: string[]) => keywordApi.add(projectId, phrases),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['keywords', projectId] });
+      setShowDiscover(false);
+      setDiscoverResults([]);
+      setSelectedKws(new Set());
+      setSeedInput('');
+    },
   });
 
   const keywords = data || [];
@@ -158,6 +222,32 @@ export default function KeywordsPage() {
     addMutation.mutate(words);
   }
 
+  function handleResearch() {
+    const seeds = seedInput
+      .split(/[\n,]+/)
+      .map(s => s.trim())
+      .filter(Boolean)
+      .slice(0, 5);
+    if (seeds.length === 0) return;
+    researchMutation.mutate(seeds);
+  }
+
+  const toggleKw = (kw: string) => {
+    setSelectedKws(prev => {
+      const next = new Set(prev);
+      next.has(kw) ? next.delete(kw) : next.add(kw);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (selectedKws.size === discoverResults.length) {
+      setSelectedKws(new Set());
+    } else {
+      setSelectedKws(new Set(discoverResults.map(r => r.keyword)));
+    }
+  };
+
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
@@ -166,6 +256,12 @@ export default function KeywordsPage() {
           <p className="text-white/50 text-sm mt-1">{t('trackedCount', { count: keywords.length })}</p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowDiscover(true)}
+            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-white/70 hover:bg-white/10 transition-all"
+          >
+            ✦ Keşfet
+          </button>
           {keywords.length > 0 && (
             <button
               onClick={() => exportToCSV(
@@ -226,13 +322,21 @@ export default function KeywordsPage() {
           <div className="p-12 text-center">
             <Search className="h-10 w-10 text-white/20 mx-auto mb-3" />
             <p className="text-white/50 mb-4">{t('empty')}</p>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 transition-all"
-            >
-              <Plus className="h-4 w-4" />
-              {t('addFirstBtn')}
-            </button>
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={() => setShowDiscover(true)}
+                className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white/70 hover:bg-white/10 transition-all"
+              >
+                ✦ Keşfet
+              </button>
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 transition-all"
+              >
+                <Plus className="h-4 w-4" />
+                {t('addFirstBtn')}
+              </button>
+            </div>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -271,6 +375,140 @@ export default function KeywordsPage() {
           </div>
         )}
       </div>
+
+      {/* ── Discover Keywords Modal ── */}
+      {showDiscover && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="w-full max-w-2xl rounded-2xl flex flex-col border border-white/10 bg-[#111118]" style={{ maxHeight: '90vh' }}>
+            <div className="p-6 pb-4 shrink-0">
+              <div className="flex items-center justify-between mb-1">
+                <h2 className="text-lg font-semibold text-white">Anahtar Kelime Keşfet</h2>
+                <button
+                  onClick={() => { setShowDiscover(false); setDiscoverResults([]); setSeedInput(''); }}
+                  className="p-1 rounded-lg text-white/50 hover:text-white hover:bg-white/10"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <p className="text-sm text-white/50">
+                1–5 seed kelime gir (virgül ya da alt satır ile ayır). DataForSEO'dan arama hacmi ve ilgili öneriler gelir.
+              </p>
+            </div>
+
+            <div className="px-6 pb-4 shrink-0">
+              <textarea
+                rows={2}
+                value={seedInput}
+                onChange={(e) => setSeedInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleResearch(); }}
+                placeholder="seo araçları, backlink analizi, anahtar kelime takibi"
+                className="w-full px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 text-sm text-white placeholder-white/30 resize-none focus:border-indigo-500/50 focus:outline-none"
+              />
+              <div className="flex justify-end mt-2">
+                <button
+                  onClick={handleResearch}
+                  disabled={!seedInput.trim() || researchMutation.isPending}
+                  className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 transition-all"
+                >
+                  {researchMutation.isPending ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Araştırılıyor…
+                    </>
+                  ) : 'Araştır'}
+                </button>
+              </div>
+            </div>
+
+            {researchMutation.isError && (
+              <p className="px-6 pb-4 text-sm text-red-400 shrink-0">
+                DataForSEO'dan veri alınamadı. API anahtarınızı ve kredinizi kontrol edin.
+              </p>
+            )}
+
+            {discoverResults.length > 0 && (
+              <>
+                <div className="px-6 pb-2 shrink-0 flex items-center justify-between">
+                  <span className="text-sm text-white/40">
+                    {discoverResults.length} öneri — {selectedKws.size} seçili
+                  </span>
+                  <button onClick={toggleAll} className="text-xs text-indigo-400 hover:text-indigo-300 underline">
+                    {selectedKws.size === discoverResults.length ? 'Seçimi Kaldır' : 'Tümünü Seç'}
+                  </button>
+                </div>
+
+                <div className="overflow-y-auto flex-1 px-6 pb-4">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 bg-[#111118]">
+                      <tr className="border-b border-white/10">
+                        <th className="py-2 pr-3 w-8" />
+                        <th className="text-left py-2 font-medium text-xs text-white/40 uppercase">Kelime</th>
+                        <th className="text-right py-2 font-medium text-xs text-white/40 uppercase">Hacim</th>
+                        <th className="text-right py-2 font-medium text-xs text-white/40 uppercase">Zorluk</th>
+                        <th className="text-right py-2 font-medium text-xs text-white/40 uppercase">CPC</th>
+                        <th className="text-right py-2 font-medium text-xs text-white/40 uppercase">Niyet</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {discoverResults.map((r) => (
+                        <tr
+                          key={r.keyword}
+                          onClick={() => toggleKw(r.keyword)}
+                          className="cursor-pointer border-b border-white/5 hover:bg-white/3 transition-colors"
+                        >
+                          <td className="py-2.5 pr-3">
+                            <input
+                              type="checkbox"
+                              checked={selectedKws.has(r.keyword)}
+                              onChange={() => toggleKw(r.keyword)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="rounded"
+                              style={{ accentColor: '#6366f1' }}
+                            />
+                          </td>
+                          <td className="py-2.5 font-medium text-white">{r.keyword}</td>
+                          <td className="py-2.5 text-right text-white/60">
+                            {r.search_volume?.toLocaleString() ?? '—'}
+                          </td>
+                          <td className={`py-2.5 text-right font-medium ${difficultyColor(r.keyword_difficulty ?? 0)}`}>
+                            {r.keyword_difficulty ?? '—'}
+                          </td>
+                          <td className="py-2.5 text-right text-white/60">
+                            {r.cpc ? `$${r.cpc.toFixed(2)}` : '—'}
+                          </td>
+                          <td className="py-2.5 text-right">
+                            {r.intent ? (
+                              <span className={`px-2 py-0.5 rounded-full text-xs ${intentBadge[r.intent?.toUpperCase()] ?? 'bg-white/10 text-white/50'}`}>
+                                {r.intent}
+                              </span>
+                            ) : '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="px-6 pb-6 pt-3 border-t border-white/10 shrink-0 flex justify-end gap-3">
+                  <button
+                    onClick={() => { setShowDiscover(false); setDiscoverResults([]); setSeedInput(''); }}
+                    className="rounded-xl border border-white/20 px-4 py-2.5 text-sm font-medium text-white/60 hover:bg-white/10 transition-colors"
+                  >
+                    İptal
+                  </button>
+                  <button
+                    onClick={() => addSelectedMutation.mutate(Array.from(selectedKws))}
+                    disabled={selectedKws.size === 0 || addSelectedMutation.isPending}
+                    className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 transition-all"
+                  >
+                    {addSelectedMutation.isPending ? 'Ekleniyor…' : `${selectedKws.size} Kelime Ekle`}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Add keywords modal */}
       {showAddModal && (
