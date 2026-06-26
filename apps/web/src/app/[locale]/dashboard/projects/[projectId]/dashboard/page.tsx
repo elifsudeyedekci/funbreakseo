@@ -64,7 +64,26 @@ export default function ProjectDashboardPage() {
   const t = useTranslations('projectDashboard');
   const { data, isLoading } = useQuery({
     queryKey: ['project-dashboard', projectId],
-    queryFn: () => projectApi.dashboard(projectId).then((r) => (r.data?.data ?? null) as DashboardData),
+    queryFn: () =>
+      projectApi.dashboard(projectId).then((r) => {
+        const raw = r.data;
+        if (!raw) return null;
+        return {
+          summary: {
+            healthScore: raw.healthScore ?? 0,
+            geoVisibilityScore: raw.geoVisibilityScore ?? 0,
+            keywordsCount: raw.keywordCount ?? 0,
+            firstPageKeywords: 0,
+            lastCrawlDate: raw.lastCrawl?.createdAt ?? null,
+            backlinkCount: 0,
+            activeOutreach: 0,
+            avgPosition: raw.avgPosition ?? null,
+          },
+          rankTrend: [],
+          recentActivity: [],
+          todoItems: [],
+        } as DashboardData;
+      }),
   });
 
   if (isLoading) {

@@ -36,7 +36,7 @@ export default function CrawlPage() {
   const { data: history, isLoading } = useQuery({
     queryKey: ['crawl-history', projectId],
     enabled: !!projectId,
-    queryFn: () => crawlerApi.history(projectId!).then(r => (r.data?.data || []) as any[]),
+    queryFn: () => crawlerApi.history(projectId!).then(r => (Array.isArray(r.data) ? r.data : (r.data?.data ?? [])) as any[]),
     refetchInterval: 10_000,
   });
 

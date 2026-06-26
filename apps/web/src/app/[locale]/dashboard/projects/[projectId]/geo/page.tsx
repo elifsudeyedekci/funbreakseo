@@ -36,7 +36,13 @@ export default function GeoPage() {
   const t = useTranslations('geoPage');
   const { data, isLoading } = useQuery({
     queryKey: ['geo', projectId],
-    queryFn: () => geoApi.overview(projectId).then((r) => (r.data?.data ?? null) as GeoData),
+    queryFn: () =>
+      Promise.all([
+        geoApi.overview(projectId).then((r) => r.data),
+        geoApi.recommendations(projectId).then((r) => Array.isArray(r.data) ? r.data : (r.data?.data ?? [])),
+      ]).then(([overview, recs]) =>
+        overview ? ({ visibility: overview as GeoVisibilityData, recommendations: recs } as GeoData) : null
+      ),
   });
 
   const visibility = data?.visibility;

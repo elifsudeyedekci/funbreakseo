@@ -124,7 +124,7 @@ export default function ContentPage() {
   const { data: content, isLoading } = useQuery({
     queryKey: ['content', projectId],
     enabled: !!projectId,
-    queryFn: () => contentApi.list(projectId!).then((r) => (r.data?.data ?? []) as Record<string, unknown>[]),
+    queryFn: () => contentApi.list(projectId!).then((r) => (r.data?.items ?? r.data?.data ?? []) as Record<string, unknown>[]),
   });
 
   const generateMutation = useMutation({

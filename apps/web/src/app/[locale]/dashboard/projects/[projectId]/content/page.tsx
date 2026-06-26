@@ -39,7 +39,7 @@ export default function ContentPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['content', projectId],
-    queryFn: () => contentApi.list(projectId).then((r) => (r.data?.data ?? []) as Content[]),
+    queryFn: () => contentApi.list(projectId).then((r) => (r.data?.items ?? r.data?.data ?? []) as Content[]),
     refetchInterval: (query) => {
       const items = query.state.data as Content[] | undefined;
       return items?.some((c) => c.status === 'GENERATING') ? 5000 : false;

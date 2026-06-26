@@ -28,7 +28,7 @@ export default function OutreachPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['outreach', projectId],
-    queryFn: () => outreachApi.campaigns(projectId).then((r) => (r.data?.data ?? []) as Campaign[]),
+    queryFn: () => outreachApi.campaigns(projectId).then((r) => (Array.isArray(r.data) ? r.data : (r.data?.data ?? [])) as Campaign[]),
   });
 
   const createMutation = useMutation({

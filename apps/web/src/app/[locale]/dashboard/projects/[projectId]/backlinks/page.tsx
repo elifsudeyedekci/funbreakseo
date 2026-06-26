@@ -16,19 +16,19 @@ export default function BacklinksPage() {
 
   const { data: backlinks, isLoading } = useQuery({
     queryKey: ['backlinks', projectId],
-    queryFn: () => outreachApi.backlinks(projectId).then((r) => r.data?.data ?? null),
+    queryFn: () => outreachApi.backlinks(projectId).then((r) => Array.isArray(r.data) ? r.data : (r.data?.data ?? [])),
     enabled: tab === 'profile',
   });
 
   const { data: market } = useQuery({
     queryKey: ['backlink-market', projectId],
-    queryFn: () => outreachApi.marketListings({ projectId }).then((r) => r.data?.data ?? null),
+    queryFn: () => outreachApi.marketListings({ projectId }).then((r) => r.data?.items ?? r.data?.data ?? []),
     enabled: tab === 'market',
   });
 
   const { data: orders } = useQuery({
     queryKey: ['backlink-orders', projectId],
-    queryFn: () => outreachApi.orders(projectId).then((r) => r.data?.data ?? null),
+    queryFn: () => outreachApi.orders(projectId).then((r) => Array.isArray(r.data) ? r.data : (r.data?.data ?? [])),
     enabled: tab === 'orders',
   });
 

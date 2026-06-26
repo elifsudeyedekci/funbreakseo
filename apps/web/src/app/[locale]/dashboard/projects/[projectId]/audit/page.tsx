@@ -46,7 +46,7 @@ export default function AuditPage() {
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['audit', projectId],
-    queryFn: () => auditApi.get(projectId).then((r) => (r.data?.data ?? []) as AuditData),
+    queryFn: () => auditApi.get(projectId).then((r) => (r.data ?? null) as AuditData | null),
     refetchInterval: (query) => {
       const status = query.state.data?.status;
       return status === 'RUNNING' || status === 'PENDING' ? 3000 : false;

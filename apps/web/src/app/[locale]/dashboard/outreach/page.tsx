@@ -3,9 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
-import { outreachApi } from '@/lib/api';
-
-const PROJECT_ID = 'current';
+import { outreachApi, projectApi } from '@/lib/api';
 
 const campaignStatusStyles: Record<string, string> = {
   ACTIVE: 'bg-green-400/10 text-green-400',
@@ -20,15 +18,22 @@ export default function OutreachPage() {
   const [name, setName] = useState('');
   const qc = useQueryClient();
 
+  const { data: projects } = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => projectApi.list().then(r => (Array.isArray(r.data) ? r.data : (r.data?.data ?? [])) as { id: string }[]),
+  });
+  const projectId = projects?.[0]?.id;
+
   const { data: campaigns, isLoading } = useQuery({
-    queryKey: ['outreach', PROJECT_ID],
-    queryFn: () => outreachApi.list(PROJECT_ID).then(r => (r.data?.data || []) as any[]),
+    queryKey: ['outreach', projectId],
+    enabled: !!projectId,
+    queryFn: () => outreachApi.list(projectId!).then(r => (Array.isArray(r.data) ? r.data : (r.data?.data ?? [])) as any[]),
   });
 
   const createMutation = useMutation({
-    mutationFn: (campaignName: string) => outreachApi.create(PROJECT_ID, { name: campaignName }),
+    mutationFn: (campaignName: string) => outreachApi.create(projectId!, { name: campaignName }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['outreach', PROJECT_ID] });
+      qc.invalidateQueries({ queryKey: ['outreach', projectId] });
       setShowCreate(false);
       setName('');
     },

@@ -22,7 +22,7 @@ export default function ReportsPage() {
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['reports', projectId],
-    queryFn: () => reportsApi.list(projectId).then((r) => (r.data?.data ?? []) as Report[]),
+    queryFn: () => reportsApi.list(projectId).then((r) => (Array.isArray(r.data) ? r.data : (r.data?.data ?? [])) as Report[]),
     refetchInterval: (q) => (q.state.data as Report[] | undefined)?.some((r) => r.status === 'GENERATING' || r.status === 'PENDING') ? 5000 : false,
   });
 

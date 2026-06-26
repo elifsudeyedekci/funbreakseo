@@ -3,17 +3,24 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
-import { backlinkApi } from '@/lib/api';
+import { backlinkApi, projectApi } from '@/lib/api';
 
 export default function BacklinksPage() {
   const t = useTranslations('backlinksPage');
   const [tab, setTab] = useState<'all' | 'new' | 'lost'>('all');
 
+  const { data: projects } = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => projectApi.list().then(r => (Array.isArray(r.data) ? r.data : (r.data?.data ?? [])) as { id: string }[]),
+  });
+  const projectId = projects?.[0]?.id;
+
   const { data, isLoading } = useQuery({
-    queryKey: ['backlinks-global', tab],
+    queryKey: ['backlinks-global', tab, projectId],
+    enabled: !!projectId,
     queryFn: () =>
-      backlinkApi.list('global', { status: tab !== 'all' ? tab.toUpperCase() : undefined })
-        .then((r) => (r.data?.data ?? []) as Array<{
+      backlinkApi.list(projectId!, { status: tab !== 'all' ? tab.toUpperCase() : undefined })
+        .then((r) => (Array.isArray(r.data) ? r.data : (r.data?.data ?? [])) as Array<{
           id: string;
           sourceUrl: string;
           sourceDomain: string;
