@@ -9,7 +9,7 @@ import { DataForSeoModule } from '../dataforseo/dataforseo.module';
   imports: [
     DataForSeoModule,
     BullModule.registerQueue({
-      name: 'keyword-rank',
+      name: 'rank-tracking',
     }),
   ],
   controllers: [KeywordController],

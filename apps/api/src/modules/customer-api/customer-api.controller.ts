@@ -63,6 +63,38 @@ export class DeveloperApiKeyAliasController {
   }
 }
 
+// /developer/webhooks — stub (no DB model yet, returns empty list)
+@Controller('developer/webhooks')
+@UseGuards(JwtAuthGuard)
+export class DeveloperWebhookController {
+  @Get()
+  listWebhooks() {
+    return { data: [], total: 0 };
+  }
+
+  @Post()
+  createWebhook(@Body() _dto: Record<string, unknown>) {
+    return { message: 'Webhook functionality coming soon', data: null };
+  }
+
+  @Delete(':id')
+  deleteWebhook(@Param('id') _id: string) {
+    return { success: false, message: 'Webhook not found' };
+  }
+}
+
+// /developer/usage — API usage stats from apiUsageLog
+@Controller('developer/usage')
+@UseGuards(JwtAuthGuard)
+export class DeveloperUsageController {
+  constructor(private readonly customerApiService: CustomerApiService) {}
+
+  @Get()
+  getUsage(@CurrentUser() user: User) {
+    return this.customerApiService.getDeveloperUsage(user.organizationId!);
+  }
+}
+
 // ---- Public API v1 (API key auth) ----
 @Controller('v1')
 @UseGuards(ApiKeyGuard)

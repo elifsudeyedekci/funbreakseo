@@ -21,13 +21,10 @@ export class ReportController {
     return this.reportService.listReports(projectId);
   }
 
-  @Post('generate')
-  generateReportPost(
-    @Param('id') projectId: string,
-    @Body() dto: Record<string, unknown>,
-  ) {
-    const format = (dto.format as 'PDF' | 'HTML' | 'JSON') ?? 'JSON';
-    return this.reportService.generateReport(projectId, format);
+  // Static routes BEFORE :reportId param to avoid swallowing
+  @Get('scheduled')
+  getScheduledReports(@Param('id') projectId: string) {
+    return this.reportService.getScheduledReports(projectId);
   }
 
   @Get('generate')
@@ -38,18 +35,17 @@ export class ReportController {
     return this.reportService.generateReport(projectId, format);
   }
 
-  @Get(':reportId')
-  getReport(@Param('id') projectId: string, @Param('reportId') reportId: string) {
-    return this.reportService.getReport(projectId, reportId);
+  @Post('generate')
+  generateReportPost(
+    @Param('id') projectId: string,
+    @Body() dto: Record<string, unknown>,
+  ) {
+    const format = (dto.format as 'PDF' | 'HTML' | 'JSON') ?? 'JSON';
+    return this.reportService.generateReport(projectId, format);
   }
 
-  @Get('scheduled')
-  getScheduledReports(@Param('id') projectId: string) {
-    return this.reportService.getScheduledReports(projectId);
-  }
-
+  // Accepts both /scheduled and /schedules paths via two separate handlers
   @Post('scheduled')
-  @Post('schedules')
   createScheduledReport(
     @Param('id') projectId: string,
     @Body()
@@ -62,9 +58,31 @@ export class ReportController {
     return this.reportService.createScheduledReport(projectId, dto);
   }
 
+  @Post('schedules')
+  createScheduledReportAlias(
+    @Param('id') projectId: string,
+    @Body()
+    dto: {
+      format: 'PDF' | 'HTML' | 'JSON';
+      schedule: string;
+      recipients: string[];
+    },
+  ) {
+    return this.reportService.createScheduledReport(projectId, dto);
+  }
+
   @Delete('scheduled/:reportId')
-  @Delete('schedules/:reportId')
   deleteScheduledReport(@Param('reportId') reportId: string) {
     return this.reportService.deleteScheduledReport(reportId);
+  }
+
+  @Delete('schedules/:reportId')
+  deleteScheduledReportAlias(@Param('reportId') reportId: string) {
+    return this.reportService.deleteScheduledReport(reportId);
+  }
+
+  @Get(':reportId')
+  getReport(@Param('id') projectId: string, @Param('reportId') reportId: string) {
+    return this.reportService.getReport(projectId, reportId);
   }
 }

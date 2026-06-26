@@ -18,7 +18,7 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
-import { IsEmail, IsString, MinLength, IsArray, IsUUID } from 'class-validator';
+import { IsEmail, IsString, MinLength, IsArray, IsUUID, IsOptional } from 'class-validator';
 import { AuthService, RegisterDto as IRegisterDto } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { CurrentUser } from './current-user.decorator';
@@ -61,8 +61,9 @@ export class RefreshTokenDto {
 }
 
 export class LogoutDto {
+  @IsOptional()
   @IsString()
-  tokenHash!: string;
+  tokenHash?: string;
 }
 
 export class ForgotPasswordDto {
@@ -137,7 +138,7 @@ export class AuthController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Logout and revoke refresh token' })
   async logout(@CurrentUser() user: User, @Body() dto: LogoutDto) {
-    return this.authService.logout(user.id, dto.tokenHash);
+    return this.authService.logout(user.id, dto.tokenHash ?? '');
   }
 
   @Post('forgot-password')

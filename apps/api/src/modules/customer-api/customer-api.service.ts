@@ -85,6 +85,35 @@ export class CustomerApiService {
     });
   }
 
+  async getDeveloperUsage(orgId: string) {
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const [apiKeys, usageLogs] = await Promise.all([
+      this.prisma.developerApiKey.count({ where: { organizationId: orgId, revokedAt: null } }),
+      this.prisma.apiUsageLog.findMany({
+        where: { createdAt: { gte: startOfMonth } },
+        select: { provider: true, endpoint: true, costUsd: true, tokens: true, createdAt: true },
+        orderBy: { createdAt: 'desc' },
+        take: 100,
+      }),
+    ]);
+
+    const totalCost = usageLogs.reduce((s, l) => s + Number(l.costUsd ?? 0), 0);
+    const totalTokens = usageLogs.reduce((s, l) => s + (l.tokens ?? 0), 0);
+
+    return {
+      activeApiKeys: apiKeys,
+      thisMonth: {
+        calls: usageLogs.length,
+        totalCostUsd: +totalCost.toFixed(4),
+        totalTokens,
+      },
+      recentCalls: usageLogs.slice(0, 20),
+    };
+  }
+
   async getProjectRanks(
     projectId: string,
     orgId: string,

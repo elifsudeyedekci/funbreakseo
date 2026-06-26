@@ -39,7 +39,7 @@ export class KeywordService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly dfs: DataForSeoService,
-    @InjectQueue('keyword-rank') private readonly rankQueue: Queue,
+    @InjectQueue('rank-tracking') private readonly rankQueue: Queue,
   ) {}
 
   // ─── List keywords for project ───────────────────────────────────────────────

@@ -238,9 +238,9 @@ export class AuthService {
   }
 
   // ─── Logout ─────────────────────────────────────────────────────────────────
-  async logout(userId: string, tokenHash: string): Promise<void> {
+  async logout(userId: string, tokenHash?: string): Promise<void> {
     await this.prisma.refreshToken.updateMany({
-      where: { userId, tokenHash },
+      where: tokenHash ? { userId, tokenHash } : { userId },
       data: { revokedAt: new Date() },
     });
   }
