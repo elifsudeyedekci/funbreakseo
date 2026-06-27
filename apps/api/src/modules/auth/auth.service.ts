@@ -626,13 +626,7 @@ export class AuthService {
     const clientSecret = this.config.get<string>('GOOGLE_CLIENT_SECRET') ?? '';
     const redirectUri = this.config.get<string>('GOOGLE_CALLBACK_URL') ?? '';
 
-    console.log('[GSC exchangeGoogleCode] params:', {
-      client_id: clientId ? `${clientId.substring(0, 20)}…` : '(EMPTY)',
-      client_secret: clientSecret ? `${clientSecret.substring(0, 8)}…` : '(EMPTY)',
-      redirect_uri: redirectUri || '(EMPTY)',
-      code: code ? `${code.substring(0, 12)}…` : '(EMPTY)',
-      grant_type: 'authorization_code',
-    });
+    process.stdout.write(`[GSC exchangeGoogleCode] client_id=${clientId ? clientId.substring(0, 20) + '…' : 'EMPTY'} secret=${clientSecret ? clientSecret.substring(0, 8) + '…' : 'EMPTY'} redirect_uri=${redirectUri || 'EMPTY'} code=${code ? code.substring(0, 12) + '…' : 'EMPTY'}\n`);
 
     // Google token endpoint requires application/x-www-form-urlencoded, not JSON.
     const body = new URLSearchParams({
@@ -643,7 +637,7 @@ export class AuthService {
       grant_type: 'authorization_code',
     });
 
-    console.log('[GSC exchangeGoogleCode] raw body:', body.toString().replace(/client_secret=[^&]+/, 'client_secret=REDACTED'));
+    process.stdout.write(`[GSC exchangeGoogleCode] body=${body.toString().replace(/client_secret=[^&]+/, 'client_secret=REDACTED')}\n`);
 
     try {
       const { data } = await axios.post<{ access_token: string; refresh_token?: string; expires_in?: number }>(
@@ -651,7 +645,7 @@ export class AuthService {
         body,
         { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
       );
-      console.log('[GSC exchangeGoogleCode] success — has access_token:', !!data.access_token, 'has refresh_token:', !!data.refresh_token);
+      process.stdout.write(`[GSC exchangeGoogleCode] SUCCESS has_access_token=${!!data.access_token} has_refresh_token=${!!data.refresh_token}\n`);
       return {
         accessToken: data.access_token,
         refreshToken: data.refresh_token,
@@ -659,7 +653,7 @@ export class AuthService {
       };
     } catch (err: unknown) {
       const axErr = err as { response?: { status?: number; data?: unknown }; message?: string };
-      console.error('[GSC exchangeGoogleCode] 401/error — status:', axErr.response?.status, 'body:', JSON.stringify(axErr.response?.data));
+      process.stderr.write(`[GSC exchangeGoogleCode] ERROR status=${axErr.response?.status} body=${JSON.stringify(axErr.response?.data)}\n`);
       throw err;
     }
   }

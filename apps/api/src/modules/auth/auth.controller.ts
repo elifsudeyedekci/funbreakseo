@@ -231,41 +231,35 @@ export class AuthController {
     const clientId = process.env.GOOGLE_CLIENT_ID ?? '';
     const callbackUrl = process.env.GOOGLE_CALLBACK_URL ?? '';
 
-    console.log(`[GSC] /auth/google called — jwt present: ${!!jwt && jwt !== 'null'}, clientId present: ${!!clientId}, callbackUrl: ${callbackUrl}`);
+    process.stdout.write(`[GSC] /auth/google called — jwt present: ${!!jwt && jwt !== 'null'}, clientId present: ${!!clientId}, callbackUrl: ${callbackUrl}\n`);
 
     if (!clientId) {
-      console.error('[GSC] GOOGLE_CLIENT_ID is not set in env');
+      process.stderr.write('[GSC] GOOGLE_CLIENT_ID is not set in env\n');
       return void res.redirect(`${frontendUrl}/tr/dashboard/account?tab=integrations&gsc=error`);
     }
 
-    // Decode JWT payload WITHOUT verification — we only need organizationId to
-    // embed in the OAuth state so the callback knows which org to associate tokens with.
     const payload = this.authService.decodeJwtPayloadUnsafe(jwt);
     const orgId = (payload.organizationId as string | undefined) ?? '';
 
-    console.log(`[GSC] Decoded JWT — sub: ${payload.sub ?? '?'}, orgId: ${orgId || '(empty)'}, keys: ${Object.keys(payload).join(',')}`);
+    process.stdout.write(`[GSC] Decoded JWT — sub: ${payload.sub ?? '?'}, orgId: ${orgId || '(empty)'}, keys: ${Object.keys(payload).join(',')}\n`);
 
     if (!orgId) {
-      console.error(`[GSC] organizationId missing from token payload: ${JSON.stringify(payload)}`);
+      process.stderr.write(`[GSC] organizationId missing from token payload: ${JSON.stringify(payload)}\n`);
       return void res.redirect(`${frontendUrl}/tr/dashboard/account?tab=integrations&gsc=error`);
     }
 
     const state = Buffer.from(JSON.stringify({ orgId })).toString('base64url');
-    const scope = [
-      'profile',
-      'email',
-      'https://www.googleapis.com/auth/webmasters.readonly',
-    ].join(' ');
     const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
     url.searchParams.set('client_id', clientId);
     url.searchParams.set('redirect_uri', callbackUrl);
     url.searchParams.set('response_type', 'code');
-    url.searchParams.set('scope', scope);
+    url.searchParams.set('scope', 'profile email https://www.googleapis.com/auth/webmasters.readonly');
     url.searchParams.set('access_type', 'offline');
     url.searchParams.set('prompt', 'consent');
+    url.searchParams.set('include_granted_scopes', 'false');
     url.searchParams.set('state', state);
 
-    console.log(`[GSC] Redirecting to Google: ${url.toString().substring(0, 150)}`);
+    process.stdout.write(`[GSC] Redirecting to Google: ${url.toString().substring(0, 160)}\n`);
     res.redirect(url.toString());
   }
 
@@ -280,16 +274,15 @@ export class AuthController {
     const frontendUrl = process.env.FRONTEND_URL ?? 'https://funbreakseo.com';
     const errorUrl = `${frontendUrl}/tr/dashboard/account?tab=integrations&gsc=error`;
 
-    console.log(`[GSC callback] code present: ${!!code}, state present: ${!!state}, oauth_error: ${oauthError ?? 'none'}`);
+    process.stdout.write(`[GSC callback] code present: ${!!code}, state present: ${!!state}, oauth_error: ${oauthError ?? 'none'}\n`);
 
-    // Google returned an error (user denied access, etc.)
     if (oauthError) {
-      console.error(`[GSC callback] Google returned error: ${oauthError}`);
+      process.stderr.write(`[GSC callback] Google returned error: ${oauthError}\n`);
       return void res.redirect(errorUrl);
     }
 
     if (!code || !state) {
-      console.error(`[GSC callback] Missing code or state — code: ${!!code}, state: ${!!state}`);
+      process.stderr.write(`[GSC callback] Missing code or state\n`);
       return void res.redirect(errorUrl);
     }
 
@@ -298,10 +291,10 @@ export class AuthController {
     try {
       const decoded = JSON.parse(Buffer.from(state, 'base64url').toString('utf-8')) as { orgId?: string };
       orgId = decoded.orgId ?? '';
-      console.log(`[GSC callback] Decoded state orgId: ${orgId || '(empty)'}`);
+      process.stdout.write(`[GSC callback] Decoded state orgId: ${orgId || '(empty)'}\n`);
       if (!orgId) throw new Error('orgId missing from state');
     } catch (err) {
-      console.error(`[GSC callback] Failed to decode state: ${(err as Error).message} — state value: ${state?.substring(0, 50)}`);
+      process.stderr.write(`[GSC callback] Failed to decode state: ${(err as Error).message}\n`);
       return void res.redirect(errorUrl);
     }
 
@@ -309,25 +302,26 @@ export class AuthController {
     let tokens: { accessToken: string; refreshToken?: string; expiryDate: number };
     try {
       tokens = await this.authService.exchangeGoogleCode(code);
-      console.log(`[GSC callback] Token exchange successful — has refresh_token: ${!!tokens.refreshToken}`);
+      process.stdout.write(`[GSC callback] Token exchange successful — has_refresh_token: ${!!tokens.refreshToken}\n`);
     } catch (err) {
       const msg = (err as { response?: { data?: unknown }; message?: string });
-      console.error(`[GSC callback] Token exchange failed: ${msg.message ?? ''} — response: ${JSON.stringify(msg.response?.data ?? {}).substring(0, 200)}`);
+      process.stderr.write(`[GSC callback] Token exchange failed: ${msg.message ?? ''} — body: ${JSON.stringify(msg.response?.data ?? {}).substring(0, 300)}\n`);
       return void res.redirect(errorUrl);
     }
 
     // 3. Save tokens to DB
     try {
       await this.authService.saveGscOAuthTokens(orgId, tokens);
-      console.log(`[GSC callback] Tokens saved for org ${orgId}`);
+      process.stdout.write(`[GSC callback] Tokens saved for org ${orgId}\n`);
     } catch (err) {
-      console.error(`[GSC callback] DB save failed for org ${orgId}: ${(err as Error).message}`);
+      process.stderr.write(`[GSC callback] DB save failed for org ${orgId}: ${(err as Error).message}\n`);
       return void res.redirect(errorUrl);
     }
 
     // 4. Redirect to success
     const successUrl = `${frontendUrl}/tr/dashboard/account?tab=integrations&gsc=success`;
-    console.log(`[GSC callback] Success — redirecting to ${successUrl}`);
+    process.stdout.write(`[GSC callback] Success — redirecting to ${successUrl}
+`);
     res.redirect(successUrl);
   }
 }
