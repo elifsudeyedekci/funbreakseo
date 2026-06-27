@@ -199,10 +199,8 @@ export class KeywordService {
   async refreshAllKeywordMetrics(projectId: string, organizationId: string) {
     await this.assertProjectAccess(projectId, organizationId);
 
-    // Clean up any encoding-corrupted rows before refreshing metrics
     await this.cleanCorruptedKeywords(projectId);
 
-    // Project locale drives DataForSEO location/language (multi-country SaaS).
     const proj = await this.prisma.project.findUnique({
       where: { id: projectId },
       select: { country: true, language: true },
@@ -211,43 +209,40 @@ export class KeywordService {
     const language = proj?.language ?? 'tr';
     const locationCode = this.dfs.resolveLocationCode(country);
 
+    // Only refresh keywords that have no search volume yet
     const keywords = await this.prisma.keyword.findMany({
-      where: { projectId },
-      select: { id: true, phrase: true, location: true },
+      where: { projectId, searchVolume: null },
+      select: { id: true, phrase: true },
     });
 
     if (keywords.length === 0) return { updated: 0 };
 
+    const BATCH = 1000;
     const batches: typeof keywords[] = [];
-    for (let i = 0; i < keywords.length; i += 50) {
-      batches.push(keywords.slice(i, i + 50));
+    for (let i = 0; i < keywords.length; i += BATCH) {
+      batches.push(keywords.slice(i, i + BATCH));
     }
 
     let updated = 0;
     for (const batch of batches) {
       try {
         const phrases = batch.map((k) => k.phrase);
-        const [research, difficultyMap] = await Promise.all([
-          this.dfs.keywordResearch(phrases, country, language),
+        const [volumeMap, difficultyMap] = await Promise.all([
+          this.dfs.getSearchVolumes(phrases, locationCode, language),
           this.dfs.getBulkKeywordDifficulty(phrases, locationCode, language),
         ]);
 
-        const volumeMap: Record<string, typeof research[0]> = {};
-        for (const r of research) {
-          volumeMap[(r.keyword ?? '').toLowerCase()] = r;
-        }
-
         for (const kw of batch) {
           const key = kw.phrase.toLowerCase();
-          const vol = volumeMap[key];
-          if (!vol) continue;
+          const vol = volumeMap.get(key);
+          const difficulty = difficultyMap.get(key);
+          if (!vol && difficulty === undefined) continue;
           await this.prisma.keyword.update({
             where: { id: kw.id },
             data: {
-              searchVolume: vol.search_volume ?? undefined,
-              difficulty: difficultyMap.get(key) ?? vol.keyword_difficulty ?? undefined,
-              cpc: vol.cpc ?? undefined,
-              intent: this.mapIntent(vol.intent ?? undefined),
+              ...(vol?.searchVolume != null && { searchVolume: vol.searchVolume }),
+              ...(vol?.cpc != null && { cpc: vol.cpc }),
+              ...(difficulty !== undefined && { difficulty }),
             },
           });
           updated++;

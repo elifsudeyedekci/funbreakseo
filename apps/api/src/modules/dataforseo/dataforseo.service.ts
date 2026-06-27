@@ -543,6 +543,46 @@ export class DataForSeoService {
     };
   }
 
+  // ─── Search Volume for Known Keywords ────────────────────────────────────────
+
+  async getSearchVolumes(
+    keywords: string[],
+    locationCode = 2792,
+    languageCode = 'tr',
+  ): Promise<Map<string, { searchVolume: number | null; cpc: number | null }>> {
+    const map = new Map<string, { searchVolume: number | null; cpc: number | null }>();
+    if (!keywords.length) return map;
+    try {
+      const response = await this.request<{
+        tasks: Array<{
+          result?: Array<{
+            keyword?: string;
+            search_volume?: number;
+            cpc?: number;
+          }>;
+        }>;
+      }>('/keywords_data/google_ads/search_volume/live', [
+        {
+          keywords,
+          location_code: locationCode,
+          language_code: languageCode,
+        },
+      ]);
+      const items = response.tasks?.[0]?.result ?? [];
+      for (const item of items) {
+        if (item.keyword) {
+          map.set(item.keyword.toLowerCase(), {
+            searchVolume: item.search_volume ?? null,
+            cpc: item.cpc ?? null,
+          });
+        }
+      }
+    } catch (err) {
+      this.logger.warn('getSearchVolumes failed', err);
+    }
+    return map;
+  }
+
   // ─── Bulk Keyword Difficulty ─────────────────────────────────────────────────
 
   async getBulkKeywordDifficulty(keywords: string[], locationCode = 2792, languageCode = 'tr'): Promise<Map<string, number>> {
