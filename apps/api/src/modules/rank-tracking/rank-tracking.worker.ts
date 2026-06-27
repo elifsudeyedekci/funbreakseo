@@ -35,6 +35,8 @@ interface RankCheckResult {
   }
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
 function normalizeDomain(raw: string): string {
   return raw
     .replace(/^https?:\/\//, '')
@@ -121,8 +123,19 @@ export class RankTrackingWorker extends WorkerHost {
 
     this.logger.log(`[Job ${job.id}] Found ${keywords.length} keywords to check`)
 
+    let consecutiveDfsFailures = 0
     for (const keyword of keywords) {
-      await this.processKeyword(keyword as KeywordWithProject)
+      try {
+        await this.processKeyword(keyword as KeywordWithProject)
+        consecutiveDfsFailures = 0
+      } catch (err) {
+        consecutiveDfsFailures++
+        this.logger.warn(`[Job ${job.id}] Keyword "${(keyword as KeywordWithProject).phrase}" failed (consecutive failures: ${consecutiveDfsFailures}): ${(err as Error).message}`)
+        // Circuit breaker: 3 consecutive DataForSEO failures → abort job so BullMQ retries after 30 min
+        if (consecutiveDfsFailures >= 3) {
+          throw new Error(`DataForSEO unavailable after ${consecutiveDfsFailures} consecutive failures — job will retry in 30 min`)
+        }
+      }
     }
 
     this.logger.log(`[Job ${job.id}] check-all complete for project=${projectId}`)
@@ -160,7 +173,7 @@ export class RankTrackingWorker extends WorkerHost {
     })
     const previousPosition = previousRank?.position ?? null
 
-    // Call DataForSEO (or mock)
+    // checkKeywordRank throws if all retries are exhausted (DataForSEO down).
     const result = await this.checkKeywordRank(keyword)
 
     // Persist new rank
@@ -201,55 +214,65 @@ export class RankTrackingWorker extends WorkerHost {
       }
     }
 
-    try {
-      // Project country → DataForSEO location_code (multi-country SaaS).
-      const DFS_LOCATION_CODES: Record<string, number> = {
-        TR: 2792, US: 2840, GB: 2826, UK: 2826, DE: 2276, FR: 2250, ES: 2724,
-        IT: 2380, NL: 2528, RU: 2643, IN: 2356, SA: 2682, AE: 2784, AT: 2040,
-        CH: 2756, BE: 2056, CA: 2124, AU: 2036, BR: 2076, PL: 2616, SE: 2752,
-      }
-      const locationCode =
-        DFS_LOCATION_CODES[(keyword.project.country ?? 'TR').toUpperCase()] ?? 2792
-      const response = await axios.post<DataForSeoSerpResponse>(
-        'https://api.dataforseo.com/v3/serp/google/organic/live/advanced',
-        [
-          {
-            keyword: keyword.phrase,
-            location_code: locationCode,
-            language_code: keyword.language ?? keyword.project.language ?? 'tr',
-            depth: 100,
-          },
-        ],
-        { auth: { username: login, password }, timeout: 30000 },
-      )
-
-      const task = response.data?.tasks?.[0]
-      const results = task?.result?.[0]?.items ?? []
-      const organic = results.filter((r) => r.type === 'organic')
-
-      // Find if project domain appears
-      const domain = normalizeDomain(keyword.project.domain)
-      const found = organic.find(
-        (r) => r.domain && (normalizeDomain(r.domain).includes(domain) || domain.includes(normalizeDomain(r.domain))),
-      )
-
-      const serpFeatures = {
-        ai_overview: results.some((r) => r.type === 'ai_overview'),
-        featured_snippet: results.some((r) => r.type === 'featured_snippet'),
-        paa: results.some((r) => r.type === 'people_also_ask'),
-      }
-
-      return {
-        position: found?.rank_absolute ?? null,
-        url: found?.url ?? null,
-        serpFeatures,
-      }
-    } catch (err) {
-      this.logger.error(
-        `DataForSEO SERP check failed for keyword "${keyword.phrase}": ${(err as Error).message}`,
-      )
-      return { position: null, url: null, serpFeatures: { ai_overview: false, featured_snippet: false, paa: false } }
+    const DFS_LOCATION_CODES: Record<string, number> = {
+      TR: 2792, US: 2840, GB: 2826, UK: 2826, DE: 2276, FR: 2250, ES: 2724,
+      IT: 2380, NL: 2528, RU: 2643, IN: 2356, SA: 2682, AE: 2784, AT: 2040,
+      CH: 2756, BE: 2056, CA: 2124, AU: 2036, BR: 2076, PL: 2616, SE: 2752,
     }
+    const locationCode =
+      DFS_LOCATION_CODES[(keyword.project.country ?? 'TR').toUpperCase()] ?? 2792
+
+    const MAX_ATTEMPTS = 3
+    // Exponential backoff: 10 s → 30 s → 60 s
+    const BACKOFF_MS = [10_000, 30_000, 60_000]
+    let lastError: Error = new Error('unknown')
+
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      try {
+        const response = await axios.post<DataForSeoSerpResponse>(
+          'https://api.dataforseo.com/v3/serp/google/organic/live/advanced',
+          [
+            {
+              keyword: keyword.phrase,
+              location_code: locationCode,
+              language_code: keyword.language ?? keyword.project.language ?? 'tr',
+              depth: 100,
+            },
+          ],
+          { auth: { username: login, password }, timeout: 30000 },
+        )
+
+        const task = response.data?.tasks?.[0]
+        const results = task?.result?.[0]?.items ?? []
+        const organic = results.filter((r) => r.type === 'organic')
+        const domain = normalizeDomain(keyword.project.domain)
+        const found = organic.find(
+          (r) => r.domain && (normalizeDomain(r.domain).includes(domain) || domain.includes(normalizeDomain(r.domain))),
+        )
+
+        return {
+          position: found?.rank_absolute ?? null,
+          url: found?.url ?? null,
+          serpFeatures: {
+            ai_overview: results.some((r) => r.type === 'ai_overview'),
+            featured_snippet: results.some((r) => r.type === 'featured_snippet'),
+            paa: results.some((r) => r.type === 'people_also_ask'),
+          },
+        }
+      } catch (err) {
+        lastError = err as Error
+        if (attempt < MAX_ATTEMPTS) {
+          const delay = BACKOFF_MS[attempt - 1]
+          this.logger.warn(
+            `DataForSEO attempt ${attempt}/${MAX_ATTEMPTS} failed for "${keyword.phrase}" (${lastError.message}) — retrying in ${delay / 1000}s`,
+          )
+          await sleep(delay)
+        }
+      }
+    }
+
+    // All 3 attempts failed — throw so the circuit breaker in handleCheckAll can count it
+    throw new Error(`DataForSEO failed after ${MAX_ATTEMPTS} attempts for "${keyword.phrase}": ${lastError.message}`)
   }
 
   // -------------------------------------------------------------------------
