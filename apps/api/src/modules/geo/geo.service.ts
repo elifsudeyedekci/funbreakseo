@@ -46,34 +46,20 @@ export class GeoService {
       select: { id: true, prompt: true },
     })
 
-    // Auto-create domain-based queries if none exist
+    // Auto-create BUSINESS queries if none exist. We use the project's own
+    // tracked keywords (highest search volume first) as natural search prompts —
+    // NOT the domain name. AI visibility is about whether the brand surfaces for
+    // real sector queries like "alkol vale hizmeti", not "domain.com nedir".
     if (queries.length === 0) {
-      const project = await this.prisma.project.findUnique({
-        where: { id: projectId },
-        select: { domain: true, name: true },
-      })
-      if (project) {
-        const cleanDomain = (project.domain ?? '')
-          .replace(/^https?:\/\//, '')
-          .replace(/^www\./, '')
-          .split('/')[0]
-        const brandName = project.name ?? cleanDomain.split('.')[0]
-        const autoPrompts = [
-          `${brandName} nedir`,
-          `${brandName} nasıl kullanılır`,
-          `en iyi ${brandName} alternatifleri`,
-          `${brandName} kullanıcı yorumları`,
-        ].filter(Boolean)
-
-        for (const prompt of autoPrompts) {
-          try {
-            const q = await this.prisma.geoQuery.create({
-              data: { projectId, prompt, location: 'Turkey', language: 'tr' },
-            })
-            queries.push({ id: q.id, prompt: q.prompt })
-          } catch (err) {
-            this.logger.warn(`Auto-query creation failed: ${prompt}`, err)
-          }
+      const autoPrompts = await this.buildBusinessQueries(projectId)
+      for (const prompt of autoPrompts) {
+        try {
+          const q = await this.prisma.geoQuery.create({
+            data: { projectId, prompt, location: 'Turkey', language: 'tr' },
+          })
+          queries.push({ id: q.id, prompt: q.prompt })
+        } catch (err) {
+          this.logger.warn(`Auto-query creation failed: ${prompt}`, err)
         }
       }
     }
@@ -82,6 +68,28 @@ export class GeoService {
       await this.geoQueue.add('check', { geoQueryId: q.id, projectId })
     }
     return { queued: queries.length }
+  }
+
+  /**
+   * Builds natural business search queries for GEO scanning from the project's
+   * highest-volume tracked keywords. Never includes the domain/brand name as the
+   * query subject. Falls back to nothing if the project has no keywords yet
+   * (caller should ensure keywords exist, e.g. via full-scan ordering).
+   */
+  private async buildBusinessQueries(projectId: string): Promise<string[]> {
+    const keywords = await this.prisma.keyword.findMany({
+      where: { projectId },
+      orderBy: [{ searchVolume: 'desc' }],
+      take: 8,
+      select: { phrase: true },
+    })
+
+    const phrases = keywords
+      .map((k) => k.phrase.trim())
+      .filter((p) => p.length >= 3)
+
+    // Use the top phrases directly as natural-language search prompts.
+    return Array.from(new Set(phrases)).slice(0, 6)
   }
 
   // -------------------------------------------------------------------------

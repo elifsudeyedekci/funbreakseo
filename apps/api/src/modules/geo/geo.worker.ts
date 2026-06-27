@@ -41,6 +41,42 @@ function normalizeDomain(raw: string): string {
     .toLowerCase()
 }
 
+/**
+ * Recursively walks DataForSEO AI items collecting every references[] entry
+ * (the real citation location) and all text. Handles top-level item.references,
+ * nested item.items[].references and deeper. Returns flat refs + joined text.
+ */
+function collectReferences(items: unknown[]): {
+  text: string
+  refs: Array<{ url: string; domain: string; title?: string; source?: string }>
+} {
+  const refs: Array<{ url: string; domain: string; title?: string; source?: string }> = []
+  const texts: string[] = []
+  const walk = (node: unknown): void => {
+    if (!node || typeof node !== 'object') return
+    const obj = node as Record<string, unknown>
+    if (typeof obj.text === 'string') texts.push(obj.text as string)
+    const references = obj.references
+    if (Array.isArray(references)) {
+      for (const r of references) {
+        if (r && typeof r === 'object') {
+          const rr = r as Record<string, unknown>
+          const url = (rr.url as string) ?? ''
+          const rawDomain = (rr.domain as string) ?? url
+          const domain = normalizeDomain(rawDomain)
+          if (domain || url) {
+            refs.push({ url, domain, title: rr.title as string, source: rr.source as string })
+          }
+        }
+      }
+    }
+    const nested = obj.items
+    if (Array.isArray(nested)) for (const c of nested) walk(c)
+  }
+  for (const it of items) walk(it)
+  return { text: texts.join(' '), refs }
+}
+
 function detectSentiment(text: string, brandName: string): Sentiment {
   if (!text) return Sentiment.NEUTRAL
   const lower = text.toLowerCase()
@@ -161,24 +197,16 @@ export class GeoWorker extends WorkerHost {
         const aiResult = aiTask?.result?.[0]
         const aiItems = aiResult?.items ?? []
 
-        // Extract text content from AI overview items
-        const textItem = aiItems.find((item) => item.type === 'ai_overview' || item.type === 'answer_box')
-        responseText = textItem?.text ?? ''
+        // Collect text + references recursively (references[] is where AI
+        // Overview citations actually live — not items[].url).
+        const collected = collectReferences(aiItems)
+        responseText = collected.text
+        sources = collected.refs.map((r) => ({ url: r.url, domain: r.domain, title: r.title }))
 
-        // Extract sources/citations
-        for (const item of aiItems) {
-          if (item.items) {
-            for (const sub of item.items) {
-              if (sub.url && sub.domain) {
-                sources.push({ url: sub.url, domain: normalizeDomain(sub.domain), title: sub.title })
-              }
-            }
-          }
-        }
-
-        const brandMentionedAio = responseText.toLowerCase().includes(brandName)
         const citationEntryAio = sources.find((s) => s.domain.includes(projectDomain) || projectDomain.includes(s.domain))
         const brandCitedAio = !!citationEntryAio
+        // Mentioned if brand appears in the answer text OR is cited as a source
+        const brandMentionedAio = responseText.toLowerCase().includes(brandName) || brandCitedAio
         const sentimentAio = detectSentiment(responseText, brandName)
 
         platformResults.push({
@@ -207,16 +235,15 @@ export class GeoWorker extends WorkerHost {
         })
       }
 
-      // Also check Google AI Mode (organic advanced endpoint for AI features)
+      // Also check Google AI Mode (dedicated AI Mode SERP endpoint).
       try {
-        const organicResponse = await axios.post<DataForSeoResponse>(
-          'https://api.dataforseo.com/v3/serp/google/organic/live/advanced',
+        const aiModeResponse = await axios.post<DataForSeoResponse>(
+          'https://api.dataforseo.com/v3/serp/google/ai_mode/live/advanced',
           [
             {
               keyword: geoQuery.prompt,
               location_code: 2792,
               language_code: geoQuery.language,
-              depth: 100,
             },
           ],
           {
@@ -225,27 +252,17 @@ export class GeoWorker extends WorkerHost {
           },
         )
 
-        const orgTask = organicResponse.data?.tasks?.[0]
-        const orgItems = orgTask?.result?.[0]?.items ?? []
+        const modeTask = aiModeResponse.data?.tasks?.[0]
+        const modeItems = modeTask?.result?.[0]?.items ?? []
 
-        // Collect AI mode items
-        const aiModeItems = orgItems.filter(
-          (item: { type: string }) => item.type === 'ai_overview' || item.type === 'generative_ai',
-        )
-        const aiModeText = aiModeItems.map((i: { text?: string }) => i.text ?? '').join(' ')
+        // references[] is where AI Mode citations live (incl. nested items)
+        const collectedMode = collectReferences(modeItems)
+        const aiModeText = collectedMode.text
+        const aiModeSources = collectedMode.refs.map((r) => ({ url: r.url, domain: r.domain }))
 
-        const aiModeSources: Array<{ url: string; domain: string }> = []
-        for (const item of aiModeItems as Array<{ items?: Array<{ url?: string; domain?: string }> }>) {
-          if (item.items) {
-            for (const sub of item.items) {
-              if (sub.url && sub.domain) {
-                aiModeSources.push({ url: sub.url, domain: normalizeDomain(sub.domain) })
-              }
-            }
-          }
-        }
-
-        const brandMentionedMode = aiModeText.toLowerCase().includes(brandName)
+        const brandMentionedMode =
+          aiModeText.toLowerCase().includes(brandName) ||
+          aiModeSources.some((s) => s.domain.includes(projectDomain) || projectDomain.includes(s.domain))
         const citationEntryMode = aiModeSources.find(
           (s) => s.domain.includes(projectDomain) || projectDomain.includes(s.domain),
         )
@@ -263,6 +280,57 @@ export class GeoWorker extends WorkerHost {
         })
       } catch (err) {
         this.logger.warn(`DataForSEO Google AI Mode call failed: ${(err as Error).message}`)
+      }
+
+      // ----------------------------------------------------------------
+      // LLM Mentions (AI Optimization): real ChatGPT / Gemini / Perplexity
+      // brand-mention measurement. Each platform is best-effort — a failing
+      // or unsubscribed endpoint is skipped without breaking the scan.
+      // ----------------------------------------------------------------
+      const llmPlatforms: Array<{ platform: GeoplatForm; path: string; model: string }> = [
+        { platform: GeoplatForm.CHATGPT, path: 'chat_gpt', model: 'gpt-4o-mini' },
+        { platform: GeoplatForm.GEMINI, path: 'gemini', model: 'gemini-1.5-flash' },
+        { platform: GeoplatForm.PERPLEXITY, path: 'perplexity', model: 'sonar' },
+      ]
+      for (const lp of llmPlatforms) {
+        try {
+          const llmResp = await axios.post<{ tasks?: Array<{ status_code?: number; result?: unknown }> }>(
+            `https://api.dataforseo.com/v3/ai_optimization/${lp.path}/llm_responses/live`,
+            [
+              {
+                user_prompt: geoQuery.prompt,
+                model_name: lp.model,
+                location_code: 2792,
+                language_code: geoQuery.language,
+                web_search: true,
+              },
+            ],
+            { auth: { username: login, password }, timeout: 45000 },
+          )
+          const task = llmResp.data?.tasks?.[0]
+          if (!task || (task.status_code && task.status_code !== 20000)) {
+            this.logger.warn(`LLM ${lp.path} unavailable (status ${task?.status_code})`)
+            continue
+          }
+          // Structure-agnostic detection: search the whole result payload for
+          // the brand name (mention) and the project domain (citation).
+          const blob = JSON.stringify(task.result ?? []).toLowerCase()
+          const mentioned = blob.includes(brandName)
+          const cited = blob.includes(projectDomain)
+          platformResults.push({
+            platform: lp.platform,
+            brandMentioned: mentioned || cited,
+            brandCited: cited,
+            citedUrl: null,
+            position: null,
+            sentiment: Sentiment.NEUTRAL,
+            responseSnippet: '',
+            sourcesJson: [],
+          })
+          this.logger.log(`LLM ${lp.path}: mentioned=${mentioned} cited=${cited}`)
+        } catch (err) {
+          this.logger.warn(`LLM ${lp.path} call failed: ${(err as Error).message}`)
+        }
       }
     }
 

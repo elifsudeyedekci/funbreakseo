@@ -52,6 +52,16 @@ export class CompetitorController {
     return this.competitorService.addCompetitor(projectId, user.organizationId!, body.domain);
   }
 
+  @Get(':competitorId/keywords')
+  @ApiOperation({ summary: 'Keywords the competitor domain ranks for' })
+  competitorKeywords(
+    @CurrentUser() user: User,
+    @Param('projectId') projectId: string,
+    @Param('competitorId') competitorId: string,
+  ) {
+    return this.competitorService.getCompetitorKeywords(projectId, user.organizationId!, competitorId);
+  }
+
   @Delete(':competitorId')
   @ApiOperation({ summary: 'Remove a competitor' })
   removeCompetitor(

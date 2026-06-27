@@ -12,6 +12,10 @@ const GENERIC_DOMAIN_BLOCKLIST = [
   'apple.com', 'microsoft.com', 'whatsapp.com', 'telegram.org', 'quora.com',
   'sahibinden.com', 'hepsiburada.com', 'trendyol.com', 'gittigidiyor.com',
   'n11.com', 'sozluk.gov.tr', 'eksisozluk.com', 'tdk.gov.tr',
+  'yandex.com', 'yandex.com.tr', 'maps.yandex.com', 'bing.com',
+  'maps.google.com', 'play.google.com', 'foursquare.com', 'yelp.com',
+  'booking.com', 'tripadvisor.com', 'tripadvisor.com.tr', 'dailymotion.com',
+  'vimeo.com', 'github.com', 'yahoo.com', 'duckduckgo.com',
 ];
 
 @Injectable()
@@ -132,6 +136,24 @@ export class CompetitorService {
       update: {},
       create: { projectId, domain: cleanDomain, isAuto: false },
     });
+  }
+
+  /** Keywords the competitor domain currently ranks for (location 2792 + tr). */
+  async getCompetitorKeywords(projectId: string, organizationId: string, competitorId: string) {
+    await this.getProject(projectId, organizationId);
+    const competitor = await this.prisma.competitor.findFirst({
+      where: { id: competitorId, projectId },
+    });
+    if (!competitor) throw new NotFoundException('Competitor not found');
+    const ranked = await this.dfs.getRankedKeywords(this.cleanDomain(competitor.domain), 50);
+    return ranked
+      .filter((k) => k.keyword)
+      .map((k) => ({
+        keyword: k.keyword,
+        searchVolume: k.search_volume ?? 0,
+        difficulty: k.keyword_difficulty ?? 0,
+        cpc: k.cpc ?? 0,
+      }));
   }
 
   async removeCompetitor(projectId: string, organizationId: string, competitorId: string) {

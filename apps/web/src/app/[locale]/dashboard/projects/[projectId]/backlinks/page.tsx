@@ -72,11 +72,35 @@ export default function BacklinksPage() {
           </div>
           {/* Sync summary */}
           {syncMutation.data && (
-            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 text-sm text-emerald-400">
-              Senkronizasyon tamamlandı: {syncMutation.data.synced} backlink kaydedildi
-              {syncMutation.data.total ? ` (toplam ${syncMutation.data.total})` : ''}
-              {syncMutation.data.error ? ` — Hata: ${syncMutation.data.error}` : ''}
-            </div>
+            syncMutation.data.error === 'SUBSCRIPTION_REQUIRED' ? (
+              <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-sm text-amber-400">
+                {syncMutation.data.message ?? 'Backlink verisi için DataForSEO backlinks aboneliği gerekli.'}
+              </div>
+            ) : syncMutation.data.error ? (
+              <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-400">
+                Backlink verisi alınamadı: {syncMutation.data.error}
+              </div>
+            ) : (
+              <>
+                <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 text-sm text-emerald-400">
+                  Senkronizasyon tamamlandı: {syncMutation.data.synced} backlink kaydedildi
+                  {syncMutation.data.total ? ` (toplam ${syncMutation.data.total})` : ''}
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {[
+                    { label: 'Toplam Backlink', value: (syncMutation.data.total ?? 0).toLocaleString() },
+                    { label: 'Referring Domain', value: (syncMutation.data.referringDomains ?? 0).toLocaleString() },
+                    { label: 'Domain Rank', value: syncMutation.data.domainRank ?? '—' },
+                    { label: 'Spam Skoru', value: syncMutation.data.spamScore ?? 0 },
+                  ].map((c) => (
+                    <div key={c.label} className="rounded-xl border border-white/10 bg-white/2 p-3 text-center">
+                      <div className="text-2xl font-bold text-white">{c.value}</div>
+                      <div className="text-xs text-white/40 mt-0.5">{c.label}</div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )
           )}
           {isLoading ? (
             <div className="space-y-3">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="rounded-xl border border-white/10 h-16 animate-pulse" />)}</div>

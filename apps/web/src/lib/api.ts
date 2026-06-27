@@ -98,6 +98,7 @@ export const projectApi = {
   dashboard: (id: string) => api.get(`/projects/${id}/overview`),
   connectGsc: (id: string) => api.post(`/projects/${id}/connect-gsc`),
   fullScan: (id: string) => api.post(`/projects/${id}/full-scan`),
+  fullScanStatus: (id: string) => api.get(`/projects/${id}/full-scan/status`),
 };
 
 export const competitorApi = {
@@ -108,6 +109,8 @@ export const competitorApi = {
     api.post(`/projects/${projectId}/competitors`, { domain }),
   remove: (projectId: string, competitorId: string) =>
     api.delete(`/projects/${projectId}/competitors/${competitorId}`),
+  keywords: (projectId: string, competitorId: string) =>
+    api.get(`/projects/${projectId}/competitors/${competitorId}/keywords`),
 };
 
 export const keywordApi = {
@@ -120,6 +123,7 @@ export const keywordApi = {
   summary: (projectId: string) => api.get(`/projects/${projectId}/keywords/summary`),
   refreshRank: (id: string) => api.post(`/keywords/${id}/refresh-rank`),
   refreshMetrics: (projectId: string) => api.post(`/projects/${projectId}/keywords/refresh-metrics`),
+  refreshRanks: (projectId: string) => api.post(`/projects/${projectId}/keywords/refresh-ranks`),
   suggestions: (projectId: string) => api.get(`/projects/${projectId}/keywords/suggestions`),
   discover: (projectId: string) => api.get(`/projects/${projectId}/keywords/discover`),
 };

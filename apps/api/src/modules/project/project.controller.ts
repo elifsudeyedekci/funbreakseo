@@ -138,4 +138,10 @@ export class ProjectController {
   async fullScan(@CurrentUser() user: User, @Param('id') id: string) {
     return this.projectService.fullScan(id, user.organizationId!);
   }
+
+  @Get(':id/full-scan/status')
+  @ApiOperation({ summary: 'Poll full-scan progress (step + percent)' })
+  async fullScanStatus(@CurrentUser() _user: User, @Param('id') id: string) {
+    return this.projectService.getFullScanStatus(id);
+  }
 }

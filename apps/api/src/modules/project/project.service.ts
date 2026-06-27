@@ -24,6 +24,17 @@ export interface CreateProjectDto {
   searchEngine?: string;
 }
 
+export interface FullScanProgress {
+  projectId: string;
+  status: 'running' | 'completed' | 'error';
+  percent: number;
+  currentStep: string;
+  startedAt: string;
+  completedAt: string | null;
+  steps: Record<string, Record<string, unknown>>;
+  summary: Record<string, number>;
+}
+
 export interface UpdateProjectDto {
   name?: string;
   country?: string;
@@ -36,6 +47,9 @@ export interface UpdateProjectDto {
 export class ProjectService {
   private readonly logger = new Logger(ProjectService.name);
   private readonly mailer: nodemailer.Transporter;
+
+  /** In-memory full-scan progress keyed by projectId (polled by the dashboard). */
+  private readonly fullScanProgress = new Map<string, FullScanProgress>();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -297,69 +311,132 @@ export class ProjectService {
 
   // ─── Full Scan Orchestration ──────────────────────────────────────────────────
 
+  /**
+   * Kicks off a full scan in the background and returns immediately. Progress is
+   * tracked in-memory and exposed via getFullScanStatus() for the dashboard to
+   * poll. Steps run sequentially: crawl → keywords → backlinks → GEO → rakip.
+   */
   async fullScan(projectId: string, organizationId: string) {
     const project = await this.prisma.project.findFirst({
       where: { id: projectId, organizationId, deletedAt: null },
     });
     if (!project) throw new NotFoundException('Project not found');
 
-    const results: Record<string, unknown> = {
+    const existing = this.fullScanProgress.get(projectId);
+    if (existing && existing.status === 'running') {
+      return { started: false, alreadyRunning: true, progress: existing };
+    }
+
+    const STEPS = ['crawl', 'keywords', 'backlinks', 'geo', 'competitors'] as const;
+    const progress: FullScanProgress = {
       projectId,
+      status: 'running',
+      percent: 0,
+      currentStep: 'crawl',
       startedAt: new Date().toISOString(),
-      steps: {} as Record<string, unknown>,
+      completedAt: null,
+      steps: {},
+      summary: {},
+    };
+    this.fullScanProgress.set(projectId, progress);
+
+    // Run in background — do not block the HTTP response.
+    void this.runFullScan(projectId, organizationId, progress, STEPS);
+
+    return { started: true, progress };
+  }
+
+  private async runFullScan(
+    projectId: string,
+    organizationId: string,
+    progress: FullScanProgress,
+    steps: readonly string[],
+  ): Promise<void> {
+    const total = steps.length;
+    let done = 0;
+    const advance = (step: string) => {
+      done++;
+      progress.percent = Math.round((done / total) * 100);
+      const next = steps[done];
+      if (next) progress.currentStep = next;
     };
 
-    const steps = results.steps as Record<string, unknown>;
-
-    // Step 1: Start technical SEO crawl
+    // Step 1: technical SEO crawl
+    progress.currentStep = 'crawl';
     try {
       const crawlJob = await this.prisma.crawlJob.create({
         data: { projectId, status: CrawlJobStatus.QUEUED, triggeredBy: 'MANUAL' },
       });
       await this.crawlerQueue.add('crawl', { crawlJobId: crawlJob.id, projectId });
-      steps['crawl'] = { jobId: crawlJob.id, status: 'queued' };
+      progress.steps['crawl'] = { status: 'done', jobId: crawlJob.id };
     } catch (err: any) {
       this.logger.warn('fullScan: crawl step failed', err.message);
-      steps['crawl'] = { error: err.message };
+      progress.steps['crawl'] = { status: 'error', error: err.message };
     }
+    advance('crawl');
 
-    // Step 2: Keyword discovery (domain-based, no seed required)
+    // Step 2: keyword discovery (domain-based)
+    progress.currentStep = 'keywords';
     try {
       const discovered = await this.keywordService.discoverKeywordsForDomain(projectId, organizationId);
-      steps['keywords'] = { discovered: discovered.length, top: discovered.slice(0, 10) };
+      progress.steps['keywords'] = { status: 'done', discovered: discovered.length };
+      progress.summary.keywords = discovered.length;
     } catch (err: any) {
       this.logger.warn('fullScan: keyword step failed', err.message);
-      steps['keywords'] = { error: err.message };
+      progress.steps['keywords'] = { status: 'error', error: err.message };
     }
+    advance('keywords');
 
-    // Step 3: Backlink profile sync (DataForSEO → DB)
+    // Step 3: backlink profile sync
+    progress.currentStep = 'backlinks';
     try {
-      const bl = await this.outreachService.syncBacklinks(projectId);
-      steps['backlinks'] = { synced: bl.synced ?? 0, total: bl.total ?? 0 };
+      const bl: any = await this.outreachService.syncBacklinks(projectId);
+      progress.steps['backlinks'] = bl.error
+        ? { status: 'skipped', reason: bl.error }
+        : { status: 'done', synced: bl.synced ?? 0, total: bl.total ?? 0 };
+      progress.summary.backlinks = bl.total ?? 0;
     } catch (err: any) {
       this.logger.warn('fullScan: backlink step failed', err.message);
-      steps['backlinks'] = { error: err.message };
+      progress.steps['backlinks'] = { status: 'error', error: err.message };
     }
+    advance('backlinks');
 
-    // Step 4: GEO / AI-visibility scan (auto domain-based queries)
+    // Step 4: GEO / AI-visibility scan (business-keyword queries)
+    progress.currentStep = 'geo';
     try {
-      const geo = await this.geoService.triggerScan(projectId);
-      steps['geo'] = { queued: geo.queued ?? 0 };
+      const geo: any = await this.geoService.triggerScan(projectId);
+      progress.steps['geo'] = { status: 'done', queued: geo.queued ?? 0 };
+      progress.summary.geoQueries = geo.queued ?? 0;
     } catch (err: any) {
       this.logger.warn('fullScan: geo step failed', err.message);
-      steps['geo'] = { error: err.message };
+      progress.steps['geo'] = { status: 'error', error: err.message };
     }
+    advance('geo');
 
-    // Step 5: Competitor auto-discovery (DataForSEO competitors_domain, filtered)
+    // Step 5: competitor auto-discovery (filtered)
+    progress.currentStep = 'competitors';
     try {
-      const competitors = await this.competitorService.findCompetitors(projectId, organizationId);
-      steps['competitors'] = { found: competitors.length, top: competitors.slice(0, 5).map((c: any) => c.domain) };
+      const competitors: any[] = await this.competitorService.findCompetitors(projectId, organizationId);
+      progress.steps['competitors'] = {
+        status: 'done',
+        found: competitors.length,
+        top: competitors.slice(0, 5).map((c) => c.domain),
+      };
+      progress.summary.competitors = competitors.length;
     } catch (err: any) {
       this.logger.warn('fullScan: competitor step failed', err.message);
-      steps['competitors'] = { error: err.message };
+      progress.steps['competitors'] = { status: 'error', error: err.message };
     }
+    advance('competitors');
 
-    results['completedAt'] = new Date().toISOString();
-    return results;
+    progress.percent = 100;
+    progress.status = 'completed';
+    progress.currentStep = 'done';
+    progress.completedAt = new Date().toISOString();
+    this.logger.log(`fullScan completed for project ${projectId}`);
+  }
+
+  getFullScanStatus(projectId: string): FullScanProgress | { status: 'idle' } {
+    return this.fullScanProgress.get(projectId) ?? { status: 'idle' };
   }
 }

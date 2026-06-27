@@ -27,6 +27,8 @@ export interface BacklinkProfile {
   domain_rank: number;
   backlinks_num: number;
   referring_domains: number;
+  referring_main_domains: number;
+  spam_score: number;
   dofollow: number;
   nofollow: number;
   sample: Array<{
@@ -128,6 +130,112 @@ export class DataForSeoService {
     return response.tasks?.[0]?.result?.[0]?.items ?? [];
   }
 
+  /**
+   * Live SERP position for a single keyword. Returns the project domain's
+   * rank_absolute (falling back to rank_group) among organic results, or null
+   * when the domain does not rank. Always uses location_code 2792 + tr.
+   */
+  async getSerpPosition(
+    keyword: string,
+    targetDomain: string,
+    languageCode = 'tr',
+  ): Promise<{ position: number | null; url: string | null }> {
+    const target = this.normalizeDomain(targetDomain);
+    const response = await this.request<{
+      tasks: Array<{
+        result?: Array<{
+          items?: Array<{
+            type?: string;
+            rank_absolute?: number;
+            rank_group?: number;
+            domain?: string;
+            url?: string;
+          }>;
+        }>;
+      }>;
+    }>('/serp/google/organic/live/advanced', [
+      {
+        keyword,
+        location_code: 2792,
+        language_code: languageCode,
+        depth: 100,
+        se_domain: 'google.com.tr',
+      },
+    ]);
+
+    const items = response.tasks?.[0]?.result?.[0]?.items ?? [];
+    const match = items.find(
+      (i) =>
+        i.type === 'organic' &&
+        i.domain &&
+        (this.normalizeDomain(i.domain).includes(target) ||
+          target.includes(this.normalizeDomain(i.domain))),
+    );
+    if (!match) return { position: null, url: null };
+    return {
+      position: match.rank_absolute ?? match.rank_group ?? null,
+      url: match.url ?? null,
+    };
+  }
+
+  /**
+   * Google AI Mode references for a keyword. Recursively walks every item /
+   * nested item and collects ALL references[] entries ({ domain, source, url,
+   * title }) into a flat list. This is where AI citations actually live —
+   * not in items[].url. Always location_code 2792 + tr.
+   */
+  async getAiModeReferences(
+    keyword: string,
+    languageCode = 'tr',
+  ): Promise<{
+    text: string;
+    references: Array<{ domain: string; source: string; url: string; title: string }>;
+  }> {
+    const response = await this.request<{
+      tasks: Array<{ result?: Array<{ items?: unknown[] }> }>;
+    }>('/serp/google/ai_mode/live/advanced', [
+      {
+        keyword,
+        location_code: 2792,
+        language_code: languageCode,
+      },
+    ]);
+
+    const items = response.tasks?.[0]?.result?.[0]?.items ?? [];
+    const references: Array<{ domain: string; source: string; url: string; title: string }> = [];
+    const texts: string[] = [];
+
+    const walk = (node: unknown): void => {
+      if (!node || typeof node !== 'object') return;
+      const obj = node as Record<string, unknown>;
+      if (typeof obj['text'] === 'string') texts.push(obj['text'] as string);
+      const refs = obj['references'];
+      if (Array.isArray(refs)) {
+        for (const r of refs) {
+          if (r && typeof r === 'object') {
+            const rr = r as Record<string, unknown>;
+            const url = (rr['url'] as string) ?? '';
+            const domain = (rr['domain'] as string) ?? (url ? this.safeHostname(url) : '');
+            if (domain || url) {
+              references.push({
+                domain: this.normalizeDomain(domain || url),
+                source: (rr['source'] as string) ?? '',
+                url,
+                title: (rr['title'] as string) ?? '',
+              });
+            }
+          }
+        }
+      }
+      // Recurse into nested item arrays
+      const nested = obj['items'];
+      if (Array.isArray(nested)) for (const c of nested) walk(c);
+    };
+
+    for (const it of items) walk(it);
+    return { text: texts.join(' '), references };
+  }
+
   // ─── Keyword Research ────────────────────────────────────────────────────────
 
   async keywordResearch(
@@ -164,10 +272,14 @@ export class DataForSeoService {
   async getBacklinks(domain: string): Promise<BacklinkProfile> {
     const response = await this.request<{
       tasks: Array<{
+        status_code?: number;
+        status_message?: string;
         result?: Array<{
           domain_rank?: number;
           backlinks?: number;
           referring_domains?: number;
+          referring_main_domains?: number;
+          backlinks_spam_score?: number;
           dofollow?: number;
           nofollow?: number;
         }>;
@@ -179,18 +291,28 @@ export class DataForSeoService {
       },
     ]);
 
-    const result = response.tasks?.[0]?.result?.[0];
+    const task = response.tasks?.[0];
+    if (this.isSubscriptionError(task?.status_code, task?.status_message)) {
+      throw new Error(`SUBSCRIPTION_REQUIRED: ${task?.status_message ?? 'backlinks subscription required'}`);
+    }
+
+    const result = task?.result?.[0];
     if (!result) {
-      return { domain_rank: 0, backlinks_num: 0, referring_domains: 0, dofollow: 0, nofollow: 0, sample: [] };
+      return { domain_rank: 0, backlinks_num: 0, referring_domains: 0, referring_main_domains: 0, spam_score: 0, dofollow: 0, nofollow: 0, sample: [] };
     }
 
     // summary/live does NOT return individual backlinks — fetch them separately
-    const backlinks = await this.getBacklinkList(domain, 50);
+    const backlinks = await this.getBacklinkList(domain, 100);
+    this.logger.log(
+      `Backlink summary for ${domain}: backlinks=${result.backlinks ?? 0} referring_domains=${result.referring_domains ?? 0} → ${backlinks.length} items fetched`,
+    );
 
     return {
       domain_rank: result.domain_rank ?? 0,
       backlinks_num: result.backlinks ?? 0,
       referring_domains: result.referring_domains ?? 0,
+      referring_main_domains: result.referring_main_domains ?? 0,
+      spam_score: result.backlinks_spam_score ?? 0,
       dofollow: result.dofollow ?? 0,
       nofollow: result.nofollow ?? 0,
       sample: backlinks,
@@ -551,6 +673,30 @@ export class DataForSeoService {
         `DataForSEO API error: ${message}`,
       );
     }
+  }
+
+  private normalizeDomain(raw: string): string {
+    return (raw ?? '')
+      .replace(/^https?:\/\//, '')
+      .replace(/\/.*$/, '')
+      .replace(/^www\./, '')
+      .toLowerCase()
+      .trim();
+  }
+
+  private safeHostname(url: string): string {
+    try {
+      return new URL(url).hostname;
+    } catch {
+      return '';
+    }
+  }
+
+  /** True when a DataForSEO task indicates the backlinks subscription is missing. */
+  private isSubscriptionError(statusCode?: number, statusMessage?: string): boolean {
+    if (statusCode && statusCode === 20000) return false;
+    const msg = (statusMessage ?? '').toLowerCase();
+    return /subscription|access denied/.test(msg);
   }
 
   private resolveLocationCode(location: string): number {

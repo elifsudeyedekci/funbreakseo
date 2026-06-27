@@ -148,6 +148,10 @@ export default function KeywordsPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['keywords', projectId] }),
   });
 
+  const refreshRanksMutation = useMutation({
+    mutationFn: () => keywordApi.refreshRanks(projectId),
+  });
+
   const keywords = data || [];
 
   const firstPageCount = keywords.filter((k) => k.position !== null && k.position <= 10).length;
@@ -307,6 +311,17 @@ export default function KeywordsPage() {
             >
               <RefreshCw className={cn('h-4 w-4', refreshMetricsMutation.isPending && 'animate-spin')} />
               Metrikleri Yenile
+            </button>
+          )}
+          {keywords.length > 0 && (
+            <button
+              onClick={() => refreshRanksMutation.mutate()}
+              disabled={refreshRanksMutation.isPending}
+              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-white/70 hover:bg-white/10 transition-all disabled:opacity-50"
+              title="Pozisyonları Güncelle"
+            >
+              <TrendingUp className={cn('h-4 w-4', refreshRanksMutation.isPending && 'animate-pulse')} />
+              {refreshRanksMutation.isSuccess ? 'Sıralama Kuyruğa Alındı' : 'Pozisyonları Güncelle'}
             </button>
           )}
           {keywords.length > 0 && (

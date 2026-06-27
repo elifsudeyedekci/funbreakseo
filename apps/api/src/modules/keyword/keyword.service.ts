@@ -69,6 +69,18 @@ export class KeywordService {
   ) {
     await this.assertProjectAccess(projectId, organizationId);
 
+    // Normalize to NFC and drop encoding-corrupted phrases (U+FFFD / empty)
+    dto.phrases = Array.from(
+      new Set(
+        dto.phrases
+          .map((p) => (p ?? '').normalize('NFC').trim())
+          .filter((p) => p.length > 0 && !this.isCorrupted(p)),
+      ),
+    );
+    if (dto.phrases.length === 0) {
+      throw new BadRequestException('No valid keywords to add');
+    }
+
     // Check plan keyword limit
     const org = await this.prisma.organization.findUniqueOrThrow({
       where: { id: organizationId },
@@ -128,14 +140,15 @@ export class KeywordService {
       skipDuplicates: true,
     });
 
-    // Queue initial rank checks
-    for (const phrase of dto.phrases) {
-      await this.rankQueue.add(
-        'check-rank',
-        { projectId, phrase, location: dto.location ?? 'Turkey' },
-        { delay: 0, attempts: 3 },
-      );
-    }
+    // Queue an initial rank check for the whole project. The rank-tracking
+    // worker only understands 'check-all' (projectId) / 'check-single'
+    // (keywordId) — the previous 'check-rank' job name was silently dropped,
+    // which is why positions never populated.
+    await this.rankQueue.add(
+      'check-all',
+      { projectId },
+      { attempts: 3 },
+    );
 
     return { created: result.count };
   }
@@ -174,6 +187,9 @@ export class KeywordService {
 
   async refreshAllKeywordMetrics(projectId: string, organizationId: string) {
     await this.assertProjectAccess(projectId, organizationId);
+
+    // Clean up any encoding-corrupted rows before refreshing metrics
+    await this.cleanCorruptedKeywords(projectId);
 
     const keywords = await this.prisma.keyword.findMany({
       where: { projectId },
@@ -316,6 +332,8 @@ export class KeywordService {
    */
   private isRelevantKeyword(kw: string): boolean {
     if (kw.length < 3 || kw.length > 80) return false;
+    // Reject encoding-corrupted / mojibake keywords
+    if (this.isCorrupted(kw)) return false;
     // Reject foreign scripts that are clearly not Turkish/Latin
     if (/[Ѐ-ӿ؀-ۿ一-鿿぀-ヿ가-힯]/.test(kw)) {
       return false;
@@ -423,12 +441,20 @@ export class KeywordService {
     }
 
     await this.rankQueue.add(
-      'check-rank',
-      { projectId: kw.projectId, phrase: kw.phrase, location: kw.location },
+      'check-single',
+      { keywordId: id },
       { attempts: 3, priority: 1 },
     );
 
     return { message: 'Rank check queued', keywordId: id };
+  }
+
+  // ─── Refresh ranks for all keywords in a project (bulk SERP positions) ───────
+
+  async refreshAllRanks(projectId: string, organizationId: string) {
+    await this.assertProjectAccess(projectId, organizationId);
+    await this.rankQueue.add('check-all', { projectId }, { attempts: 3, priority: 1 });
+    return { message: 'Bulk rank check queued', projectId };
   }
 
   // ─── Keyword Tags ─────────────────────────────────────────────────────────────
@@ -482,6 +508,30 @@ export class KeywordService {
       where: { id: projectId, organizationId, deletedAt: null },
     });
     if (!project) throw new NotFoundException('Project not found');
+  }
+
+  /**
+   * Detects encoding-corrupted keyword strings: Unicode replacement char or
+   * common UTF-8/Latin-1 mojibake sequences (e.g. "Ã§", "Ä±", "Å").
+   */
+  private isCorrupted(phrase: string): boolean {
+    if (phrase.includes('�')) return true;
+    if (/Ã.|Ä.|Å.| Â/.test(phrase)) return true;
+    return false;
+  }
+
+  /** Removes encoding-corrupted keyword rows from a project (one-shot cleanup). */
+  async cleanCorruptedKeywords(projectId: string) {
+    const all = await this.prisma.keyword.findMany({
+      where: { projectId },
+      select: { id: true, phrase: true },
+    });
+    const badIds = all.filter((k) => this.isCorrupted(k.phrase)).map((k) => k.id);
+    if (badIds.length > 0) {
+      await this.prisma.keyword.deleteMany({ where: { id: { in: badIds } } });
+      this.logger.log(`Removed ${badIds.length} corrupted keyword(s) from project ${projectId}`);
+    }
+    return badIds.length;
   }
 
   private mapIntent(intent?: string): KeywordIntent {

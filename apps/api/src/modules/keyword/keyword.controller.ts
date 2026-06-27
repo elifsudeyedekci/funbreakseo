@@ -174,6 +174,15 @@ export class KeywordController {
     return this.keywordService.refreshAllKeywordMetrics(projectId, user.organizationId!);
   }
 
+  @Post('projects/:projectId/keywords/refresh-ranks')
+  @ApiOperation({ summary: 'Queue SERP position checks for all keywords in project' })
+  async refreshRanks(
+    @CurrentUser() user: User,
+    @Param('projectId') projectId: string,
+  ) {
+    return this.keywordService.refreshAllRanks(projectId, user.organizationId!);
+  }
+
   @Get('projects/:projectId/keywords/suggestions')
   @ApiOperation({ summary: 'Get AI-powered keyword suggestions for project domain' })
   async getSuggestions(

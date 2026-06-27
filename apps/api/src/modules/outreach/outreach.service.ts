@@ -199,14 +199,30 @@ export class OutreachService {
         }
       }
 
+      this.logger.log(`Persisted ${synced} backlinks for ${domain}`)
       return {
         synced,
         total: profile.backlinks_num,
         referringDomains: profile.referring_domains,
+        referringMainDomains: profile.referring_main_domains,
+        spamScore: profile.spam_score,
+        domainRank: profile.domain_rank,
         backlinks: returnedBacklinks,
         domain,
       }
     } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      if (msg.includes('SUBSCRIPTION_REQUIRED')) {
+        this.logger.warn(`Backlinks subscription not active for ${domain}`)
+        return {
+          synced: 0,
+          total: 0,
+          backlinks: [],
+          domain,
+          error: 'SUBSCRIPTION_REQUIRED',
+          message: 'Backlink verisi için DataForSEO backlinks aboneliği gerekli',
+        }
+      }
       this.logger.error('DataForSEO backlinks sync failed', err)
       return { synced: 0, error: 'DataForSEO fetch failed', backlinks: [], total: 0, domain }
     }

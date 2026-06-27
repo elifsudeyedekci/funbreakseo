@@ -3,13 +3,15 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
-import { Search, RefreshCw, BarChart2, Trash2 } from 'lucide-react';
-import { competitorApi } from '@/lib/api';
+import { RefreshCw, BarChart2, Trash2, List, Plus, Check } from 'lucide-react';
+import { competitorApi, keywordApi } from '@/lib/api';
 
 export default function CompetitorsPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
   const [manualDomain, setManualDomain] = useState('');
+  const [kwCompetitor, setKwCompetitor] = useState<{ id: string; domain: string } | null>(null);
+  const [addedKeywords, setAddedKeywords] = useState<Set<string>>(new Set());
 
   const { data: competitors, isLoading, refetch } = useQuery({
     queryKey: ['competitors', projectId],
@@ -36,6 +38,19 @@ export default function CompetitorsPage() {
   const removeMutation = useMutation({
     mutationFn: (id: string) => competitorApi.remove(projectId, id),
     onSuccess: () => refetch(),
+  });
+
+  const { data: competitorKeywords, mutate: loadKeywords, isPending: loadingKeywords } = useMutation({
+    mutationFn: (competitorId: string) =>
+      competitorApi.keywords(projectId, competitorId).then((r) => {
+        const raw = r.data;
+        return Array.isArray(raw) ? raw : (raw?.data ?? []);
+      }),
+  });
+
+  const addKeywordMutation = useMutation({
+    mutationFn: (phrase: string) => keywordApi.add(projectId, [phrase]),
+    onSuccess: (_d, phrase) => setAddedKeywords((prev) => new Set(prev).add(phrase)),
   });
 
   return (
@@ -104,6 +119,14 @@ export default function CompetitorsPage() {
                   Karşılaştır
                 </button>
                 <button
+                  onClick={() => { setKwCompetitor({ id: c.id, domain: c.domain }); loadKeywords(c.id); }}
+                  disabled={loadingKeywords && kwCompetitor?.id === c.id}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/10 px-3 py-1.5 text-xs font-medium text-white/70 hover:bg-white/10 disabled:opacity-50"
+                >
+                  <List className="h-3.5 w-3.5" />
+                  Kelimeleri Gör
+                </button>
+                <button
                   onClick={() => removeMutation.mutate(c.id)}
                   className="rounded-lg border border-white/10 p-1.5 text-white/40 hover:text-red-400 hover:border-red-500/30"
                 >
@@ -112,6 +135,54 @@ export default function CompetitorsPage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Competitor ranked keywords + add-to-my-keywords */}
+      {kwCompetitor && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold text-white">
+            <span className="text-indigo-400">{kwCompetitor.domain}</span> sıralandığı kelimeler
+          </h2>
+          <div className="rounded-2xl border border-white/10 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/10">
+                  <th className="text-left px-4 py-3 text-xs font-medium text-white/40">Kelime</th>
+                  <th className="px-4 py-3 text-xs font-medium text-white/40 text-center">Hacim</th>
+                  <th className="px-4 py-3 text-xs font-medium text-white/40 text-center">Zorluk</th>
+                  <th className="px-4 py-3 text-xs font-medium text-white/40 text-right">Aksiyon</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loadingKeywords && (
+                  <tr><td colSpan={4} className="px-4 py-8 text-center text-sm text-white/30">Yükleniyor...</td></tr>
+                )}
+                {!loadingKeywords && (competitorKeywords as Array<{ keyword: string; searchVolume: number; difficulty: number }> ?? []).map((row, i) => {
+                  const added = addedKeywords.has(row.keyword);
+                  return (
+                    <tr key={i} className="border-b border-white/5 hover:bg-white/2">
+                      <td className="px-4 py-3 text-white">{row.keyword}</td>
+                      <td className="px-4 py-3 text-center text-white/60">{row.searchVolume?.toLocaleString() ?? '—'}</td>
+                      <td className="px-4 py-3 text-center text-white/60">{row.difficulty ?? '—'}</td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          onClick={() => addKeywordMutation.mutate(row.keyword)}
+                          disabled={added || addKeywordMutation.isPending}
+                          className="inline-flex items-center gap-1 rounded-lg bg-emerald-600/20 border border-emerald-500/30 px-2.5 py-1 text-xs font-medium text-emerald-400 hover:bg-emerald-600/30 disabled:opacity-60"
+                        >
+                          {added ? <><Check className="h-3 w-3" /> Eklendi</> : <><Plus className="h-3 w-3" /> Kelimelerime Ekle</>}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {!loadingKeywords && (competitorKeywords as unknown[] ?? []).length === 0 && (
+                  <tr><td colSpan={4} className="px-4 py-8 text-center text-sm text-white/30">Kelime bulunamadı</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
