@@ -32,6 +32,15 @@ export class CompetitorController {
     return this.competitorService.listCompetitors(projectId, user.organizationId!);
   }
 
+  @Get('diagnostics')
+  @ApiOperation({ summary: 'DataForSEO diagnostics — shows what the APP actually receives (sandbox/prod, raw counts)' })
+  diagnostics(
+    @CurrentUser() user: User,
+    @Param('projectId') projectId: string,
+  ) {
+    return this.competitorService.diagnose(projectId, user.organizationId!);
+  }
+
   @Post('discover')
   @ApiOperation({ summary: 'Discover competitors via DataForSEO (location 2792 + tr) and store them' })
   discoverCompetitors(

@@ -184,6 +184,12 @@ export class CompetitorService {
       }));
   }
 
+  /** Diagnostics: what the APP actually receives from DataForSEO for this domain. */
+  async diagnose(projectId: string, organizationId: string) {
+    const project = await this.getProject(projectId, organizationId);
+    return this.dfs.diagnose(project.domain);
+  }
+
   async removeCompetitor(projectId: string, organizationId: string, competitorId: string) {
     await this.getProject(projectId, organizationId);
     const competitor = await this.prisma.competitor.findFirst({

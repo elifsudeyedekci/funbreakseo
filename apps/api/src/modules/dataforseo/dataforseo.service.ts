@@ -82,21 +82,87 @@ export class DataForSeoService {
   private readonly http: AxiosInstance;
   private readonly sandboxMode: boolean;
 
+  private readonly baseURL: string;
+  private readonly hasCreds: boolean;
+
   constructor(private readonly config: ConfigService) {
     const login = config.get<string>('DATAFORSEO_LOGIN', '');
     const password = config.get<string>('DATAFORSEO_PASSWORD', '');
     this.sandboxMode = config.get<string>('DATAFORSEO_USE_SANDBOX', 'false') === 'true';
+    this.hasCreds = Boolean(login && password);
 
-    const baseURL = this.sandboxMode
+    this.baseURL = this.sandboxMode
       ? 'https://sandbox.dataforseo.com/v3'
       : 'https://api.dataforseo.com/v3';
 
+    // Surface the effective configuration at startup. If production data looks
+    // wrong while manual curl works, the usual cause is sandboxMode=true (the
+    // app then hits sandbox.dataforseo.com which returns canned sample data) or
+    // missing credentials. This log makes that immediately visible in PM2 logs.
+    if (this.sandboxMode) {
+      this.logger.warn(
+        `DataForSEO running in SANDBOX mode (${this.baseURL}) — responses are CANNED SAMPLE DATA, not real. Set DATAFORSEO_USE_SANDBOX=false for live data.`,
+      );
+    } else {
+      this.logger.log(`DataForSEO using PRODUCTION (${this.baseURL}), credentials ${this.hasCreds ? 'present' : 'MISSING'}`);
+    }
+
     this.http = axios.create({
-      baseURL,
+      baseURL: this.baseURL,
       auth: { username: login, password },
       timeout: 60_000,
       headers: { 'Content-Type': 'application/json' },
     });
+  }
+
+  /**
+   * Diagnostics: returns the effective config + a raw probe of the key endpoints
+   * for a domain, so we can verify what the APP actually receives (vs manual
+   * curl). Exposed via an admin diagnostics endpoint. Never throws.
+   */
+  async diagnose(domain: string): Promise<Record<string, unknown>> {
+    const clean = this.normalizeDomain(domain);
+    const out: Record<string, unknown> = {
+      baseURL: this.baseURL,
+      sandboxMode: this.sandboxMode,
+      hasCredentials: this.hasCreds,
+      domain: clean,
+    };
+    // Backlinks summary
+    try {
+      const r = await this.http.post('/backlinks/summary/live', [{ target: clean, include_subdomains: true }]);
+      const t = (r.data as any)?.tasks?.[0];
+      out.backlinksSummary = {
+        status_code: t?.status_code,
+        status_message: t?.status_message,
+        backlinks: t?.result?.[0]?.backlinks,
+        referring_domains: t?.result?.[0]?.referring_domains,
+      };
+    } catch (e) { out.backlinksSummary = { error: (e as Error).message }; }
+    // Backlinks list count (as_is)
+    try {
+      const r = await this.http.post('/backlinks/backlinks/live', [{ target: clean, mode: 'as_is', limit: 100, include_subdomains: true }]);
+      const res = (r.data as any)?.tasks?.[0]?.result?.[0];
+      out.backlinksList = { total_count: res?.total_count, items_count: res?.items?.length, sample_item_keys: res?.items?.[0] ? Object.keys(res.items[0]) : [] };
+    } catch (e) { out.backlinksList = { error: (e as Error).message }; }
+    // Competitors domain
+    try {
+      const r = await this.http.post('/dataforseo_labs/google/competitors_domain/live', [{ target: clean, location_code: 2792, language_code: 'tr', limit: 10 }]);
+      const res = (r.data as any)?.tasks?.[0]?.result?.[0];
+      out.competitors = {
+        status: (r.data as any)?.tasks?.[0]?.status_message,
+        items_count: res?.items?.length,
+        sample_item_keys: res?.items?.[0] ? Object.keys(res.items[0]) : [],
+        first_three: (res?.items ?? []).slice(0, 3).map((i: any) => ({ domain: i.domain, intersections: i.intersections, avg_position: i.avg_position, metrics_keys: i.metrics ? Object.keys(i.metrics) : [] })),
+      };
+    } catch (e) { out.competitors = { error: (e as Error).message }; }
+    // Ranked keywords
+    try {
+      const r = await this.http.post('/dataforseo_labs/google/ranked_keywords/live', [{ target: clean, location_code: 2792, language_code: 'tr', limit: 10 }]);
+      const res = (r.data as any)?.tasks?.[0]?.result?.[0];
+      out.rankedKeywords = { total_count: res?.total_count, items_count: res?.items?.length, sample_item_keys: res?.items?.[0] ? Object.keys(res.items[0]) : [] };
+    } catch (e) { out.rankedKeywords = { error: (e as Error).message }; }
+    return out;
   }
 
   // ─── SERP Results ────────────────────────────────────────────────────────────
@@ -668,20 +734,25 @@ export class DataForSeoService {
         target: cleanDomain,
         location_code: 2792,
         language_code: 'tr',
-        // Rank real rivals first: domains sharing the most keywords with us.
-        // Without this the API returns an arbitrary order full of low/zero
-        // overlap (and thus irrelevant) domains.
-        order_by: ['intersections,desc'],
-        limit,
+        // NOTE: no order_by — an invalid order_by field makes the whole task
+        // fail (status 40xxx) and we'd silently get nothing, leaving stale 0s.
+        // The API already returns competitors by relevance; we sort in JS below.
+        limit: Math.max(limit, 30),
       }]);
-      const items = response.tasks?.[0]?.result?.[0]?.items ?? [];
+      const task = response.tasks?.[0] as any;
+      const items = task?.result?.[0]?.items ?? [];
+      if (items[0]) {
+        this.logger.log(`competitors_domain raw item keys for ${cleanDomain}: ${Object.keys(items[0]).join(', ')}`);
+      } else {
+        this.logger.warn(`competitors_domain returned 0 items for ${cleanDomain} (status: ${task?.status_message})`);
+      }
       return (items as any[]).map((item) => {
-        // intersections = shared ranked keywords. Some payloads nest the count
-        // under metrics, so read defensively.
+        // intersections = number of keywords BOTH domains rank for. DataForSEO
+        // exposes it at item.intersections; fall back to the intersecting
+        // metrics count if the shape ever differs.
         const intersections =
-          (item.intersections as number) ??
-          (item.full_domain_metrics?.organic?.count as number) ??
-          (item.metrics?.organic?.count as number) ??
+          (typeof item.intersections === 'number' ? item.intersections : undefined) ??
+          (typeof item.metrics?.organic?.count === 'number' ? item.metrics.organic.count : undefined) ??
           0;
         return {
           domain: item.domain as string,
@@ -690,9 +761,12 @@ export class DataForSeoService {
           etv:
             (item.etv as number) ??
             (item.full_domain_metrics?.organic?.etv as number) ??
+            (item.metrics?.organic?.etv as number) ??
             null,
         };
-      });
+      })
+      // Real rivals (most shared keywords) first.
+      .sort((a, b) => (b.intersections ?? 0) - (a.intersections ?? 0));
     } catch (err) {
       this.logger.warn('getCompetitorDomains failed', err);
       return [];
