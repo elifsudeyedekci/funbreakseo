@@ -173,45 +173,82 @@ export class ProjectService {
   async getOverview(id: string, organizationId: string) {
     const project = await this.findOne(id, organizationId);
 
-    const [keywordCount, topKeywords, lastDoneCrawl, latestCrawl, contentCount, geoQueryCount, backlinkCount] =
-      await Promise.all([
-        this.prisma.keyword.count({ where: { projectId: id } }),
-        this.prisma.keyword.findMany({
-          where: { projectId: id },
-          include: { ranks: { take: 1, orderBy: { checkedAt: 'desc' } } },
-          take: 5,
-          orderBy: { createdAt: 'desc' },
-        }),
-        // Prefer the last crawl that produced data for the dashboard cards…
-        this.prisma.crawlJob.findFirst({
-          where: { projectId: id, status: CrawlJobStatus.DONE, pagesScanned: { gt: 0 } },
-          orderBy: { finishedAt: 'desc' },
-        }),
-        // …but also expose the most recent job so the UI can show "running/queued" state.
-        this.prisma.crawlJob.findFirst({
-          where: { projectId: id },
-          orderBy: { createdAt: 'desc' },
-        }),
-        this.prisma.contentItem.count({ where: { projectId: id } }),
-        this.prisma.geoQuery.count({ where: { projectId: id } }),
-        this.prisma.backlink.count({ where: { projectId: id } }),
-      ]);
+    const [
+      keywordCount,
+      allKeywords,
+      topKeywords,
+      lastDoneCrawl,
+      latestCrawl,
+      contentCount,
+      geoQueryCount,
+      backlinkCount,
+    ] = await Promise.all([
+      this.prisma.keyword.count({ where: { projectId: id } }),
+      // All keywords with their latest rank — needed for an accurate first-page count.
+      this.prisma.keyword.findMany({
+        where: { projectId: id },
+        select: {
+          id: true,
+          phrase: true,
+          ranks: { take: 1, orderBy: { checkedAt: 'desc' }, select: { position: true } },
+        },
+      }),
+      this.prisma.keyword.findMany({
+        where: { projectId: id },
+        include: { ranks: { take: 2, orderBy: { checkedAt: 'desc' } } },
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+      }),
+      // Prefer the last crawl that produced data for the dashboard cards…
+      this.prisma.crawlJob.findFirst({
+        where: { projectId: id, status: CrawlJobStatus.DONE, pagesScanned: { gt: 0 } },
+        orderBy: { finishedAt: 'desc' },
+      }),
+      // …but also expose the most recent job so the UI can show "running/queued" state.
+      this.prisma.crawlJob.findFirst({
+        where: { projectId: id },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.contentItem.count({ where: { projectId: id } }),
+      this.prisma.geoQuery.count({ where: { projectId: id } }),
+      this.prisma.backlink.count({ where: { projectId: id } }),
+    ]);
 
-    const positions = topKeywords
+    // Position stats across ALL tracked keywords (latest rank each).
+    const allPositions = allKeywords
       .map((k) => k.ranks[0]?.position)
       .filter((p): p is number => p !== null && p !== undefined);
 
     const avgPosition =
-      positions.length > 0
-        ? +(positions.reduce((a, b) => a + b, 0) / positions.length).toFixed(1)
+      allPositions.length > 0
+        ? +(allPositions.reduce((a, b) => a + b, 0) / allPositions.length).toFixed(1)
         : null;
 
+    // Correct "first page" = keywords ranking in positions 1..10.
+    const firstPageCount = allPositions.filter((p) => p >= 1 && p <= 10).length;
+    const top3Count = allPositions.filter((p) => p >= 1 && p <= 3).length;
+    const rankedCount = allPositions.length;
+
     const lastCrawl = lastDoneCrawl ?? latestCrawl;
+
+    const [rankTrend, geoTrend, latestGeoSnapshot, activities, todos] = await Promise.all([
+      this.buildRankTrend(id),
+      this.buildGeoTrend(id),
+      this.prisma.geoVisibilitySnapshot.findFirst({
+        where: { projectId: id },
+        orderBy: { date: 'desc' },
+      }),
+      this.buildActivities(id),
+      this.buildTodos(id, allKeywords),
+    ]);
 
     return {
       project,
       keywordCount,
+      rankedCount,
       avgPosition,
+      firstPageCount,
+      top3Count,
       lastCrawl,
       latestCrawl,
       contentCount,
@@ -220,8 +257,199 @@ export class ProjectService {
       pagesScanned: lastCrawl?.pagesScanned ?? 0,
       issuesFound: lastCrawl?.issuesFound ?? 0,
       healthScore: lastCrawl?.healthScore ?? project.healthScore,
-      geoVisibilityScore: project.geoVisibilityScore,
+      geoVisibilityScore:
+        latestGeoSnapshot?.mentionCount != null
+          ? Math.min(
+              100,
+              Math.round(
+                ((latestGeoSnapshot.mentionCount ?? 0) +
+                  (latestGeoSnapshot.citationCount ?? 0) * 2) *
+                  5,
+              ),
+            )
+          : project.geoVisibilityScore,
+      latestGeoSnapshot,
+      rankTrend,
+      geoTrend,
+      activities,
+      todos,
+      topKeywords: topKeywords.map((k) => ({
+        id: k.id,
+        phrase: k.phrase,
+        position: k.ranks[0]?.position ?? null,
+        previousPosition: k.ranks[1]?.position ?? null,
+      })),
     };
+  }
+
+  /** Average daily SERP position over the last 30 days (rank trend chart). */
+  private async buildRankTrend(projectId: string) {
+    const since = new Date(Date.now() - 30 * 86_400_000);
+    const ranks = await this.prisma.keywordRank.findMany({
+      where: { keyword: { projectId }, checkedAt: { gte: since }, position: { not: null } },
+      select: { position: true, checkedAt: true },
+      orderBy: { checkedAt: 'asc' },
+    });
+
+    const byDay = new Map<string, { sum: number; n: number }>();
+    for (const r of ranks) {
+      if (r.position == null) continue;
+      const day = r.checkedAt.toISOString().slice(0, 10);
+      const bucket = byDay.get(day) ?? { sum: 0, n: 0 };
+      bucket.sum += r.position;
+      bucket.n += 1;
+      byDay.set(day, bucket);
+    }
+
+    return Array.from(byDay.entries()).map(([date, { sum, n }]) => ({
+      date,
+      avgPosition: +(sum / n).toFixed(1),
+    }));
+  }
+
+  /** GEO mention/citation snapshots over the last 30 days (GEO trend chart). */
+  private async buildGeoTrend(projectId: string) {
+    const since = new Date(Date.now() - 30 * 86_400_000);
+    const snapshots = await this.prisma.geoVisibilitySnapshot.findMany({
+      where: { projectId, date: { gte: since } },
+      orderBy: { date: 'asc' },
+      select: { date: true, mentionCount: true, citationCount: true },
+    });
+    return snapshots.map((s) => ({
+      date: s.date.toISOString().slice(0, 10),
+      mentions: s.mentionCount,
+      citations: s.citationCount,
+    }));
+  }
+
+  /** Recent activity feed built from real records (crawl, keywords, backlinks, GEO). */
+  private async buildActivities(projectId: string) {
+    const [lastCrawl, lastKeyword, keywordsLast7, lastBacklink, lastGeo, lastContent] =
+      await Promise.all([
+        this.prisma.crawlJob.findFirst({
+          where: { projectId, status: CrawlJobStatus.DONE },
+          orderBy: { finishedAt: 'desc' },
+        }),
+        this.prisma.keyword.findFirst({ where: { projectId }, orderBy: { createdAt: 'desc' } }),
+        this.prisma.keyword.count({
+          where: { projectId, createdAt: { gte: new Date(Date.now() - 7 * 86_400_000) } },
+        }),
+        this.prisma.backlink.findFirst({ where: { projectId }, orderBy: { createdAt: 'desc' } }),
+        this.prisma.geoVisibilitySnapshot.findFirst({
+          where: { projectId },
+          orderBy: { date: 'desc' },
+        }),
+        this.prisma.contentItem.findFirst({ where: { projectId }, orderBy: { createdAt: 'desc' } }),
+      ]);
+
+    const activities: Array<{ type: string; message: string; at: string }> = [];
+
+    if (lastCrawl?.finishedAt) {
+      activities.push({
+        type: 'crawl',
+        message: `Teknik SEO taraması tamamlandı — ${lastCrawl.pagesScanned} sayfa, ${lastCrawl.issuesFound} sorun`,
+        at: lastCrawl.finishedAt.toISOString(),
+      });
+    }
+    if (keywordsLast7 > 0 && lastKeyword) {
+      activities.push({
+        type: 'keyword',
+        message: `Son 7 günde ${keywordsLast7} anahtar kelime eklendi`,
+        at: lastKeyword.createdAt.toISOString(),
+      });
+    }
+    if (lastBacklink) {
+      activities.push({
+        type: 'backlink',
+        message: `Backlink profili güncellendi — son kaynak ${lastBacklink.sourceDomain}`,
+        at: lastBacklink.createdAt.toISOString(),
+      });
+    }
+    if (lastGeo) {
+      activities.push({
+        type: 'geo',
+        message: `GEO taraması: ${lastGeo.mentionCount} bahsedilme, ${lastGeo.citationCount} kaynak gösterimi`,
+        at: lastGeo.createdAt.toISOString(),
+      });
+    }
+    if (lastContent) {
+      activities.push({
+        type: 'content',
+        message: `İçerik oluşturuldu: "${lastContent.title}"`,
+        at: lastContent.createdAt.toISOString(),
+      });
+    }
+
+    return activities.sort((a, b) => (a.at < b.at ? 1 : -1)).slice(0, 8);
+  }
+
+  /** Actionable to-do list derived from real gaps in the project's data. */
+  private async buildTodos(
+    projectId: string,
+    keywords: Array<{ phrase: string; ranks: Array<{ position: number | null }> }>,
+  ) {
+    const todos: Array<{ priority: 'HIGH' | 'MEDIUM' | 'LOW'; message: string }> = [];
+
+    const lowRanking = keywords.filter((k) => {
+      const p = k.ranks[0]?.position;
+      return p != null && p > 10;
+    });
+    if (lowRanking.length > 0) {
+      todos.push({
+        priority: 'MEDIUM',
+        message: `${lowRanking.length} anahtar kelime ilk sayfanın dışında (11+). İçerik ve iç linklemeyi güçlendirin.`,
+      });
+    }
+
+    const notRanking = keywords.filter((k) => k.ranks[0]?.position == null);
+    if (notRanking.length > 0) {
+      todos.push({
+        priority: 'MEDIUM',
+        message: `${notRanking.length} kelimede henüz sıralama yok. Hedef sayfalar oluşturun veya optimize edin.`,
+      });
+    }
+
+    const [criticalIssues, contentCount, lastGeo] = await Promise.all([
+      this.prisma.crawlJob
+        .findFirst({
+          where: { projectId, status: CrawlJobStatus.DONE, pagesScanned: { gt: 0 } },
+          orderBy: { finishedAt: 'desc' },
+        })
+        .then((job) =>
+          job
+            ? this.prisma.seoIssue.count({
+                where: { crawlJobId: job.id, severity: 'CRITICAL', fixed: false },
+              })
+            : 0,
+        ),
+      this.prisma.contentItem.count({ where: { projectId } }),
+      this.prisma.geoVisibilitySnapshot.findFirst({
+        where: { projectId },
+        orderBy: { date: 'desc' },
+      }),
+    ]);
+
+    if (criticalIssues > 0) {
+      todos.push({
+        priority: 'HIGH',
+        message: `${criticalIssues} kritik teknik SEO sorunu çözülmeyi bekliyor.`,
+      });
+    }
+    if (contentCount === 0) {
+      todos.push({
+        priority: 'MEDIUM',
+        message: 'Henüz içerik üretilmedi. AI içerik motoruyla ilk blog yazınızı oluşturun.',
+      });
+    }
+    if (!lastGeo || lastGeo.mentionCount === 0) {
+      todos.push({
+        priority: 'HIGH',
+        message: 'AI aramalarında görünürlük düşük. GEO taraması başlatıp içeriği AI için optimize edin.',
+      });
+    }
+
+    const order = { HIGH: 0, MEDIUM: 1, LOW: 2 };
+    return todos.sort((a, b) => order[a.priority] - order[b.priority]).slice(0, 6);
   }
 
   // ─── Connect GSC ──────────────────────────────────────────────────────────────

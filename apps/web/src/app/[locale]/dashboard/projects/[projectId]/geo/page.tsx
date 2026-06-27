@@ -4,9 +4,23 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { useParams } from 'next/navigation';
-import { Brain, TrendingUp, Quote, AlertTriangle, Plus, X, Play, Loader2, Trash2 } from 'lucide-react';
-import { geoApi } from '@/lib/api';
+import { Brain, TrendingUp, Quote, AlertTriangle, Plus, X, Play, Loader2, Trash2, Info, Search, CheckCircle2, MinusCircle } from 'lucide-react';
+import { geoApi, api } from '@/lib/api';
 import type { GeoVisibilityData, GeoPlatform } from '@funbreakseo/shared';
+
+interface GeoQueryDetail {
+  id: string;
+  prompt: string;
+  mentioned: boolean;
+  cited: boolean;
+  platforms: Array<{
+    platform: GeoPlatform;
+    mentioned: boolean;
+    cited: boolean;
+    position: number | null;
+    snippet?: string | null;
+  }>;
+}
 
 const PLATFORM_LABELS: Record<GeoPlatform, string> = {
   CHATGPT: 'ChatGPT',
@@ -41,6 +55,14 @@ export default function GeoPage() {
   const { data: queriesData } = useQuery({
     queryKey: ['geo-queries', projectId],
     queryFn: () => geoApi.listQueries(projectId).then((r) => Array.isArray(r.data) ? r.data : (r.data?.data ?? [])),
+  });
+
+  const { data: queryDetails } = useQuery<GeoQueryDetail[]>({
+    queryKey: ['geo-query-details', projectId],
+    queryFn: () =>
+      api.get(`/projects/${projectId}/geo/queries/details`)
+        .then((r) => (Array.isArray(r.data) ? r.data : (r.data?.data ?? [])) as GeoQueryDetail[])
+        .catch(() => []),
   });
 
   const addQueryMutation = useMutation({
@@ -94,6 +116,34 @@ export default function GeoPage() {
         <div>
           <h1 className="text-2xl font-bold text-white">{t('title')}</h1>
           <p className="text-white/50 text-sm">{t('subtitle')}</p>
+        </div>
+      </div>
+
+      {/* Educational info box — explains the value of GEO to the customer */}
+      <div className="rounded-2xl border border-purple-500/20 bg-gradient-to-br from-purple-500/10 to-indigo-500/5 p-5">
+        <div className="flex items-start gap-3">
+          <div className="p-2 rounded-lg bg-purple-500/20 flex-shrink-0">
+            <Info className="h-4 w-4 text-purple-300" />
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold text-white">GEO nedir, size ne kazandırır?</h3>
+            <p className="text-xs text-white/60 leading-relaxed">
+              İnsanlar artık yalnızca Google&apos;da değil, <strong className="text-white/80">ChatGPT, Gemini, Perplexity</strong> ve
+              Google&apos;ın <strong className="text-white/80">AI Overview</strong> bölümünde de cevap arıyor. GEO (Generative Engine
+              Optimization), markanızın bu yapay zeka cevaplarında görünüp görünmediğini ölçer. AI bir kullanıcıya cevap verirken
+              markanızı önerirse veya kaynak gösterirse, <strong className="text-white/80">reklam vermeden</strong> yeni müşterilere ulaşırsınız.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+              <div className="rounded-lg bg-white/5 px-3 py-2">
+                <span className="text-xs font-semibold text-purple-300">AI&apos;da Bahsedilme</span>
+                <p className="text-[11px] text-white/50 mt-0.5">Yapay zeka cevabında markanızın/sitenizin adı geçiyor.</p>
+              </div>
+              <div className="rounded-lg bg-white/5 px-3 py-2">
+                <span className="text-xs font-semibold text-indigo-300">Kaynak Gösterilme</span>
+                <p className="text-[11px] text-white/50 mt-0.5">Yapay zeka cevabının altında sitenizi kaynak olarak link veriyor — en değerlisi budur.</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -187,19 +237,19 @@ export default function GeoPage() {
         <div className="rounded-2xl border border-purple-500/20 bg-purple-500/5 p-5">
           <div className="flex items-center gap-2 mb-3">
             <TrendingUp className="h-4 w-4 text-purple-400" />
-            <span className="text-xs text-white/50">AI Mention</span>
+            <span className="text-xs text-white/50">AI&apos;da Bahsedilme</span>
           </div>
           <div className="text-4xl font-bold gradient-text-geo">{visibility?.mentionCount ?? '—'}</div>
-          <p className="text-xs text-white/30 mt-1">{t('aiMentionDesc')}</p>
+          <p className="text-xs text-white/30 mt-1">Markanızın AI cevaplarında kaç kez adının geçtiği</p>
         </div>
 
         <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-5">
           <div className="flex items-center gap-2 mb-3">
             <Quote className="h-4 w-4 text-indigo-400" />
-            <span className="text-xs text-white/50">AI Citation</span>
+            <span className="text-xs text-white/50">Kaynak Gösterilme</span>
           </div>
           <div className="text-4xl font-bold text-indigo-400">{visibility?.citationCount ?? '—'}</div>
-          <p className="text-xs text-white/30 mt-1">{t('aiCitationDesc')}</p>
+          <p className="text-xs text-white/30 mt-1">AI cevabında sitenizin kaynak olarak link verilmesi</p>
         </div>
 
         <div className={`rounded-2xl border p-5 ${
@@ -237,11 +287,11 @@ export default function GeoPage() {
                 <div className="space-y-1">
                   <div>
                     <div className="text-lg font-bold">{stats?.mentions ?? 0}</div>
-                    <div className="text-[10px] opacity-60">mention</div>
+                    <div className="text-[10px] opacity-60">bahsedilme</div>
                   </div>
                   <div>
                     <div className="text-base font-bold">{stats?.citations ?? 0}</div>
-                    <div className="text-[10px] opacity-60">citation</div>
+                    <div className="text-[10px] opacity-60">kaynak</div>
                   </div>
                 </div>
               </div>
@@ -249,6 +299,51 @@ export default function GeoPage() {
           })}
         </div>
       </div>
+
+      {/* Per-query detail: which search query, which AI platform, how the brand showed up */}
+      {queryDetails && queryDetails.length > 0 && (
+        <div>
+          <h2 className="text-lg font-semibold text-white mb-1">Sorgu Bazında Görünürlük</h2>
+          <p className="text-[11px] text-white/35 mb-4">Hangi aramada, hangi AI platformunda markanız nasıl göründü</p>
+          <div className="space-y-3">
+            {queryDetails.map((q) => (
+              <div key={q.id} className="rounded-xl border border-white/10 bg-white/2 p-4">
+                <div className="flex items-start gap-2 mb-3">
+                  <Search className="h-4 w-4 text-purple-400 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-white">{q.prompt}</p>
+                    <div className="flex gap-2 mt-1">
+                      {q.mentioned ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] text-emerald-400"><CheckCircle2 className="h-3 w-3" /> Bahsedildi</span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[11px] text-white/30"><MinusCircle className="h-3 w-3" /> Bahsedilmedi</span>
+                      )}
+                      {q.cited && (
+                        <span className="inline-flex items-center gap-1 text-[11px] text-indigo-400"><Quote className="h-3 w-3" /> Kaynak gösterildi</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                {q.platforms.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {q.platforms.map((p, i) => (
+                      <div key={i} className={`rounded-lg border px-2.5 py-1.5 text-[11px] ${PLATFORM_COLORS[p.platform] ?? 'border-white/10 text-white/50'}`}>
+                        <span className="font-semibold">{PLATFORM_LABELS[p.platform] ?? p.platform}</span>
+                        <span className="opacity-70">
+                          {' · '}
+                          {p.mentioned ? 'bahsedildi' : 'yok'}
+                          {p.cited ? ' · kaynak' : ''}
+                          {p.position != null ? ` · #${p.position}` : ''}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Recommendations */}
       {recommendations.length > 0 && (

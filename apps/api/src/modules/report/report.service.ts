@@ -9,11 +9,25 @@ export interface ReportDto {
   recipients?: string[];
 }
 
+export type ReportType =
+  | 'ALL'
+  | 'KEYWORDS'
+  | 'TECHNICAL'
+  | 'BACKLINKS'
+  | 'GEO'
+  | 'COMPETITORS';
+
 @Injectable()
 export class ReportService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async generateReport(projectId: string, format: 'PDF' | 'HTML' | 'JSON') {
+  async generateReport(
+    projectId: string,
+    format: 'PDF' | 'HTML' | 'JSON',
+    type: ReportType = 'ALL',
+  ) {
+    const includeAll = type === 'ALL';
+    const want = (t: ReportType) => includeAll || type === t;
     const project = await this.prisma.project.findUnique({
       where: { id: projectId },
       include: {
@@ -63,22 +77,57 @@ export class ReportService {
         }
       : null;
 
-    // GEO visibility
-    const geoVisibility = await this.prisma.geoVisibilityCheck.findMany({
-      where: { keyword: { projectId } },
+    // GEO visibility — from the real AI-scan results (geo_results) + snapshot.
+    const geoResults = await this.prisma.geoResult.findMany({
+      where: { geoQuery: { projectId } },
       orderBy: { checkedAt: 'desc' },
-      take: 50,
+      take: 200,
+    });
+    const geoSnapshot = await this.prisma.geoVisibilitySnapshot.findFirst({
+      where: { projectId },
+      orderBy: { date: 'desc' },
     });
 
+    const geoMentioned = geoResults.filter((g) => g.brandMentioned).length;
+    const geoCited = geoResults.filter((g) => g.brandCited).length;
     const geoSummary = {
-      total: geoVisibility.length,
-      mentioned: geoVisibility.filter((g) => g.isMentioned).length,
+      total: geoResults.length,
+      mentioned: geoMentioned,
+      cited: geoCited,
+      mentionCount: geoSnapshot?.mentionCount ?? geoMentioned,
+      citationCount: geoSnapshot?.citationCount ?? geoCited,
       visibilityRate:
-        geoVisibility.length > 0
-          ? (geoVisibility.filter((g) => g.isMentioned).length /
-              geoVisibility.length) *
-            100
-          : 0,
+        geoResults.length > 0 ? (geoMentioned / geoResults.length) * 100 : 0,
+      byPlatform: geoSnapshot?.byPlatform ?? null,
+    };
+
+    // Competitors (organic + GEO share-of-voice)
+    const [organicCompetitors, geoCompetitors] = await Promise.all([
+      this.prisma.competitor.findMany({
+        where: { projectId },
+        orderBy: { commonKeywords: 'desc' },
+        take: 10,
+      }),
+      this.prisma.geoCompetitor.findMany({
+        where: { projectId },
+        orderBy: { shareOfVoice: 'desc' },
+        take: 10,
+      }),
+    ]);
+
+    const competitorSummary = {
+      organic: organicCompetitors.map((c) => ({
+        domain: c.domain,
+        commonKeywords: c.commonKeywords,
+        avgPosition: c.avgPosition,
+        visibilityScore: c.visibilityScore,
+      })),
+      geo: geoCompetitors.map((c) => ({
+        domain: c.domain,
+        mentionCount: c.mentionCount,
+        citationCount: c.citationCount,
+        shareOfVoice: c.shareOfVoice,
+      })),
     };
 
     // Backlinks
@@ -130,33 +179,49 @@ export class ReportService {
       });
     }
 
+    const typeTitles: Record<ReportType, string> = {
+      ALL: 'Kapsamlı SEO & GEO Raporu',
+      KEYWORDS: 'Anahtar Kelime Raporu',
+      TECHNICAL: 'Teknik SEO Raporu',
+      BACKLINKS: 'Backlink Raporu',
+      GEO: 'GEO / AI Görünürlük Raporu',
+      COMPETITORS: 'Rakip Analizi Raporu',
+    };
+
     const report = {
       generatedAt: new Date(),
       format,
+      type,
+      title: typeTitles[type],
       project: {
         id: project.id,
         domain: project.domain,
         name: project.name,
         organization: project.organization.name,
       },
-      rankingSummary: {
-        totalKeywords: project.keywords.length,
-        averageRank: Math.round(avgRank * 10) / 10,
-        inTop10: ranksInTop10,
-        firstPagePercentage:
-          project.keywords.length > 0
-            ? Math.round((ranksInTop10 / project.keywords.length) * 100)
-            : 0,
-        keywords: rankingData,
-      },
-      technicalSeo,
-      geoVisibility: geoSummary,
-      backlinks: {
-        total: project.backlinks.length,
-        newThisWeek: newBacklinks.length,
-        recent: project.backlinks.slice(0, 5),
-      },
-      content: contentSummary,
+      rankingSummary: want('KEYWORDS')
+        ? {
+            totalKeywords: project.keywords.length,
+            averageRank: Math.round(avgRank * 10) / 10,
+            inTop10: ranksInTop10,
+            firstPagePercentage:
+              project.keywords.length > 0
+                ? Math.round((ranksInTop10 / project.keywords.length) * 100)
+                : 0,
+            keywords: rankingData,
+          }
+        : null,
+      technicalSeo: want('TECHNICAL') ? technicalSeo : null,
+      geoVisibility: want('GEO') ? geoSummary : null,
+      backlinks: want('BACKLINKS')
+        ? {
+            total: project.backlinks.length,
+            newThisWeek: newBacklinks.length,
+            recent: project.backlinks.slice(0, 10),
+          }
+        : null,
+      competitors: want('COMPETITORS') ? competitorSummary : null,
+      content: includeAll ? contentSummary : null,
       recommendations: recommendations.sort((a, b) => {
         const order = { HIGH: 0, MEDIUM: 1, LOW: 2 };
         return order[a.priority] - order[b.priority];

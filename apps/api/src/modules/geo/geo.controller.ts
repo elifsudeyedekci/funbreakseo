@@ -63,6 +63,12 @@ export class GeoController {
     return this.geoService.deleteGeoQuery(id, queryId)
   }
 
+  // GET /projects/:id/geo/queries/details
+  @Get('projects/:id/geo/queries/details')
+  getGeoQueryDetails(@Param('id') id: string, @CurrentUser() _user: User) {
+    return this.geoService.getGeoQueryDetails(id)
+  }
+
   // GET /projects/:id/geo/overview
   @Get('projects/:id/geo/overview')
   getGeoOverview(@Param('id') id: string, @CurrentUser() _user: User) {

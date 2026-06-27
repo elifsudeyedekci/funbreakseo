@@ -8,7 +8,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ReportService } from './report.service';
+import { ReportService, ReportType } from './report.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('projects/:id/reports')
@@ -31,8 +31,9 @@ export class ReportController {
   generateReport(
     @Param('id') projectId: string,
     @Query('format') format: 'PDF' | 'HTML' | 'JSON' = 'JSON',
+    @Query('type') type: ReportType = 'ALL',
   ) {
-    return this.reportService.generateReport(projectId, format);
+    return this.reportService.generateReport(projectId, format, type);
   }
 
   @Post('generate')
@@ -41,7 +42,8 @@ export class ReportController {
     @Body() dto: Record<string, unknown>,
   ) {
     const format = (dto.format as 'PDF' | 'HTML' | 'JSON') ?? 'JSON';
-    return this.reportService.generateReport(projectId, format);
+    const type = (dto.type as ReportType) ?? 'ALL';
+    return this.reportService.generateReport(projectId, format, type);
   }
 
   // Accepts both /scheduled and /schedules paths via two separate handlers

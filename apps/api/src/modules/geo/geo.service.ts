@@ -123,6 +123,49 @@ export class GeoService {
   }
 
   // -------------------------------------------------------------------------
+  // 2b. getGeoQueryDetails — per-query breakdown for the detail list:
+  //     which search query, on which AI platform, was the brand mentioned /
+  //     cited, and at what position.
+  // -------------------------------------------------------------------------
+  async getGeoQueryDetails(projectId: string) {
+    const queries = await this.prisma.geoQuery.findMany({
+      where: { projectId },
+      include: {
+        results: { orderBy: { checkedAt: 'desc' } },
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+
+    return queries.map((q) => {
+      // Keep only the most recent result per platform.
+      const latestPerPlatform = new Map<string, (typeof q.results)[number]>()
+      for (const r of q.results) {
+        if (!latestPerPlatform.has(r.platform)) latestPerPlatform.set(r.platform, r)
+      }
+      const platforms = Array.from(latestPerPlatform.values()).map((r) => ({
+        platform: r.platform,
+        mentioned: r.brandMentioned,
+        cited: r.brandCited,
+        position: r.position,
+        citedUrl: r.citedUrl,
+        sentiment: r.sentiment,
+        snippet: r.responseSnippet,
+        checkedAt: r.checkedAt,
+      }))
+
+      return {
+        id: q.id,
+        prompt: q.prompt,
+        status: q.status,
+        checkedAt: q.checkedAt,
+        mentioned: platforms.some((p) => p.mentioned),
+        cited: platforms.some((p) => p.cited),
+        platforms,
+      }
+    })
+  }
+
+  // -------------------------------------------------------------------------
   // 3. getGeoOverview
   // -------------------------------------------------------------------------
   async getGeoOverview(projectId: string) {
