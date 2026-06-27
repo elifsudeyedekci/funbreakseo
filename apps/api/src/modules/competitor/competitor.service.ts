@@ -92,7 +92,7 @@ export class CompetitorService {
       const tracked = await this.prisma.keyword.findMany({ where: { projectId }, select: { phrase: true } });
       seeds = tracked.map((t) => t.phrase).filter(Boolean);
     }
-    seeds = Array.from(new Set(seeds.map((s) => s.toLowerCase().trim()))).slice(0, 12);
+    seeds = Array.from(new Set(seeds.map((s) => s.toLowerCase().trim()))).slice(0, 20);
 
     // 2. For each seed keyword, read the SERP and collect the OTHER domains that
     //    rank for it. Frequency across seeds = number of shared keywords. This is
@@ -116,7 +116,7 @@ export class CompetitorService {
     const discovered = [...domainCount.entries()]
       .filter(([, count]) => count > 0)
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 15);
+      .slice(0, 25);
     this.logger.log(
       `Competitor discovery (SERP) ${domain}: ${seeds.length} seed kw → ${domainCount.size} domains → ${discovered.length} competitors (top: ${discovered.slice(0, 5).map(([d, c]) => `${d}:${c}`).join(', ')})`,
     );

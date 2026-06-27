@@ -436,24 +436,8 @@ export class GeoWorker extends WorkerHost {
       },
     })
 
-    // ------------------------------------------------------------------
-    // 7. Update Project.geoVisibilityScore (0–100)
-    // ------------------------------------------------------------------
-    // Score formula: based on citation ratio (50%) and mention frequency (50%)
-    // citation ratio: ratio * 100 capped at 50 pts
-    // mention frequency: (totalMentions / max(total queries * platforms, 1)) * 50 pts
-    const totalActiveQueries = await this.prisma.geoQuery.count({
-      where: { projectId, status: GeoQueryStatus.ACTIVE },
-    })
-    const maxExpected = Math.max(totalActiveQueries * 2, 1) // 2 platforms minimum
-    const mentionFrequencyScore = Math.min(50, (totalMentions / maxExpected) * 50)
-    const citationRatioScore = Math.min(50, ratio * 100)
-    const geoVisibilityScore = Math.round(mentionFrequencyScore + citationRatioScore)
-
-    await this.prisma.project.update({
-      where: { id: projectId },
-      data: { geoVisibilityScore },
-    })
+    // project.geoVisibilityScore is already saved above (visibilityPercent).
+    // No second overwrite — keeps the same formula as the GEO page.
 
     // ------------------------------------------------------------------
     // 8. Update GeoCompetitor records from sources found in responses
@@ -514,7 +498,7 @@ export class GeoWorker extends WorkerHost {
     }
 
     this.logger.log(
-      `[Job ${job.id}] Geo check done — mentions=${totalMentions} citations=${totalCitations} score=${geoVisibilityScore}`,
+      `[Job ${job.id}] Geo check done — mentions=${totalMentions} citations=${totalCitations} visibility=${visibilityPercent}%`,
     )
   }
 }
