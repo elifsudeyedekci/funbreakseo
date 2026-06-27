@@ -65,9 +65,11 @@ export class CompetitorService {
   async findCompetitors(projectId: string, organizationId: string) {
     const project = await this.getProject(projectId, organizationId);
     const domain = this.cleanDomain(project.domain);
+    const locationCode = this.dfs.resolveLocationCode(project.country ?? 'TR');
+    const language = project.language ?? 'tr';
 
-    // Get from DataForSEO (already location_code 2792 + language_code tr)
-    const fromDfs = await this.dfs.getCompetitorDomains(domain, 25);
+    // Get from DataForSEO using the PROJECT's country/language (multi-country SaaS)
+    const fromDfs = await this.dfs.getCompetitorDomains(domain, 25, locationCode, language);
 
     // Filter out generic platforms, the project's own domain, AND domains with
     // zero shared keywords (they are not real competitors — this was the
@@ -147,8 +149,10 @@ export class CompetitorService {
     const project = await this.getProject(projectId, organizationId);
     const domain = this.cleanDomain(project.domain);
     const cleanCompetitor = this.cleanDomain(competitorDomain);
+    const locationCode = this.dfs.resolveLocationCode(project.country ?? 'TR');
+    const language = project.language ?? 'tr';
 
-    return this.dfs.getDomainIntersection(domain, cleanCompetitor, 50);
+    return this.dfs.getDomainIntersection(domain, cleanCompetitor, 50, locationCode, language);
   }
 
   async addCompetitor(projectId: string, organizationId: string, domain: string) {
@@ -163,15 +167,17 @@ export class CompetitorService {
 
   /** Keywords the competitor domain currently ranks for (location 2792 + tr). */
   async getCompetitorKeywords(projectId: string, organizationId: string, competitorId: string) {
-    await this.getProject(projectId, organizationId);
+    const project = await this.getProject(projectId, organizationId);
+    const locationCode = this.dfs.resolveLocationCode(project.country ?? 'TR');
+    const language = project.language ?? 'tr';
     const competitor = await this.prisma.competitor.findFirst({
       where: { id: competitorId, projectId },
     });
     if (!competitor) throw new NotFoundException('Competitor not found');
     // Detailed ranked keywords include the competitor's live Google position.
     // Fetch a high limit so ALL of the competitor's ranking keywords show, not
-    // just a handful.
-    const ranked = await this.dfs.getRankedKeywordsDetailed(this.cleanDomain(competitor.domain), 300);
+    // just a handful. Uses the PROJECT's country/language.
+    const ranked = await this.dfs.getRankedKeywordsDetailed(this.cleanDomain(competitor.domain), 300, locationCode, language);
     return ranked
       .filter((k) => k.keyword)
       .map((k) => ({

@@ -202,13 +202,21 @@ export class RankTrackingWorker extends WorkerHost {
     }
 
     try {
+      // Project country → DataForSEO location_code (multi-country SaaS).
+      const DFS_LOCATION_CODES: Record<string, number> = {
+        TR: 2792, US: 2840, GB: 2826, UK: 2826, DE: 2276, FR: 2250, ES: 2724,
+        IT: 2380, NL: 2528, RU: 2643, IN: 2356, SA: 2682, AE: 2784, AT: 2040,
+        CH: 2756, BE: 2056, CA: 2124, AU: 2036, BR: 2076, PL: 2616, SE: 2752,
+      }
+      const locationCode =
+        DFS_LOCATION_CODES[(keyword.project.country ?? 'TR').toUpperCase()] ?? 2792
       const response = await axios.post<DataForSeoSerpResponse>(
         'https://api.dataforseo.com/v3/serp/google/organic/live/advanced',
         [
           {
             keyword: keyword.phrase,
-            location_code: 2792, // Turkey
-            language_code: keyword.language ?? 'tr',
+            location_code: locationCode,
+            language_code: keyword.language ?? keyword.project.language ?? 'tr',
             depth: 100,
           },
         ],

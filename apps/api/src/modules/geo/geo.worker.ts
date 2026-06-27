@@ -124,7 +124,7 @@ export class GeoWorker extends WorkerHost {
     // ------------------------------------------------------------------
     const project = await this.prisma.project.findUnique({
       where: { id: projectId },
-      select: { id: true, domain: true, organization: { select: { ownerUserId: true } } },
+      select: { id: true, domain: true, country: true, organization: { select: { ownerUserId: true } } },
     })
     if (!project) {
       this.logger.error(`Project ${projectId} not found`)
@@ -133,6 +133,13 @@ export class GeoWorker extends WorkerHost {
 
     const projectDomain = normalizeDomain(project.domain)
     const brandName = extractBrandNameFromDomain(project.domain)
+    // Project country → DataForSEO location_code (multi-country SaaS; never hardcode TR).
+    const DFS_LOCATION_CODES: Record<string, number> = {
+      TR: 2792, US: 2840, GB: 2826, UK: 2826, DE: 2276, FR: 2250, ES: 2724,
+      IT: 2380, NL: 2528, RU: 2643, IN: 2356, SA: 2682, AE: 2784, AT: 2040,
+      CH: 2756, BE: 2056, CA: 2124, AU: 2036, BR: 2076, PL: 2616, SE: 2752,
+    }
+    const locationCode = DFS_LOCATION_CODES[(project.country ?? 'TR').toUpperCase()] ?? 2792
 
     // ------------------------------------------------------------------
     // 3. Call DataForSEO Google AI Overview API (or use mock in dev)
@@ -183,7 +190,7 @@ export class GeoWorker extends WorkerHost {
           [
             {
               keyword: geoQuery.prompt,
-              location_code: 2792, // Turkey
+              location_code: locationCode,
               language_code: geoQuery.language,
             },
           ],
@@ -242,7 +249,7 @@ export class GeoWorker extends WorkerHost {
           [
             {
               keyword: geoQuery.prompt,
-              location_code: 2792,
+              location_code: locationCode,
               language_code: geoQuery.language,
             },
           ],
@@ -300,7 +307,7 @@ export class GeoWorker extends WorkerHost {
               {
                 user_prompt: geoQuery.prompt,
                 model_name: lp.model,
-                location_code: 2792,
+                location_code: locationCode,
                 language_code: geoQuery.language,
                 web_search: true,
               },

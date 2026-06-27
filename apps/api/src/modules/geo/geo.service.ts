@@ -23,12 +23,17 @@ export class GeoService {
   // 1. addGeoQuery
   // -------------------------------------------------------------------------
   async addGeoQuery(projectId: string, dto: AddGeoQueryDto) {
+    // Default the query locale to the PROJECT's country/language (multi-country SaaS).
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      select: { country: true, language: true },
+    })
     const query = await this.prisma.geoQuery.create({
       data: {
         projectId,
         prompt: dto.prompt,
-        location: dto.location ?? 'Turkey',
-        language: dto.language ?? 'tr',
+        location: dto.location ?? project?.country ?? 'TR',
+        language: dto.language ?? project?.language ?? 'tr',
       },
     })
 
@@ -51,11 +56,15 @@ export class GeoService {
     // NOT the domain name. AI visibility is about whether the brand surfaces for
     // real sector queries like "alkol vale hizmeti", not "domain.com nedir".
     if (queries.length === 0) {
+      const project = await this.prisma.project.findUnique({
+        where: { id: projectId },
+        select: { country: true, language: true },
+      })
       const autoPrompts = await this.buildBusinessQueries(projectId)
       for (const prompt of autoPrompts) {
         try {
           const q = await this.prisma.geoQuery.create({
-            data: { projectId, prompt, location: 'Turkey', language: 'tr' },
+            data: { projectId, prompt, location: project?.country ?? 'TR', language: project?.language ?? 'tr' },
           })
           queries.push({ id: q.id, prompt: q.prompt })
         } catch (err) {

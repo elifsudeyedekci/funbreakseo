@@ -99,12 +99,22 @@ export class KeywordService {
       );
     }
 
+    // Resolve the project's country/language so DataForSEO runs in the right
+    // locale (multi-country SaaS — never hardcode 2792/tr).
+    const proj = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      select: { country: true, language: true },
+    });
+    const country = dto.location ?? proj?.country ?? 'TR';
+    const language = dto.language ?? proj?.language ?? 'tr';
+    const locationCode = this.dfs.resolveLocationCode(country);
+
     // Fetch volumes from DataForSEO
     let volumeMap: Record<string, { volume: number; difficulty: number; cpc: number; intent: string }> = {};
     try {
       const [research, difficultyMap] = await Promise.all([
-        this.dfs.keywordResearch(dto.phrases, dto.location ?? 'Turkey'),
-        this.dfs.getBulkKeywordDifficulty(dto.phrases),
+        this.dfs.keywordResearch(dto.phrases, country, language),
+        this.dfs.getBulkKeywordDifficulty(dto.phrases, locationCode, language),
       ]);
       for (const r of research) {
         const key = (r.keyword ?? '').toLowerCase();
@@ -124,8 +134,8 @@ export class KeywordService {
       return {
         projectId,
         phrase,
-        location: dto.location ?? 'Turkey',
-        language: dto.language ?? 'tr',
+        location: country,
+        language,
         searchVolume: vol?.volume,
         difficulty: vol?.difficulty,
         cpc: vol?.cpc,
@@ -191,6 +201,15 @@ export class KeywordService {
     // Clean up any encoding-corrupted rows before refreshing metrics
     await this.cleanCorruptedKeywords(projectId);
 
+    // Project locale drives DataForSEO location/language (multi-country SaaS).
+    const proj = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      select: { country: true, language: true },
+    });
+    const country = proj?.country ?? 'TR';
+    const language = proj?.language ?? 'tr';
+    const locationCode = this.dfs.resolveLocationCode(country);
+
     const keywords = await this.prisma.keyword.findMany({
       where: { projectId },
       select: { id: true, phrase: true, location: true },
@@ -207,10 +226,9 @@ export class KeywordService {
     for (const batch of batches) {
       try {
         const phrases = batch.map((k) => k.phrase);
-        const location = batch[0].location ?? 'Turkey';
         const [research, difficultyMap] = await Promise.all([
-          this.dfs.keywordResearch(phrases, location),
-          this.dfs.getBulkKeywordDifficulty(phrases),
+          this.dfs.keywordResearch(phrases, country, language),
+          this.dfs.getBulkKeywordDifficulty(phrases, locationCode, language),
         ]);
 
         const volumeMap: Record<string, typeof research[0]> = {};
@@ -248,17 +266,20 @@ export class KeywordService {
 
     const project = await this.prisma.project.findUnique({
       where: { id: projectId },
-      select: { domain: true, name: true },
+      select: { domain: true, name: true, country: true, language: true },
     });
 
     if (!project) throw new Error('Project not found');
 
+    const country = project.country ?? 'TR';
+    const language = project.language ?? 'tr';
+    const locationCode = this.dfs.resolveLocationCode(country);
     const brandName = project.name ?? project.domain.replace(/^https?:\/\//, '').split('.')[0];
     const seedKeywords = [brandName, `${brandName} nedir`, `${brandName} fiyat`, `${brandName} kullanımı`];
 
     try {
-      const research = await this.dfs.keywordResearch(seedKeywords, 'Turkey');
-      const related = await this.dfs.getRelatedKeywords(brandName);
+      const research = await this.dfs.keywordResearch(seedKeywords, country, language);
+      const related = await this.dfs.getRelatedKeywords(brandName, locationCode, language);
 
       const combined = [
         ...research.map((r) => ({
@@ -295,9 +316,13 @@ export class KeywordService {
 
     const project = await this.prisma.project.findUnique({
       where: { id: projectId },
-      select: { domain: true, name: true },
+      select: { domain: true, name: true, country: true, language: true },
     });
     if (!project) throw new NotFoundException('Project not found');
+
+    const country = project.country ?? 'TR';
+    const language = project.language ?? 'tr';
+    const locationCode = this.dfs.resolveLocationCode(country);
 
     const cleanDomain = project.domain
       .replace(/^https?:\/\//, '')
@@ -306,8 +331,8 @@ export class KeywordService {
       .split('/')[0];
 
     const [siteKeywords, rankedKeywords] = await Promise.all([
-      this.dfs.getKeywordsForSite(cleanDomain, 50),
-      this.dfs.getRankedKeywords(cleanDomain, 50),
+      this.dfs.getKeywordsForSite(cleanDomain, 50, locationCode, language),
+      this.dfs.getRankedKeywords(cleanDomain, 50, locationCode, language),
     ]);
 
     const combined = [...siteKeywords, ...rankedKeywords];
@@ -317,7 +342,7 @@ export class KeywordService {
         if (!k.keyword) return false;
         const kw = k.keyword.toLowerCase().trim();
         if (seen.has(kw)) return false;
-        if (!this.isRelevantKeyword(kw)) return false;
+        if (!this.isRelevantKeyword(kw, language)) return false;
         // Drop purely informational / non-commercial queries — Keşfet should
         // surface keywords that bring customers, not "X nedir / cezası" lookups.
         if (this.isInformationalKeyword(kw)) return false;
@@ -339,21 +364,24 @@ export class KeywordService {
     await this.assertProjectAccess(projectId, organizationId);
     const project = await this.prisma.project.findUnique({
       where: { id: projectId },
-      select: { domain: true },
+      select: { domain: true, country: true, language: true },
     });
     if (!project) throw new NotFoundException('Project not found');
+    const country = project.country ?? 'TR';
+    const language = project.language ?? 'tr';
+    const locationCode = this.dfs.resolveLocationCode(country);
     const cleanDomain = project.domain
       .replace(/^https?:\/\//, '')
       .replace(/^www\./, '')
       .replace(/\/$/, '')
       .split('/')[0];
-    const ranked = await this.dfs.getRankedKeywordsDetailed(cleanDomain, 200);
+    const ranked = await this.dfs.getRankedKeywordsDetailed(cleanDomain, 300, locationCode, language);
     // Only keywords the domain ACTUALLY ranks for (a known Google position).
     // ranked_keywords always carries a position for genuine rankings; dropping
     // null-position rows prevents "kelimeler we don't rank for" from appearing.
     return ranked
       .filter((k) => k.position != null)
-      .filter((k) => this.isRelevantKeyword(k.keyword.toLowerCase()));
+      .filter((k) => this.isRelevantKeyword(k.keyword.toLowerCase(), language));
   }
 
   /** Informational/non-commercial query patterns (Turkish) to exclude from Keşfet. */
@@ -371,18 +399,32 @@ export class KeywordService {
    * Drops foreign-script junk (Cyrillic/Arabic/CJK), bare numbers/URLs and
    * single-character noise so the Keşfet list stays meaningful for TR/Latin sites.
    */
-  private isRelevantKeyword(kw: string): boolean {
+  private isRelevantKeyword(kw: string, language = 'tr'): boolean {
     if (kw.length < 3 || kw.length > 80) return false;
     // Reject encoding-corrupted / mojibake keywords
     if (this.isCorrupted(kw)) return false;
-    // Reject foreign scripts that are clearly not Turkish/Latin
-    if (/[Ѐ-ӿ؀-ۿ一-鿿぀-ヿ가-힯]/.test(kw)) {
-      return false;
-    }
-    // Must contain at least one letter (Latin + Turkish chars), not just digits/symbols
-    if (!/[a-zçğıöşü]/i.test(kw)) return false;
     // Reject raw URLs / domains accidentally returned as keywords
-    if (/^https?:\/\//.test(kw) || /\.(com|net|org|tr|io)\b/.test(kw)) return false;
+    if (/^https?:\/\//.test(kw) || /\.(com|net|org|io)\b/.test(kw)) return false;
+
+    // Script handling is language-aware (multi-country SaaS). For non-Latin
+    // project languages we REQUIRE the native script; for Latin languages we
+    // reject non-Latin scripts as junk.
+    const lang = (language || 'tr').toLowerCase();
+    const scripts: Record<string, RegExp> = {
+      ar: /[؀-ۿ]/,           // Arabic
+      ru: /[Ѐ-ӿ]/,           // Cyrillic
+      hi: /[ऀ-ॿ]/,           // Devanagari
+      zh: /[一-鿿]/,          // CJK
+      ja: /[぀-ヿ一-鿿]/,
+      ko: /[가-힯]/,
+    };
+    if (scripts[lang]) {
+      return scripts[lang].test(kw);
+    }
+    // Latin-based languages (tr/en/de/fr/es/…): reject obvious foreign scripts
+    if (/[Ѐ-ӿ؀-ۿ一-鿿぀-ヿ가-힯]/.test(kw)) return false;
+    // Must contain at least one Latin/diacritic letter, not just digits/symbols
+    if (!/[a-zàâäçéèêëîïôöùûüğışöüñãõ]/i.test(kw)) return false;
     return true;
   }
 
@@ -394,9 +436,10 @@ export class KeywordService {
     language: string,
     organizationId: string,
   ) {
-    const research = await this.dfs.keywordResearch(seedKeywords, location);
+    const locationCode = this.dfs.resolveLocationCode(location);
+    const research = await this.dfs.keywordResearch(seedKeywords, location, language);
     const related = await Promise.all(
-      seedKeywords.slice(0, 3).map((k) => this.dfs.getRelatedKeywords(k)),
+      seedKeywords.slice(0, 3).map((k) => this.dfs.getRelatedKeywords(k, locationCode, language)),
     );
 
     return {

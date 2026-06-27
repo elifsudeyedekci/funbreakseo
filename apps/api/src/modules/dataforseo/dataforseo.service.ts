@@ -205,6 +205,7 @@ export class DataForSeoService {
     keyword: string,
     targetDomain: string,
     languageCode = 'tr',
+    locationCode = 2792,
   ): Promise<{ position: number | null; url: string | null }> {
     const target = this.normalizeDomain(targetDomain);
     const response = await this.request<{
@@ -222,10 +223,9 @@ export class DataForSeoService {
     }>('/serp/google/organic/live/advanced', [
       {
         keyword,
-        location_code: 2792,
+        location_code: locationCode,
         language_code: languageCode,
         depth: 100,
-        se_domain: 'google.com.tr',
       },
     ]);
 
@@ -253,6 +253,7 @@ export class DataForSeoService {
   async getAiModeReferences(
     keyword: string,
     languageCode = 'tr',
+    locationCode = 2792,
   ): Promise<{
     text: string;
     references: Array<{ domain: string; source: string; url: string; title: string }>;
@@ -262,7 +263,7 @@ export class DataForSeoService {
     }>('/serp/google/ai_mode/live/advanced', [
       {
         keyword,
-        location_code: 2792,
+        location_code: locationCode,
         language_code: languageCode,
       },
     ]);
@@ -307,6 +308,7 @@ export class DataForSeoService {
   async keywordResearch(
     keywords: string[],
     location: string,
+    languageCode = 'tr',
   ): Promise<KeywordResearchResult[]> {
     const locationCode = this.resolveLocationCode(location);
 
@@ -318,7 +320,7 @@ export class DataForSeoService {
       {
         keywords,
         location_code: locationCode,
-        language_code: 'tr',
+        language_code: languageCode,
       },
     ]);
 
@@ -539,7 +541,7 @@ export class DataForSeoService {
 
   // ─── Bulk Keyword Difficulty ─────────────────────────────────────────────────
 
-  async getBulkKeywordDifficulty(keywords: string[], locationCode = 2792): Promise<Map<string, number>> {
+  async getBulkKeywordDifficulty(keywords: string[], locationCode = 2792, languageCode = 'tr'): Promise<Map<string, number>> {
     const map = new Map<string, number>();
     if (!keywords.length) return map;
     try {
@@ -553,7 +555,7 @@ export class DataForSeoService {
         {
           keywords,
           location_code: locationCode,
-          language_code: 'tr',
+          language_code: languageCode,
         },
       ]);
       const items = response.tasks?.[0]?.result?.[0]?.items ?? [];
@@ -568,7 +570,7 @@ export class DataForSeoService {
 
   // ─── Related Keywords ─────────────────────────────────────────────────────────
 
-  async getRelatedKeywords(seed: string): Promise<RelatedKeyword[]> {
+  async getRelatedKeywords(seed: string, locationCode = 2792, languageCode = 'tr'): Promise<RelatedKeyword[]> {
     const response = await this.request<{
       tasks: Array<{
         result?: RelatedKeyword[];
@@ -576,8 +578,8 @@ export class DataForSeoService {
     }>('/keywords_data/google_ads/keywords_for_keywords/live', [
       {
         keywords: [seed],
-        location_code: 2792,
-        language_code: 'tr',
+        location_code: locationCode,
+        language_code: languageCode,
         limit: 50,
       },
     ]);
@@ -632,15 +634,15 @@ export class DataForSeoService {
 
   // ─── Keywords for Site (domain-based discovery) ──────────────────────────────
 
-  async getKeywordsForSite(domain: string, limit = 50): Promise<RelatedKeyword[]> {
+  async getKeywordsForSite(domain: string, limit = 50, locationCode = 2792, languageCode = 'tr'): Promise<RelatedKeyword[]> {
     try {
       const cleanDomain = domain.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '');
       const response = await this.request<{
         tasks: Array<{ result?: Array<{ items?: Array<Record<string, unknown>> }> }>;
       }>('/dataforseo_labs/google/keywords_for_site/live', [{
         target: cleanDomain,
-        location_code: 2792,
-        language_code: 'tr',
+        location_code: locationCode,
+        language_code: languageCode,
         limit,
         order_by: ['keyword_data.keyword_info.search_volume,desc'],
       }]);
@@ -657,15 +659,15 @@ export class DataForSeoService {
     }
   }
 
-  async getRankedKeywords(domain: string, limit = 50): Promise<RelatedKeyword[]> {
+  async getRankedKeywords(domain: string, limit = 50, locationCode = 2792, languageCode = 'tr'): Promise<RelatedKeyword[]> {
     try {
       const cleanDomain = domain.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '');
       const response = await this.request<{
         tasks: Array<{ result?: Array<{ items?: Array<Record<string, unknown>> }> }>;
       }>('/dataforseo_labs/google/ranked_keywords/live', [{
         target: cleanDomain,
-        location_code: 2792,
-        language_code: 'tr',
+        location_code: locationCode,
+        language_code: languageCode,
         limit,
         order_by: ['keyword_data.keyword_info.search_volume,desc'],
       }]);
@@ -687,7 +689,7 @@ export class DataForSeoService {
    * Used by the "fetch all ranked keywords" feature and competitor keyword
    * drill-down. Always location_code 2792 + tr.
    */
-  async getRankedKeywordsDetailed(domain: string, limit = 100): Promise<Array<{
+  async getRankedKeywordsDetailed(domain: string, limit = 100, locationCode = 2792, languageCode = 'tr'): Promise<Array<{
     keyword: string; position: number | null; searchVolume: number; difficulty: number; cpc: number; url: string | null;
   }>> {
     try {
@@ -696,8 +698,8 @@ export class DataForSeoService {
         tasks: Array<{ result?: Array<{ items?: Array<Record<string, any>> }> }>;
       }>('/dataforseo_labs/google/ranked_keywords/live', [{
         target: cleanDomain,
-        location_code: 2792,
-        language_code: 'tr',
+        location_code: locationCode,
+        language_code: languageCode,
         limit,
         order_by: ['keyword_data.keyword_info.search_volume,desc'],
       }]);
@@ -723,7 +725,7 @@ export class DataForSeoService {
 
   // ─── Competitor domain discovery ─────────────────────────────────────────────
 
-  async getCompetitorDomains(domain: string, limit = 10): Promise<Array<{
+  async getCompetitorDomains(domain: string, limit = 10, locationCode = 2792, languageCode = 'tr'): Promise<Array<{
     domain: string; avgPosition: number | null; intersections: number; etv: number | null;
   }>> {
     try {
@@ -732,8 +734,8 @@ export class DataForSeoService {
         tasks: Array<{ result?: Array<{ items?: Array<Record<string, unknown>> }> }>;
       }>('/dataforseo_labs/google/competitors_domain/live', [{
         target: cleanDomain,
-        location_code: 2792,
-        language_code: 'tr',
+        location_code: locationCode,
+        language_code: languageCode,
         // NOTE: no order_by — an invalid order_by field makes the whole task
         // fail (status 40xxx) and we'd silently get nothing, leaving stale 0s.
         // The API already returns competitors by relevance; we sort in JS below.
@@ -773,7 +775,7 @@ export class DataForSeoService {
     }
   }
 
-  async getDomainIntersection(domain1: string, domain2: string, limit = 50): Promise<Array<{
+  async getDomainIntersection(domain1: string, domain2: string, limit = 50, locationCode = 2792, languageCode = 'tr'): Promise<Array<{
     keyword: string; searchVolume: number; domain1Position: number | null; domain2Position: number | null;
   }>> {
     try {
@@ -784,8 +786,8 @@ export class DataForSeoService {
       }>('/dataforseo_labs/google/domain_intersection/live', [{
         target1: clean1,
         target2: clean2,
-        location_code: 2792,
-        language_code: 'tr',
+        location_code: locationCode,
+        language_code: languageCode,
         limit,
       }]);
       const items = response.tasks?.[0]?.result?.[0]?.items ?? [];
@@ -840,14 +842,28 @@ export class DataForSeoService {
     return /subscription|access denied/.test(msg);
   }
 
-  private resolveLocationCode(location: string): number {
-    const map: Record<string, number> = {
-      Turkey: 2792,
-      'United States': 2840,
-      'United Kingdom': 2826,
-      Germany: 2276,
-      France: 2250,
+  /**
+   * Resolve a DataForSEO numeric location_code from either an ISO-3166 country
+   * code (project.country, e.g. "TR", "DE") or a country name ("Turkey").
+   * Public so callers (keyword/competitor/geo services) can map a project's
+   * country to the right location for fully dynamic, multi-country scans.
+   */
+  resolveLocationCode(location: string): number {
+    if (!location) return 2792;
+    const key = location.trim();
+    const byName: Record<string, number> = {
+      Turkey: 2792, 'United States': 2840, 'United Kingdom': 2826,
+      Germany: 2276, France: 2250, Spain: 2724, Italy: 2380,
+      Netherlands: 2528, Russia: 2643, India: 2356, 'Saudi Arabia': 2682,
+      'United Arab Emirates': 2784,
     };
-    return map[location] ?? 2792;
+    const byIso: Record<string, number> = {
+      TR: 2792, US: 2840, GB: 2826, UK: 2826, DE: 2276, FR: 2250, ES: 2724,
+      IT: 2380, NL: 2528, RU: 2643, IN: 2356, SA: 2682, AE: 2784, AT: 2040,
+      CH: 2756, BE: 2056, CA: 2124, AU: 2036, BR: 2076, MX: 2484, PL: 2616,
+      SE: 2752, NO: 2578, DK: 2208, FI: 2246, PT: 2620, GR: 2300, RO: 2642,
+      EG: 2818, AZ: 2031, UA: 2804,
+    };
+    return byName[key] ?? byIso[key.toUpperCase()] ?? 2792;
   }
 }
