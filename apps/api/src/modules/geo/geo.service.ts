@@ -109,13 +109,11 @@ export class GeoService {
   // deleteGeoQuery
   // -------------------------------------------------------------------------
   async deleteGeoQuery(projectId: string, queryId: string) {
-    const query = await this.prisma.geoQuery.findFirst({
-      where: { id: queryId, projectId },
-    })
-    if (!query) {
-      throw new NotFoundException('GEO query not found')
-    }
-    await this.prisma.geoQuery.delete({ where: { id: queryId } })
+    // Clean up dependent results first, then the query. deleteMany never throws
+    // when the record is already gone (avoids "Record to delete does not exist").
+    await this.prisma.geoResult.deleteMany({ where: { geoQueryId: queryId } })
+    const res = await this.prisma.geoQuery.deleteMany({ where: { id: queryId, projectId } })
+    if (res.count === 0) throw new NotFoundException('GEO query not found')
     return { message: 'GEO query deleted' }
   }
 

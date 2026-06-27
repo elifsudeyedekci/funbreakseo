@@ -220,11 +220,9 @@ export class CompetitorService {
 
   async removeCompetitor(projectId: string, organizationId: string, competitorId: string) {
     await this.getProject(projectId, organizationId);
-    const competitor = await this.prisma.competitor.findFirst({
-      where: { id: competitorId, projectId },
-    });
-    if (!competitor) throw new NotFoundException('Competitor not found');
-    await this.prisma.competitor.delete({ where: { id: competitorId } });
+    // deleteMany is idempotent — never throws if the row is already gone.
+    const res = await this.prisma.competitor.deleteMany({ where: { id: competitorId, projectId } });
+    if (res.count === 0) throw new NotFoundException('Competitor not found');
     return { message: 'Competitor removed' };
   }
 }

@@ -167,9 +167,9 @@ export class KeywordService {
 
   async remove(id: string, projectId: string, organizationId: string) {
     await this.assertProjectAccess(projectId, organizationId);
-    const kw = await this.prisma.keyword.findFirst({ where: { id, projectId } });
-    if (!kw) throw new NotFoundException('Keyword not found');
-    await this.prisma.keyword.delete({ where: { id } });
+    // Idempotent delete — never throws if the keyword is already gone.
+    const res = await this.prisma.keyword.deleteMany({ where: { id, projectId } });
+    if (res.count === 0) throw new NotFoundException('Keyword not found');
     return { message: 'Keyword deleted' };
   }
 
@@ -575,11 +575,8 @@ export class KeywordService {
 
   async deleteTag(tagId: string, projectId: string, organizationId: string) {
     await this.assertProjectAccess(projectId, organizationId);
-    const tag = await this.prisma.keywordTag.findFirst({
-      where: { id: tagId, projectId },
-    });
-    if (!tag) throw new NotFoundException('Tag not found');
-    await this.prisma.keywordTag.delete({ where: { id: tagId } });
+    const res = await this.prisma.keywordTag.deleteMany({ where: { id: tagId, projectId } });
+    if (res.count === 0) throw new NotFoundException('Tag not found');
     return { message: 'Tag deleted' };
   }
 
