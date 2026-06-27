@@ -131,6 +131,16 @@ export default function GeoPage() {
   const platforms = Object.entries(PLATFORM_LABELS) as Array<[GeoPlatform, string]>;
   const ratio = visibility?.citationToMentionRatio ?? 0;
 
+  // A recommendation title is generic advice ("AI Overview'da görünmüyorsunuz"),
+  // NOT a content topic — generating content from it produced unrelated articles.
+  // Use a REAL business search query as the topic instead: prefer a query where
+  // the brand is not shown yet, else the first tracked query.
+  const primaryTopic =
+    (queryDetails?.find((q) => !q.mentioned)?.prompt) ??
+    queryDetails?.[0]?.prompt ??
+    (queriesData as Array<{ prompt: string }> | undefined)?.[0]?.prompt ??
+    '';
+
   return (
     <div className="p-6 space-y-6">
       {/* Header with purple theme */}
@@ -430,15 +440,19 @@ export default function GeoPage() {
                   <h3 className="text-sm font-semibold text-white">{rec.title}</h3>
                 </div>
                 <p className="text-xs text-white/60 leading-relaxed">{rec.description}</p>
-                {/* One-click action: generate content to act on this recommendation */}
+                {/* One-click action: generate content for a REAL business query
+                    (not the advice title), so the article is on-topic. */}
+                {primaryTopic && (
                 <button
-                  onClick={() => generateContentMutation.mutate(rec.title)}
+                  onClick={() => generateContentMutation.mutate(primaryTopic)}
                   disabled={generateContentMutation.isPending}
+                  title={`"${primaryTopic}" konusunda içerik üretilecek`}
                   className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-purple-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-purple-500 disabled:opacity-50 transition-all"
                 >
-                  {generatingTopic === rec.title ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                  {generatingTopic === primaryTopic ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
                   Bunun için İçerik Yaz
                 </button>
+                )}
               </div>
             ))}
           </div>

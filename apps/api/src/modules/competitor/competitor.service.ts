@@ -16,6 +16,15 @@ const GENERIC_DOMAIN_BLOCKLIST = [
   'maps.google.com', 'play.google.com', 'foursquare.com', 'yelp.com',
   'booking.com', 'tripadvisor.com', 'tripadvisor.com.tr', 'dailymotion.com',
   'vimeo.com', 'github.com', 'yahoo.com', 'duckduckgo.com',
+  // TR aggregators / directories / news / gov that rank for everything and are
+  // never a real sector rival.
+  'armut.com', 'sahibinden.com', 'letgo.com', 'dolap.com', 'kariyer.net',
+  'indeed.com', 'glassdoor.com', 'yenibiris.com', 'eleman.net',
+  'hangikredi.com', 'enuygun.com', 'cimri.com', 'akakce.com', 'epey.com',
+  'sikayetvar.com', 'sozcu.com.tr', 'hurriyet.com.tr', 'milliyet.com.tr',
+  'haberturk.com', 'mynet.com', 'milliyet.com', 'cnnturk.com', 'ntv.com.tr',
+  'wikiwand.com', 'webtekno.com', 'donanimhaber.com', 'nesine.com',
+  'gov.tr', 'edu.tr', 'bel.tr', 'barobirlik.org.tr', 'turkiye.gov.tr',
 ];
 
 @Injectable()
@@ -82,8 +91,21 @@ export class CompetitorService {
         !this.isGenericDomain(c.domain) &&
         this.cleanDomain(c.domain) !== domain,
     );
-    const withOverlap = nonGeneric.filter((c) => (c.intersections ?? 0) > 0);
-    const relevant = withOverlap.length > 0 ? withOverlap : nonGeneric;
+    // Real competitors share MANY keywords. Generic big sites (lawyer/insurance
+    // directories etc.) share only 1–2 and pollute the list. Keep those whose
+    // shared-keyword count is meaningful relative to the strongest competitor.
+    const sortedByOverlap = [...nonGeneric].sort((a, b) => (b.intersections ?? 0) - (a.intersections ?? 0));
+    const topOverlap = sortedByOverlap[0]?.intersections ?? 0;
+    const minOverlap = Math.max(3, Math.round(topOverlap * 0.15));
+    const withOverlap = sortedByOverlap.filter((c) => (c.intersections ?? 0) >= minOverlap);
+    // Fallbacks so the list isn't empty for very small/new sites.
+    const relevant = (withOverlap.length > 0
+      ? withOverlap
+      : sortedByOverlap.filter((c) => (c.intersections ?? 0) > 0)
+    ).slice(0, 15);
+    this.logger.log(
+      `Competitor filter ${domain}: ${nonGeneric.length} nonGeneric, topOverlap=${topOverlap}, minOverlap=${minOverlap} → ${relevant.length} kept`,
+    );
 
     this.logger.log(
       `Competitor discovery for ${domain}: ${fromDfs.length} raw → ${relevant.length} relevant (filtered ${fromDfs.length - relevant.length} generic/self)`,

@@ -375,13 +375,14 @@ export class KeywordService {
       .replace(/^www\./, '')
       .replace(/\/$/, '')
       .split('/')[0];
-    const ranked = await this.dfs.getRankedKeywordsDetailed(cleanDomain, 300, locationCode, language);
-    // Only keywords the domain ACTUALLY ranks for (a known Google position).
-    // ranked_keywords always carries a position for genuine rankings; dropping
-    // null-position rows prevents "kelimeler we don't rank for" from appearing.
+    // Fetch up to 1000 — return EVERY keyword the domain actually ranks for.
+    const ranked = await this.dfs.getRankedKeywordsDetailed(cleanDomain, 1000, locationCode, language);
+    // These are REAL Google rankings, not discovery suggestions — do NOT apply
+    // the aggressive relevance/script filter here (it was dropping legitimate
+    // ranked keywords). Only drop encoding-corrupted rows and require a position.
     return ranked
-      .filter((k) => k.position != null)
-      .filter((k) => this.isRelevantKeyword(k.keyword.toLowerCase(), language));
+      .filter((k) => k.position != null && k.keyword && !this.isCorrupted(k.keyword))
+      .sort((a, b) => (a.position ?? 999) - (b.position ?? 999));
   }
 
   /** Informational/non-commercial query patterns (Turkish) to exclude from Keşfet. */
