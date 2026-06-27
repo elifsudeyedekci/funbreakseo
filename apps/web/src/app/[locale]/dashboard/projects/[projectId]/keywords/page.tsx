@@ -152,6 +152,20 @@ export default function KeywordsPage() {
     mutationFn: () => keywordApi.refreshRanks(projectId),
   });
 
+  // Fetch every keyword the domain already ranks for on Google and add them to
+  // the tracked list (positions backfill via the rank job).
+  const fetchRankedMutation = useMutation({
+    mutationFn: async () => {
+      const r = await keywordApi.ranked(projectId);
+      const raw: any[] = Array.isArray(r.data) ? r.data : (r.data?.data ?? []);
+      const phrases = Array.from(new Set(raw.map((k) => k.keyword).filter(Boolean)));
+      if (phrases.length === 0) return { added: 0 };
+      await keywordApi.add(projectId, phrases);
+      return { added: phrases.length };
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['keywords', projectId] }),
+  });
+
   const keywords = data || [];
 
   const firstPageCount = keywords.filter((k) => k.position !== null && k.position <= 10).length;
@@ -301,6 +315,15 @@ export default function KeywordsPage() {
             className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-white/70 hover:bg-white/10 transition-all"
           >
             ✦ Keşfet
+          </button>
+          <button
+            onClick={() => fetchRankedMutation.mutate()}
+            disabled={fetchRankedMutation.isPending}
+            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-white/70 hover:bg-white/10 transition-all disabled:opacity-50"
+            title="Domainin Google'da sıralandığı tüm kelimeleri getir"
+          >
+            <Search className={cn('h-4 w-4', fetchRankedMutation.isPending && 'animate-pulse')} />
+            {fetchRankedMutation.isPending ? 'Getiriliyor…' : 'Sıralanan Kelimeleri Getir'}
           </button>
           {keywords.length > 0 && (
             <button

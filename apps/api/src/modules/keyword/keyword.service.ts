@@ -318,11 +318,47 @@ export class KeywordService {
         const kw = k.keyword.toLowerCase().trim();
         if (seen.has(kw)) return false;
         if (!this.isRelevantKeyword(kw)) return false;
+        // Drop purely informational / non-commercial queries — Keşfet should
+        // surface keywords that bring customers, not "X nedir / cezası" lookups.
+        if (this.isInformationalKeyword(kw)) return false;
         seen.add(kw);
         return true;
       })
-      .sort((a, b) => (b.search_volume ?? 0) - (a.search_volume ?? 0))
+      // Commercial-intent keywords first, then by search volume.
+      .sort((a, b) => {
+        const ca = this.isCommercialKeyword(a.keyword!.toLowerCase()) ? 1 : 0;
+        const cb = this.isCommercialKeyword(b.keyword!.toLowerCase()) ? 1 : 0;
+        if (ca !== cb) return cb - ca;
+        return (b.search_volume ?? 0) - (a.search_volume ?? 0);
+      })
       .slice(0, 60);
+  }
+
+  /** Ranked keywords the project domain currently appears for on Google (with positions). */
+  async getRankedKeywordsForProject(projectId: string, organizationId: string) {
+    await this.assertProjectAccess(projectId, organizationId);
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      select: { domain: true },
+    });
+    if (!project) throw new NotFoundException('Project not found');
+    const cleanDomain = project.domain
+      .replace(/^https?:\/\//, '')
+      .replace(/^www\./, '')
+      .replace(/\/$/, '')
+      .split('/')[0];
+    const ranked = await this.dfs.getRankedKeywordsDetailed(cleanDomain, 200);
+    return ranked.filter((k) => this.isRelevantKeyword(k.keyword.toLowerCase()));
+  }
+
+  /** Informational/non-commercial query patterns (Turkish) to exclude from Keşfet. */
+  private isInformationalKeyword(kw: string): boolean {
+    return /\b(nedir|ne demek|ne demektir|nasıl|neden|niçin|kaç promil|kaç para|cezası|ceza|sınırı|sınır|yasak|kanunu?|maddesi|hakkında|anlamı|belirtileri|nedenleri|tarihi|kimdir|örnekleri|hesaplama)\b/.test(kw);
+  }
+
+  /** Commercial/transactional intent signals (Turkish) to prioritise in Keşfet. */
+  private isCommercialKeyword(kw: string): boolean {
+    return /\b(hizmeti?|fiyat|fiyatı|fiyatları|ücret|ucuz|kirala|kiralama|kiralık|şoför|servis|fir ?ma|firması|şirketi?|en iyi|önerilen|sipariş|satın al|rezervasyon|randevu|7\/24|istanbul|ankara|izmir|bursa|antalya)\b/.test(kw);
   }
 
   /**

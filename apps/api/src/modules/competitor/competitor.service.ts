@@ -45,6 +45,23 @@ export class CompetitorService {
     return project;
   }
 
+  /**
+   * Read-only list of stored competitors. Used by the page's main query so that
+   * deleting a competitor and refetching does NOT re-trigger DataForSEO discovery
+   * (which previously resurrected just-deleted rows — the "delete doesn't work" bug).
+   */
+  async listCompetitors(projectId: string, organizationId: string) {
+    const project = await this.getProject(projectId, organizationId);
+    const domain = this.cleanDomain(project.domain);
+    const dbCompetitors = await this.prisma.competitor.findMany({
+      where: { projectId },
+      orderBy: { commonKeywords: 'desc' },
+    });
+    return dbCompetitors
+      .filter((c) => !this.isGenericDomain(c.domain) && this.cleanDomain(c.domain) !== domain)
+      .map((c) => ({ ...c, etv: null }));
+  }
+
   async findCompetitors(projectId: string, organizationId: string) {
     const project = await this.getProject(projectId, organizationId);
     const domain = this.cleanDomain(project.domain);
@@ -145,14 +162,17 @@ export class CompetitorService {
       where: { id: competitorId, projectId },
     });
     if (!competitor) throw new NotFoundException('Competitor not found');
-    const ranked = await this.dfs.getRankedKeywords(this.cleanDomain(competitor.domain), 50);
+    // Detailed ranked keywords include the competitor's live Google position.
+    const ranked = await this.dfs.getRankedKeywordsDetailed(this.cleanDomain(competitor.domain), 60);
     return ranked
       .filter((k) => k.keyword)
       .map((k) => ({
         keyword: k.keyword,
-        searchVolume: k.search_volume ?? 0,
-        difficulty: k.keyword_difficulty ?? 0,
+        position: k.position,
+        searchVolume: k.searchVolume ?? 0,
+        difficulty: k.difficulty ?? 0,
         cpc: k.cpc ?? 0,
+        url: k.url,
       }));
   }
 

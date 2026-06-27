@@ -103,6 +103,7 @@ export const projectApi = {
 
 export const competitorApi = {
   list: (projectId: string) => api.get(`/projects/${projectId}/competitors`),
+  discover: (projectId: string) => api.post(`/projects/${projectId}/competitors/discover`),
   compare: (projectId: string, competitorDomain: string) =>
     api.post(`/projects/${projectId}/competitors/compare`, { competitorDomain }),
   add: (projectId: string, domain: string) =>
@@ -126,6 +127,7 @@ export const keywordApi = {
   refreshRanks: (projectId: string) => api.post(`/projects/${projectId}/keywords/refresh-ranks`),
   suggestions: (projectId: string) => api.get(`/projects/${projectId}/keywords/suggestions`),
   discover: (projectId: string) => api.get(`/projects/${projectId}/keywords/discover`),
+  ranked: (projectId: string) => api.get(`/projects/${projectId}/keywords/ranked`),
 };
 
 export const crawlerApi = {

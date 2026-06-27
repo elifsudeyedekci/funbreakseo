@@ -302,7 +302,7 @@ export class DataForSeoService {
     }
 
     // summary/live does NOT return individual backlinks — fetch them separately
-    const backlinks = await this.getBacklinkList(domain, 100);
+    const backlinks = await this.getBacklinkList(domain, 1000);
     this.logger.log(
       `Backlink summary for ${domain}: backlinks=${result.backlinks ?? 0} referring_domains=${result.referring_domains ?? 0} → ${backlinks.length} items fetched`,
     );
@@ -352,7 +352,10 @@ export class DataForSeoService {
         url_from: item.url_from ?? '',
         url_to: item.url_to ?? '',
         domain_from: item.domain_from ?? '',
-        rank: item.rank ?? item.domain_from_rank ?? 0,
+        // DR of the linking source: domain_from_rank is the source domain's
+        // authority (0-1000). item.rank is the individual backlink rank and is
+        // frequently 0, so prefer domain_from_rank and treat 0 as "missing".
+        rank: item.domain_from_rank || item.rank || 0,
         is_dofollow: item.dofollow ?? true,
         anchor: item.anchor ?? '',
       }));
@@ -600,6 +603,45 @@ export class DataForSeoService {
       })).filter((k: RelatedKeyword) => k.keyword);
     } catch (err) {
       this.logger.warn('getRankedKeywords failed', err);
+      return [];
+    }
+  }
+
+  /**
+   * Ranked keywords WITH the domain's live Google position for each keyword.
+   * Used by the "fetch all ranked keywords" feature and competitor keyword
+   * drill-down. Always location_code 2792 + tr.
+   */
+  async getRankedKeywordsDetailed(domain: string, limit = 100): Promise<Array<{
+    keyword: string; position: number | null; searchVolume: number; difficulty: number; cpc: number; url: string | null;
+  }>> {
+    try {
+      const cleanDomain = domain.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '');
+      const response = await this.request<{
+        tasks: Array<{ result?: Array<{ items?: Array<Record<string, any>> }> }>;
+      }>('/dataforseo_labs/google/ranked_keywords/live', [{
+        target: cleanDomain,
+        location_code: 2792,
+        language_code: 'tr',
+        limit,
+        order_by: ['keyword_data.keyword_info.search_volume,desc'],
+      }]);
+      const items = response.tasks?.[0]?.result?.[0]?.items ?? [];
+      return (items as any[])
+        .map((item) => {
+          const serp = item.ranked_serp_element?.serp_item;
+          return {
+            keyword: item.keyword_data?.keyword as string,
+            position: serp?.rank_absolute ?? serp?.rank_group ?? null,
+            searchVolume: item.keyword_data?.keyword_info?.search_volume ?? 0,
+            difficulty: item.keyword_data?.keyword_properties?.keyword_difficulty ?? 0,
+            cpc: item.keyword_data?.keyword_info?.cpc ?? 0,
+            url: serp?.url ?? serp?.relative_url ?? null,
+          };
+        })
+        .filter((k) => k.keyword);
+    } catch (err) {
+      this.logger.warn('getRankedKeywordsDetailed failed', err);
       return [];
     }
   }

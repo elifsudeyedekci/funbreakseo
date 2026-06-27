@@ -22,6 +22,13 @@ export default function CompetitorsPage() {
     enabled: !!projectId,
   });
 
+  // Discovery is an explicit action (POST) — separate from the read-only list
+  // query, so deleting a competitor and refetching never resurrects it.
+  const discoverMutation = useMutation({
+    mutationFn: () => competitorApi.discover(projectId),
+    onSuccess: () => refetch(),
+  });
+
   const { data: comparison, mutate: compare, isPending: comparing } = useMutation({
     mutationFn: (domain: string) =>
       competitorApi.compare(projectId, domain).then((r) => {
@@ -61,12 +68,12 @@ export default function CompetitorsPage() {
           <p className="text-sm text-white/40 mt-1">Rakip domainleri keşfet ve ortak anahtar kelimeleri karşılaştır</p>
         </div>
         <button
-          onClick={() => refetch()}
-          disabled={isLoading}
+          onClick={() => discoverMutation.mutate()}
+          disabled={discoverMutation.isPending}
           className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white/70 hover:bg-white/10 disabled:opacity-50 transition-all"
         >
-          <RefreshCw className={['h-4 w-4', isLoading ? 'animate-spin' : ''].join(' ')} />
-          Rakipleri Keşfet
+          <RefreshCw className={['h-4 w-4', discoverMutation.isPending ? 'animate-spin' : ''].join(' ')} />
+          {discoverMutation.isPending ? 'Rakipler Aranıyor…' : 'Rakipleri Keşfet'}
         </button>
       </div>
 
@@ -149,6 +156,7 @@ export default function CompetitorsPage() {
               <thead>
                 <tr className="border-b border-white/10">
                   <th className="text-left px-4 py-3 text-xs font-medium text-white/40">Kelime</th>
+                  <th className="px-4 py-3 text-xs font-medium text-white/40 text-center">Google Sırası</th>
                   <th className="px-4 py-3 text-xs font-medium text-white/40 text-center">Hacim</th>
                   <th className="px-4 py-3 text-xs font-medium text-white/40 text-center">Zorluk</th>
                   <th className="px-4 py-3 text-xs font-medium text-white/40 text-right">Aksiyon</th>
@@ -156,13 +164,18 @@ export default function CompetitorsPage() {
               </thead>
               <tbody>
                 {loadingKeywords && (
-                  <tr><td colSpan={4} className="px-4 py-8 text-center text-sm text-white/30">Yükleniyor...</td></tr>
+                  <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-white/30">Yükleniyor...</td></tr>
                 )}
-                {!loadingKeywords && (competitorKeywords as Array<{ keyword: string; searchVolume: number; difficulty: number }> ?? []).map((row, i) => {
+                {!loadingKeywords && (competitorKeywords as Array<{ keyword: string; position: number | null; searchVolume: number; difficulty: number }> ?? []).map((row, i) => {
                   const added = addedKeywords.has(row.keyword);
                   return (
                     <tr key={i} className="border-b border-white/5 hover:bg-white/2">
                       <td className="px-4 py-3 text-white">{row.keyword}</td>
+                      <td className="px-4 py-3 text-center">
+                        {row.position != null
+                          ? <span className="inline-block rounded-md bg-indigo-500/15 px-2 py-0.5 text-xs font-semibold text-indigo-300">#{row.position}</span>
+                          : <span className="text-white/30">—</span>}
+                      </td>
                       <td className="px-4 py-3 text-center text-white/60">{row.searchVolume?.toLocaleString() ?? '—'}</td>
                       <td className="px-4 py-3 text-center text-white/60">{row.difficulty ?? '—'}</td>
                       <td className="px-4 py-3 text-right">
@@ -178,7 +191,7 @@ export default function CompetitorsPage() {
                   );
                 })}
                 {!loadingKeywords && (competitorKeywords as unknown[] ?? []).length === 0 && (
-                  <tr><td colSpan={4} className="px-4 py-8 text-center text-sm text-white/30">Kelime bulunamadı</td></tr>
+                  <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-white/30">Kelime bulunamadı</td></tr>
                 )}
               </tbody>
             </table>

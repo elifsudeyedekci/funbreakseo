@@ -17,11 +17,17 @@ export default function BacklinksPage() {
 
   const queryClient = useQueryClient();
 
-  const { data: backlinks, isLoading } = useQuery({
+  const { data: backlinkData, isLoading } = useQuery({
     queryKey: ['backlinks', projectId],
-    queryFn: () => outreachApi.backlinks(projectId).then((r) => Array.isArray(r.data) ? r.data : (r.data?.data ?? [])),
+    queryFn: () => outreachApi.backlinks(projectId).then((r) => {
+      const d = r.data;
+      if (Array.isArray(d)) return { summary: null, items: d };
+      return { summary: d?.summary ?? null, items: d?.items ?? d?.data ?? [] };
+    }),
     enabled: tab === 'profile',
   });
+  const backlinks = backlinkData?.items as Array<{ id: string; sourceDomain: string; targetUrl: string; domainRating: number; anchorText: string; isDofollow: boolean; status: string }> | undefined;
+  const summary = backlinkData?.summary as { total: number; referringDomains: number; dofollow: number; avgDR: number } | null | undefined;
 
   const syncMutation = useMutation({
     mutationFn: () => outreachApi.syncBacklinks(projectId).then(r => r.data),
@@ -70,6 +76,22 @@ export default function BacklinksPage() {
               Backlinkleri Getir
             </button>
           </div>
+          {/* Persistent summary cards (from stored backlinks — survive reload) */}
+          {summary && (backlinks?.length ?? 0) > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { label: 'Toplam Backlink', value: summary.total.toLocaleString() },
+                { label: 'Referans Domain', value: summary.referringDomains.toLocaleString() },
+                { label: 'Dofollow', value: summary.dofollow.toLocaleString() },
+                { label: 'Ort. DR', value: summary.avgDR },
+              ].map((c) => (
+                <div key={c.label} className="rounded-xl border border-white/10 bg-white/2 p-3 text-center">
+                  <div className="text-2xl font-bold text-white">{c.value}</div>
+                  <div className="text-xs text-white/40 mt-0.5">{c.label}</div>
+                </div>
+              ))}
+            </div>
+          )}
           {/* Sync summary */}
           {syncMutation.data && (
             syncMutation.data.error === 'SUBSCRIPTION_REQUIRED' ? (
@@ -109,21 +131,26 @@ export default function BacklinksPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-white/10">
-                    {[t('colDomain'), t('colDR'), t('colAnchor'), t('colType'), t('colStatus')].map((h) => (
+                    {['Kaynak Site', 'Hedef Sayfa', 'Bağlantı Metni', 'Tür', 'DR', 'Durum'].map((h) => (
                       <th key={h} className="text-left px-4 py-3 text-xs font-medium text-white/40">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {(!backlinks || (backlinks as unknown[]).length === 0) && (
-                    <tr><td colSpan={5} className="px-4 py-12 text-center text-sm text-white/30">{t('noBacklinks')}</td></tr>
+                  {(!backlinks || backlinks.length === 0) && (
+                    <tr><td colSpan={6} className="px-4 py-12 text-center text-sm text-white/30">{t('noBacklinks')}</td></tr>
                   )}
-                  {(backlinks as Array<{ id: string; sourceDomain: string; domainRating: number; anchorText: string; isDofollow: boolean; status: string }> || []).map((bl) => (
-                    <tr key={bl.id} className="border-b border-white/5 hover:bg-white/2">
-                      <td className="px-4 py-3 text-white font-medium">{bl.sourceDomain}</td>
+                  {(backlinks || []).map((bl) => (
+                    <tr key={bl.id} className="border-b border-white/5 hover:bg-white/2 align-top">
+                      <td className="px-4 py-3 text-white font-medium whitespace-nowrap">{bl.sourceDomain}</td>
+                      <td className="px-4 py-3 text-white/50 text-xs max-w-[220px] break-all">{bl.targetUrl || '—'}</td>
+                      <td className="px-4 py-3 text-white/70 text-xs max-w-[280px] break-words whitespace-normal">{bl.anchorText || '—'}</td>
+                      <td className="px-4 py-3">
+                        <span className={['text-xs px-2 py-0.5 rounded-full font-medium', bl.isDofollow ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/10 text-white/50'].join(' ')}>
+                          {bl.isDofollow ? 'Dofollow' : 'Nofollow'}
+                        </span>
+                      </td>
                       <td className="px-4 py-3 text-indigo-400 font-bold">{bl.domainRating ?? '—'}</td>
-                      <td className="px-4 py-3 text-white/60 font-mono text-xs">{bl.anchorText ?? '—'}</td>
-                      <td className="px-4 py-3 text-white/50 text-xs">{bl.isDofollow ? 'Dofollow' : 'Nofollow'}</td>
                       <td className="px-4 py-3">
                         <span className={['text-xs px-2 py-0.5 rounded-full font-medium', bl.status === 'ACTIVE' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'].join(' ')}>
                           {bl.status === 'ACTIVE' ? t('active') : t('lost')}

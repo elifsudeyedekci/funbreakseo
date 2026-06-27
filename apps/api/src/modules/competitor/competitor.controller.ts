@@ -24,8 +24,17 @@ export class CompetitorController {
   constructor(private readonly competitorService: CompetitorService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Find and list competitors for project domain' })
-  findCompetitors(
+  @ApiOperation({ summary: 'List stored competitors (read-only, no re-discovery)' })
+  listCompetitors(
+    @CurrentUser() user: User,
+    @Param('projectId') projectId: string,
+  ) {
+    return this.competitorService.listCompetitors(projectId, user.organizationId!);
+  }
+
+  @Post('discover')
+  @ApiOperation({ summary: 'Discover competitors via DataForSEO (location 2792 + tr) and store them' })
+  discoverCompetitors(
     @CurrentUser() user: User,
     @Param('projectId') projectId: string,
   ) {

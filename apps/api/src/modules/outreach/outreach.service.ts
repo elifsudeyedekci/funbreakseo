@@ -130,11 +130,31 @@ export class OutreachService {
   }
 
   async getBacklinks(projectId: string) {
-    return this.prisma.backlink.findMany({
+    const items = await this.prisma.backlink.findMany({
       where: { projectId },
-      orderBy: { firstSeen: 'desc' },
-      take: 100,
+      orderBy: { domainRating: 'desc' },
+      take: 1000,
     })
+
+    // Persistent summary derived from stored backlinks so the cards survive
+    // page reloads (previously only the transient sync response had them).
+    const referringDomains = new Set(items.map((b) => b.sourceDomain)).size
+    const dofollow = items.filter((b) => b.isDofollow).length
+    const ratings = items.map((b) => b.domainRating ?? 0).filter((r) => r > 0)
+    const avgDR = ratings.length
+      ? Math.round(ratings.reduce((a, b) => a + b, 0) / ratings.length)
+      : 0
+
+    return {
+      summary: {
+        total: items.length,
+        referringDomains,
+        dofollow,
+        nofollow: items.length - dofollow,
+        avgDR,
+      },
+      items,
+    }
   }
 
   async syncBacklinks(projectId: string) {

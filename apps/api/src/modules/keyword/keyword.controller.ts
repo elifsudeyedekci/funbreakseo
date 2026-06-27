@@ -201,6 +201,15 @@ export class KeywordController {
     return this.keywordService.discoverKeywordsForDomain(projectId, user.organizationId!);
   }
 
+  @Get('projects/:projectId/keywords/ranked')
+  @ApiOperation({ summary: 'All keywords the project domain ranks for on Google (with positions)' })
+  async rankedKeywords(
+    @CurrentUser() user: User,
+    @Param('projectId') projectId: string,
+  ) {
+    return this.keywordService.getRankedKeywordsForProject(projectId, user.organizationId!);
+  }
+
   // ─── Keyword Tags ─────────────────────────────────────────────────────────────
 
   @Get('projects/:projectId/keyword-tags')
