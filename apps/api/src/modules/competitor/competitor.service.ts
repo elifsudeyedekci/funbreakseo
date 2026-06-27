@@ -174,7 +174,7 @@ export class CompetitorService {
     const locationCode = this.dfs.resolveLocationCode(project.country ?? 'TR');
     const language = project.language ?? 'tr';
 
-    return this.dfs.getDomainIntersection(domain, cleanCompetitor, 50, locationCode, language);
+    return this.dfs.getDomainIntersection(domain, cleanCompetitor, 200, locationCode, language);
   }
 
   async addCompetitor(projectId: string, organizationId: string, domain: string) {

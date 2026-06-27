@@ -298,6 +298,9 @@ export class GeoWorker extends WorkerHost {
         { platform: GeoplatForm.CHATGPT, path: 'chat_gpt', model: 'gpt-4o-mini' },
         { platform: GeoplatForm.GEMINI, path: 'gemini', model: 'gemini-1.5-flash' },
         { platform: GeoplatForm.PERPLEXITY, path: 'perplexity', model: 'sonar' },
+        // Claude was missing — its platform card always showed 0. Added (skipped
+        // gracefully if the account/endpoint doesn't support it).
+        { platform: GeoplatForm.CLAUDE, path: 'claude', model: 'claude-3-5-sonnet' },
       ]
       for (const lp of llmPlatforms) {
         try {

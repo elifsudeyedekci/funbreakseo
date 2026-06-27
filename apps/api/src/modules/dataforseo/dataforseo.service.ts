@@ -709,7 +709,9 @@ export class DataForSeoService {
         // not just the homepage.
         include_subdomains: true,
         limit,
-        order_by: ['ranked_serp_element.serp_item.rank_group,asc'],
+        // Known-good order_by (volume desc). An invalid field makes the whole
+        // task fail and returns zero keywords — so keep the verified one.
+        order_by: ['keyword_data.keyword_info.search_volume,desc'],
       }]);
       const items = response.tasks?.[0]?.result?.[0]?.items ?? [];
       return (items as any[])
