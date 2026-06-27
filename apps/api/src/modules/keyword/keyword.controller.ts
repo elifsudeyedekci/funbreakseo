@@ -21,6 +21,7 @@ import {
   IsOptional,
   IsEnum,
   IsHexColor,
+  IsBoolean,
   MinLength,
 } from 'class-validator';
 import { TrackingDepth, User } from '@prisma/client';
@@ -46,6 +47,10 @@ export class AddKeywordsDto {
   @IsOptional()
   @IsEnum(TrackingDepth)
   trackingDepth?: TrackingDepth;
+
+  @IsOptional()
+  @IsBoolean()
+  skipLimit?: boolean;
 
   @IsOptional()
   @IsString()

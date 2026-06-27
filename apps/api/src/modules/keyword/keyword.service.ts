@@ -19,6 +19,7 @@ export interface AddKeywordsDto {
   phrases: string[];
   location?: string;
   language?: string;
+  skipLimit?: boolean;
   trackingDepth?: TrackingDepth;
   tagId?: string;
 }
@@ -88,16 +89,15 @@ export class KeywordService {
       include: { subscription: { include: { plan: true } } },
     });
 
-    const limits = org.subscription?.plan?.limits as Record<string, number> | null;
-    const keywordLimit = limits?.['keywords_tracked'] ?? 50;
-
-    const existingCount = await this.prisma.keyword.count({ where: { projectId } });
-    const toAdd = dto.phrases.length;
-
-    if (existingCount + toAdd > keywordLimit) {
-      throw new BadRequestException(
-        `Adding ${toAdd} keywords would exceed your plan limit of ${keywordLimit}. Currently tracking ${existingCount}.`,
-      );
+    if (!dto.skipLimit) {
+      const limits = org.subscription?.plan?.limits as Record<string, number> | null;
+      const keywordLimit = limits?.['keywords_tracked'] ?? 500;
+      const existingCount = await this.prisma.keyword.count({ where: { projectId } });
+      if (existingCount + dto.phrases.length > keywordLimit) {
+        throw new BadRequestException(
+          `Adding ${dto.phrases.length} keywords would exceed your plan limit of ${keywordLimit}. Currently tracking ${existingCount}.`,
+        );
+      }
     }
 
     // Resolve the project's country/language so DataForSEO runs in the right

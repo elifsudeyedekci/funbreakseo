@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl'
 import { useParams } from 'next/navigation';
@@ -12,7 +12,7 @@ import {
   getSortedRowModel,
   type SortingState,
 } from '@tanstack/react-table';
-import { Plus, TrendingUp, TrendingDown, Minus, Search, X, ChevronUp, ChevronDown, Download, Trash2, RefreshCw, Sparkles } from 'lucide-react';
+import { Plus, TrendingUp, TrendingDown, Minus, Search, X, ChevronUp, ChevronDown, Download, Trash2, RefreshCw, Sparkles, CheckSquare, Square } from 'lucide-react';
 import { keywordApi } from '@/lib/api';
 import { cn, exportToCSV } from '@/lib/utils';
 import type { KeywordIntent } from '@funbreakseo/shared';
@@ -69,6 +69,8 @@ export default function KeywordsPage() {
   const [discoverResults, setDiscoverResults] = useState<ResearchResult[]>([]);
   const [selectedKws, setSelectedKws] = useState<Set<string>>(new Set());
   const [rankedStatus, setRankedStatus] = useState<string | null>(null);
+  // Bulk selection for the tracked keywords table
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const { data, isLoading } = useQuery({
     queryKey: ['keywords', projectId],
@@ -144,6 +146,14 @@ export default function KeywordsPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['keywords', projectId] }),
   });
 
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (ids: string[]) => Promise.all(ids.map((id) => keywordApi.delete(projectId, id))),
+    onSuccess: () => {
+      setSelectedIds(new Set());
+      queryClient.invalidateQueries({ queryKey: ['keywords', projectId] });
+    },
+  });
+
   const refreshMetricsMutation = useMutation({
     mutationFn: () => keywordApi.refreshMetrics(projectId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['keywords', projectId] }),
@@ -161,7 +171,8 @@ export default function KeywordsPage() {
       const raw: any[] = Array.isArray(r.data) ? r.data : (r.data?.data ?? []);
       const phrases = Array.from(new Set(raw.map((k: any) => k.keyword ?? k.phrase).filter(Boolean)));
       if (phrases.length === 0) return { added: 0 };
-      await keywordApi.add(projectId, phrases);
+      // skipLimit: GSC returns the user's own site data — plan limits shouldn't block it
+      await keywordApi.add(projectId, { phrases, skipLimit: true });
       return { added: phrases.length };
     },
     onSuccess: (result) => {
@@ -175,6 +186,29 @@ export default function KeywordsPage() {
 
   const keywords = data || [];
 
+  const allIds = useMemo(() => keywords.map((k) => k.id), [keywords]);
+  const allSelected = allIds.length > 0 && allIds.every((id) => selectedIds.has(id));
+  const someSelected = selectedIds.size > 0;
+
+  function toggleSelectAll() {
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(allIds));
+    }
+  }
+  function toggleSelectId(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+  function quickDelete(filterFn: (k: Keyword) => boolean) {
+    const ids = keywords.filter(filterFn).map((k) => k.id);
+    if (ids.length > 0) bulkDeleteMutation.mutate(ids);
+  }
+
   const firstPageCount = keywords.filter((k) => k.position !== null && k.position <= 10).length;
   const top3Count = keywords.filter((k) => k.position !== null && k.position <= 3).length;
   const avgPos = keywords.length > 0
@@ -185,6 +219,28 @@ export default function KeywordsPage() {
     : null;
 
   const columns = [
+    columnHelper.display({
+      id: 'select',
+      header: () => (
+        <input
+          type="checkbox"
+          checked={allSelected}
+          onChange={toggleSelectAll}
+          className="rounded"
+          style={{ accentColor: '#6366f1' }}
+        />
+      ),
+      cell: (info) => (
+        <input
+          type="checkbox"
+          checked={selectedIds.has(info.row.original.id)}
+          onChange={() => toggleSelectId(info.row.original.id)}
+          onClick={(e) => e.stopPropagation()}
+          className="rounded"
+          style={{ accentColor: '#6366f1' }}
+        />
+      ),
+    }),
     columnHelper.accessor('keyword', {
       header: t('colKeyword'),
       cell: (info) => <span className="font-medium text-white">{info.getValue()}</span>,
@@ -412,6 +468,55 @@ export default function KeywordsPage() {
           </div>
         ))}
       </div>
+
+      {/* Quick-filter delete buttons */}
+      {keywords.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          <span className="text-xs text-white/30 mr-1">Hızlı sil:</span>
+          <button
+            onClick={() => quickDelete((k) => k.searchVolume < 50)}
+            disabled={bulkDeleteMutation.isPending}
+            className="rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/10 disabled:opacity-50 transition-colors"
+          >
+            Hacim &lt; 50 olanları sil ({keywords.filter((k) => k.searchVolume < 50).length})
+          </button>
+          <button
+            onClick={() => quickDelete((k) => k.position === null)}
+            disabled={bulkDeleteMutation.isPending}
+            className="rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/10 disabled:opacity-50 transition-colors"
+          >
+            Pozisyonu olmayanları sil ({keywords.filter((k) => k.position === null).length})
+          </button>
+          <button
+            onClick={() => quickDelete((k) => k.position !== null && k.position > 50)}
+            disabled={bulkDeleteMutation.isPending}
+            className="rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/10 disabled:opacity-50 transition-colors"
+          >
+            Pozisyon &gt; 50 olanları sil ({keywords.filter((k) => k.position !== null && k.position > 50).length})
+          </button>
+        </div>
+      )}
+
+      {/* Bulk action bar */}
+      {someSelected && (
+        <div className="flex items-center gap-3 mb-3 px-4 py-2.5 rounded-xl border border-red-500/20 bg-red-500/5">
+          <span className="text-sm text-white/70">{selectedIds.size} kelime seçili</span>
+          <button
+            onClick={() => bulkDeleteMutation.mutate(Array.from(selectedIds))}
+            disabled={bulkDeleteMutation.isPending}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-500 disabled:opacity-50 transition-all"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            {bulkDeleteMutation.isPending ? 'Siliniyor…' : 'Seçilenleri Sil'}
+          </button>
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="ml-auto text-xs text-white/40 hover:text-white"
+          >
+            Seçimi Kaldır
+          </button>
+        </div>
+      )}
 
       {/* Table */}
       <div className="rounded-2xl border border-white/10 overflow-hidden">
