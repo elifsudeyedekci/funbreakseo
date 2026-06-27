@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { PrismaClient } from '@prisma/client';
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -34,6 +34,9 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, {
     bufferLogs: true,
   });
+  // Flush buffered logs to the default NestJS logger (stdout).
+  // Without this call, bufferLogs:true causes all Logger.log() calls to be silently dropped.
+  app.useLogger(new Logger());
 
   // Helmet security headers
   app.use(helmet());

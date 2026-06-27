@@ -231,10 +231,10 @@ export class AuthController {
     const clientId = process.env.GOOGLE_CLIENT_ID ?? '';
     const callbackUrl = process.env.GOOGLE_CALLBACK_URL ?? '';
 
-    this.logger.log(`[GSC] /auth/google called — jwt present: ${!!jwt && jwt !== 'null'}, clientId present: ${!!clientId}, callbackUrl: ${callbackUrl}`);
+    console.log(`[GSC] /auth/google called — jwt present: ${!!jwt && jwt !== 'null'}, clientId present: ${!!clientId}, callbackUrl: ${callbackUrl}`);
 
     if (!clientId) {
-      this.logger.error('[GSC] GOOGLE_CLIENT_ID is not set in env');
+      console.error('[GSC] GOOGLE_CLIENT_ID is not set in env');
       return void res.redirect(`${frontendUrl}/tr/dashboard/account?tab=integrations&gsc=error`);
     }
 
@@ -243,10 +243,10 @@ export class AuthController {
     const payload = this.authService.decodeJwtPayloadUnsafe(jwt);
     const orgId = (payload.organizationId as string | undefined) ?? '';
 
-    this.logger.log(`[GSC] Decoded JWT — sub: ${payload.sub ?? '?'}, orgId: ${orgId || '(empty)'}`);
+    console.log(`[GSC] Decoded JWT — sub: ${payload.sub ?? '?'}, orgId: ${orgId || '(empty)'}, keys: ${Object.keys(payload).join(',')}`);
 
     if (!orgId) {
-      this.logger.error(`[GSC] organizationId missing from token payload: ${JSON.stringify(payload)}`);
+      console.error(`[GSC] organizationId missing from token payload: ${JSON.stringify(payload)}`);
       return void res.redirect(`${frontendUrl}/tr/dashboard/account?tab=integrations&gsc=error`);
     }
 
@@ -265,7 +265,7 @@ export class AuthController {
     url.searchParams.set('prompt', 'consent');
     url.searchParams.set('state', state);
 
-    this.logger.log(`[GSC] Redirecting to Google: ${url.toString().substring(0, 120)}…`);
+    console.log(`[GSC] Redirecting to Google: ${url.toString().substring(0, 150)}`);
     res.redirect(url.toString());
   }
 
@@ -280,16 +280,16 @@ export class AuthController {
     const frontendUrl = process.env.FRONTEND_URL ?? 'https://funbreakseo.com';
     const errorUrl = `${frontendUrl}/tr/dashboard/account?tab=integrations&gsc=error`;
 
-    this.logger.log(`[GSC callback] code present: ${!!code}, state present: ${!!state}, oauth_error: ${oauthError ?? 'none'}`);
+    console.log(`[GSC callback] code present: ${!!code}, state present: ${!!state}, oauth_error: ${oauthError ?? 'none'}`);
 
     // Google returned an error (user denied access, etc.)
     if (oauthError) {
-      this.logger.warn(`[GSC callback] Google returned error: ${oauthError}`);
+      console.error(`[GSC callback] Google returned error: ${oauthError}`);
       return void res.redirect(errorUrl);
     }
 
     if (!code || !state) {
-      this.logger.error(`[GSC callback] Missing code or state — code: ${!!code}, state: ${!!state}`);
+      console.error(`[GSC callback] Missing code or state — code: ${!!code}, state: ${!!state}`);
       return void res.redirect(errorUrl);
     }
 
@@ -298,10 +298,10 @@ export class AuthController {
     try {
       const decoded = JSON.parse(Buffer.from(state, 'base64url').toString('utf-8')) as { orgId?: string };
       orgId = decoded.orgId ?? '';
-      this.logger.log(`[GSC callback] Decoded state orgId: ${orgId || '(empty)'}`);
+      console.log(`[GSC callback] Decoded state orgId: ${orgId || '(empty)'}`);
       if (!orgId) throw new Error('orgId missing from state');
     } catch (err) {
-      this.logger.error(`[GSC callback] Failed to decode state: ${(err as Error).message} — state value: ${state?.substring(0, 50)}`);
+      console.error(`[GSC callback] Failed to decode state: ${(err as Error).message} — state value: ${state?.substring(0, 50)}`);
       return void res.redirect(errorUrl);
     }
 
@@ -309,25 +309,25 @@ export class AuthController {
     let tokens: { accessToken: string; refreshToken?: string; expiryDate: number };
     try {
       tokens = await this.authService.exchangeGoogleCode(code);
-      this.logger.log(`[GSC callback] Token exchange successful — has refresh_token: ${!!tokens.refreshToken}`);
+      console.log(`[GSC callback] Token exchange successful — has refresh_token: ${!!tokens.refreshToken}`);
     } catch (err) {
       const msg = (err as { response?: { data?: unknown }; message?: string });
-      this.logger.error(`[GSC callback] Token exchange failed: ${msg.message ?? ''} — response: ${JSON.stringify(msg.response?.data ?? {}).substring(0, 200)}`);
+      console.error(`[GSC callback] Token exchange failed: ${msg.message ?? ''} — response: ${JSON.stringify(msg.response?.data ?? {}).substring(0, 200)}`);
       return void res.redirect(errorUrl);
     }
 
     // 3. Save tokens to DB
     try {
       await this.authService.saveGscOAuthTokens(orgId, tokens);
-      this.logger.log(`[GSC callback] Tokens saved for org ${orgId}`);
+      console.log(`[GSC callback] Tokens saved for org ${orgId}`);
     } catch (err) {
-      this.logger.error(`[GSC callback] DB save failed for org ${orgId}: ${(err as Error).message}`);
+      console.error(`[GSC callback] DB save failed for org ${orgId}: ${(err as Error).message}`);
       return void res.redirect(errorUrl);
     }
 
     // 4. Redirect to success
     const successUrl = `${frontendUrl}/tr/dashboard/account?tab=integrations&gsc=success`;
-    this.logger.log(`[GSC callback] Success — redirecting to ${successUrl}`);
+    console.log(`[GSC callback] Success — redirecting to ${successUrl}`);
     res.redirect(successUrl);
   }
 }
