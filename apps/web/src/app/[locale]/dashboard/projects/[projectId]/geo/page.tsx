@@ -305,24 +305,22 @@ export default function GeoPage() {
           <p className="text-xs text-white/30 mt-1">AI cevabında sitenizin kaynak olarak link verilmesi</p>
         </div>
 
-        <div className={`rounded-2xl border p-5 ${
-          ratio < 0.1
-            ? 'border-orange-500/30 bg-orange-500/5'
-            : 'border-emerald-500/30 bg-emerald-500/5'
-        }`}>
-          <div className="flex items-center gap-2 mb-3">
-            <AlertTriangle className="h-4 w-4 text-orange-400" />
-            <span className="text-xs text-white/50">{t('citationRatio')}</span>
-          </div>
-          <div className={`text-4xl font-bold ${ratio < 0.1 ? 'text-orange-400' : 'text-emerald-400'}`}>
-            {visibility?.citationToMentionRatio !== undefined
-              ? `${(visibility.citationToMentionRatio * 100).toFixed(0)}%`
-              : '—'}
-          </div>
-          <p className="text-xs text-white/30 mt-1">
-            {ratio < 0.1 ? t('lowRatioWarning') : t('goodLevel')}
-          </p>
-        </div>
+        {(() => {
+          const vp = (visibility as { visibilityPercent?: number; totalChecks?: number; queryCount?: number } | undefined);
+          const pct = vp?.visibilityPercent ?? 0;
+          return (
+            <div className={`rounded-2xl border p-5 ${pct < 30 ? 'border-orange-500/30 bg-orange-500/5' : 'border-emerald-500/30 bg-emerald-500/5'}`}>
+              <div className="flex items-center gap-2 mb-3">
+                <TrendingUp className="h-4 w-4 text-emerald-400" />
+                <span className="text-xs text-white/50">AI Görünürlük</span>
+              </div>
+              <div className={`text-4xl font-bold ${pct < 30 ? 'text-orange-400' : 'text-emerald-400'}`}>{pct}%</div>
+              <p className="text-xs text-white/30 mt-1">
+                {(vp?.queryCount ?? 0)} sorgu × 6 platform taramasında markanız {visibility?.mentionCount ?? 0} kez göründü
+              </p>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Platform breakdown */}

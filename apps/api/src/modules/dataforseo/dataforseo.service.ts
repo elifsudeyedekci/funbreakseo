@@ -426,17 +426,21 @@ export class DataForSeoService {
       this.logger.log(
         `getBacklinkList ${cleanDomain}: total_count=${task?.result?.[0]?.total_count ?? '?'} items=${items.length}`,
       );
-      return items.map((item: Record<string, any>) => ({
-        url_from: item.url_from ?? '',
-        url_to: item.url_to ?? '',
-        domain_from: item.domain_from ?? '',
-        // DR of the linking source. Prefer the source domain's authority
-        // (domain_from_rank, 0-1000); fall back to page rank. Use a non-zero
-        // preference so a present value always wins over a missing/0 field.
-        rank: item.domain_from_rank || item.page_from_rank || item.rank || 0,
-        is_dofollow: item.dofollow ?? true,
-        anchor: item.anchor ?? '',
-      }));
+      return items.map((item: Record<string, any>) => {
+        // DataForSEO "rank" / "domain_from_rank" is a 0-1000 authority scale.
+        // DR is conventionally 0-100, so normalise (÷10) and clamp. This fixes
+        // impossible values like 438/346 showing up as DR.
+        const raw = item.domain_from_rank || item.page_from_rank || item.rank || 0;
+        const dr = Math.min(100, Math.max(0, Math.round(raw / 10)));
+        return {
+          url_from: item.url_from ?? '',
+          url_to: item.url_to ?? '',
+          domain_from: item.domain_from ?? '',
+          rank: dr,
+          is_dofollow: item.dofollow ?? true,
+          anchor: item.anchor ?? '',
+        };
+      });
     } catch (err) {
       this.logger.warn(`getBacklinkList failed for ${domain}`, err);
       return [];
@@ -701,8 +705,11 @@ export class DataForSeoService {
         target: cleanDomain,
         location_code: locationCode,
         language_code: languageCode,
+        // Cover the WHOLE domain — every page and blog post (and subdomains),
+        // not just the homepage.
+        include_subdomains: true,
         limit,
-        order_by: ['keyword_data.keyword_info.search_volume,desc'],
+        order_by: ['ranked_serp_element.serp_item.rank_group,asc'],
       }]);
       const items = response.tasks?.[0]?.result?.[0]?.items ?? [];
       return (items as any[])

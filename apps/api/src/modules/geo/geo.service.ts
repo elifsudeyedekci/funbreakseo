@@ -191,6 +191,13 @@ export class GeoService {
     const citationToMentionRatio =
       mentionCount > 0 ? citationCount / mentionCount : 0
 
+    // Real visibility = in how many of ALL checks (query × platform) the brand
+    // actually appeared. citation/mention ratio alone was misleading (100% when
+    // every mention was also cited). totalChecks reflects coverage.
+    const totalChecks = allResults.length
+    const queryCount = new Set(allResults.map((r) => r.geoQueryId)).size
+    const visibilityPercent = totalChecks > 0 ? Math.round((mentionCount / totalChecks) * 100) : 0
+
     // Build byPlatform breakdown
     const platforms = Object.values(GeoplatForm)
     const byPlatform: Record<string, { mentions: number; citations: number }> = {}
@@ -220,6 +227,9 @@ export class GeoService {
       mentionCount,
       citationCount,
       citationToMentionRatio,
+      visibilityPercent,
+      totalChecks,
+      queryCount,
       byPlatform,
       latestSnapshot,
       trend,

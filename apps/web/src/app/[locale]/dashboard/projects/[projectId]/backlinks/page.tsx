@@ -76,12 +76,19 @@ export default function BacklinksPage() {
           </div>
           <div className="flex justify-between items-center gap-3 flex-wrap">
             {/* Dofollow/Nofollow legend */}
-            <div className="flex items-center gap-3 text-xs text-white/40">
+            <div className="flex items-center gap-3 text-xs text-white/40 flex-wrap">
               <span className="inline-flex items-center gap-1.5">
                 <span className="h-2 w-2 rounded-full bg-emerald-400" /> Dofollow = SEO değeri aktarır
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <span className="h-2 w-2 rounded-full bg-white/40" /> Nofollow = değer aktarmaz
+              </span>
+              <span className="text-white/25">·</span>
+              <span title="DR 0-100: bağlantı veren sitenin otoritesi">DR:
+                <span className="text-red-400"> 0-30 düşük</span>,
+                <span className="text-yellow-400"> 30-50 orta</span>,
+                <span className="text-green-400"> 50-70 güçlü</span>,
+                <span className="text-emerald-400"> 70+ elit</span>
               </span>
             </div>
             <button
@@ -176,7 +183,16 @@ export default function BacklinksPage() {
                           {bl.isDofollow ? 'Dofollow' : 'Nofollow'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-indigo-400 font-bold" title="DR (Domain Rating): Bağlantıyı veren sitenin otorite skoru (0-1000). Yüksek olması daha değerli bir backlink demektir.">{bl.domainRating || '—'}</td>
+                      <td className="px-4 py-3 font-bold" title="DR (Domain Rating, 0-100): Bağlantıyı veren sitenin otoritesi. 0-30 düşük, 30-50 orta, 50-70 güçlü, 70+ elit.">
+                        {bl.domainRating != null ? (
+                          <span className={
+                            bl.domainRating >= 70 ? 'text-emerald-400'
+                            : bl.domainRating >= 50 ? 'text-green-400'
+                            : bl.domainRating >= 30 ? 'text-yellow-400'
+                            : 'text-red-400'
+                          }>{bl.domainRating}</span>
+                        ) : <span className="text-white/30">—</span>}
+                      </td>
                       <td className="px-4 py-3">
                         <span className={['text-xs px-2 py-0.5 rounded-full font-medium', bl.status === 'ACTIVE' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'].join(' ')}>
                           {bl.status === 'ACTIVE' ? t('active') : t('lost')}

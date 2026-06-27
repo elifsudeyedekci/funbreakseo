@@ -63,6 +63,26 @@ export class ContentWorker extends WorkerHost {
     }
 
     try {
+      // ── Step 0: Project context — content MUST be about THIS brand only ───
+      const item = await this.prisma.contentItem.findUnique({
+        where: { id: contentItemId },
+        select: { projectId: true, project: { select: { domain: true, name: true } } },
+      })
+      const projectDomain = (item?.project?.domain ?? '')
+        .replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '')
+      const projectName = item?.project?.name ?? projectDomain.split('.')[0]
+      // A few existing page titles to ground the model in what the site does.
+      let sitePageTitles: string[] = []
+      try {
+        const pages = await this.prisma.crawledPage.findMany({
+          where: { crawlJob: { projectId: item?.projectId ?? '' } },
+          select: { title: true },
+          take: 12,
+          orderBy: { createdAt: 'desc' },
+        })
+        sitePageTitles = pages.map((p) => p.title).filter((x): x is string => !!x)
+      } catch { /* crawl data optional */ }
+
       // ── Step 1: SERP Analysis via DataForSEO ────────────────────────────
       let serpContext = ''
       try {
@@ -109,7 +129,12 @@ export class ContentWorker extends WorkerHost {
       const tone = dto.tone ?? 'informative'
       const secondary = dto.secondaryKeywords?.join(', ') ?? ''
 
-      const contentPrompt = `You are an expert SEO content writer. Write a comprehensive, optimised article in ${language === 'tr' ? 'Turkish' : language} language.
+      const contentPrompt = `You are an expert SEO content writer creating content FOR a specific company's own website. Write a comprehensive, optimised article in ${language === 'tr' ? 'Turkish' : language} language.
+
+COMPANY (write FOR this brand only):
+- Brand / Company: ${projectName}
+- Website: ${projectDomain}
+${sitePageTitles.length ? `- The site's existing pages (what this company does): ${sitePageTitles.slice(0, 12).join(' | ')}` : ''}
 
 CONTENT DETAILS:
 - Title: ${dto.title}
@@ -118,6 +143,11 @@ CONTENT DETAILS:
 - Content Type: ${dto.type}
 - Tone: ${tone}
 ${serpContext}
+
+CRITICAL BRAND RULES:
+- This article is published on ${projectDomain} — write from the perspective of ${projectName}.
+- Promote ${projectName}'s OWN services. Do NOT mention, name, recommend or link to competitor brands/websites (the competitor pages above are only for understanding the topic, NEVER reference them).
+- Use "biz / firmamız" style where natural; the reader is a potential customer of ${projectName}.
 
 STRICT REQUIREMENTS:
 1. Answer-First Format: Start with a clear, concise answer to the topic in the first paragraph (the "inverted pyramid" structure).
