@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
@@ -50,6 +51,16 @@ export class GeoController {
   @Get('projects/:id/geo/queries')
   listGeoQueries(@Param('id') id: string, @CurrentUser() _user: User) {
     return this.geoService.listGeoQueries(id)
+  }
+
+  // DELETE /projects/:id/geo/queries/:queryId
+  @Delete('projects/:id/geo/queries/:queryId')
+  deleteGeoQuery(
+    @Param('id') id: string,
+    @Param('queryId') queryId: string,
+    @CurrentUser() _user: User,
+  ) {
+    return this.geoService.deleteGeoQuery(id, queryId)
   }
 
   // GET /projects/:id/geo/overview

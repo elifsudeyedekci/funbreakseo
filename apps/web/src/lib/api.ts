@@ -146,6 +146,7 @@ export const contentApi = {
 export const geoApi = {
   addQuery: (projectId: string, d: Record<string, unknown>) => api.post(`/projects/${projectId}/geo/queries`, d),
   listQueries: (projectId: string) => api.get(`/projects/${projectId}/geo/queries`),
+  deleteQuery: (projectId: string, queryId: string) => api.delete(`/projects/${projectId}/geo/queries/${queryId}`),
   triggerScan: (projectId: string) => api.post(`/projects/${projectId}/geo/scan`),
   overview: (projectId: string) => api.get(`/projects/${projectId}/geo/overview`),
   competitors: (projectId: string) => api.get(`/projects/${projectId}/geo/competitors`),

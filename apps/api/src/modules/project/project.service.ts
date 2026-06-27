@@ -11,6 +11,10 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import axios from 'axios';
 import * as nodemailer from 'nodemailer';
+import { CompetitorService } from '../competitor/competitor.service';
+import { GeoService } from '../geo/geo.service';
+import { OutreachService } from '../outreach/outreach.service';
+import { KeywordService } from '../keyword/keyword.service';
 
 export interface CreateProjectDto {
   name: string;
@@ -37,6 +41,10 @@ export class ProjectService {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     @InjectQueue('crawler') private readonly crawlerQueue: Queue,
+    private readonly competitorService: CompetitorService,
+    private readonly geoService: GeoService,
+    private readonly outreachService: OutreachService,
+    private readonly keywordService: KeywordService,
   ) {
     this.mailer = nodemailer.createTransport({
       host: config.get<string>('SMTP_HOST', 'smtp.gmail.com'),
@@ -151,7 +159,7 @@ export class ProjectService {
   async getOverview(id: string, organizationId: string) {
     const project = await this.findOne(id, organizationId);
 
-    const [keywordCount, topKeywords, lastCrawl, contentCount, geoQueryCount] =
+    const [keywordCount, topKeywords, lastDoneCrawl, latestCrawl, contentCount, geoQueryCount, backlinkCount] =
       await Promise.all([
         this.prisma.keyword.count({ where: { projectId: id } }),
         this.prisma.keyword.findMany({
@@ -160,31 +168,44 @@ export class ProjectService {
           take: 5,
           orderBy: { createdAt: 'desc' },
         }),
+        // Prefer the last crawl that produced data for the dashboard cards…
+        this.prisma.crawlJob.findFirst({
+          where: { projectId: id, status: CrawlJobStatus.DONE, pagesScanned: { gt: 0 } },
+          orderBy: { finishedAt: 'desc' },
+        }),
+        // …but also expose the most recent job so the UI can show "running/queued" state.
         this.prisma.crawlJob.findFirst({
           where: { projectId: id },
           orderBy: { createdAt: 'desc' },
         }),
         this.prisma.contentItem.count({ where: { projectId: id } }),
         this.prisma.geoQuery.count({ where: { projectId: id } }),
+        this.prisma.backlink.count({ where: { projectId: id } }),
       ]);
 
     const positions = topKeywords
       .map((k) => k.ranks[0]?.position)
-      .filter((p): p is number => p !== undefined);
+      .filter((p): p is number => p !== null && p !== undefined);
 
     const avgPosition =
       positions.length > 0
         ? +(positions.reduce((a, b) => a + b, 0) / positions.length).toFixed(1)
         : null;
 
+    const lastCrawl = lastDoneCrawl ?? latestCrawl;
+
     return {
       project,
       keywordCount,
       avgPosition,
       lastCrawl,
+      latestCrawl,
       contentCount,
       geoQueryCount,
-      healthScore: project.healthScore,
+      backlinkCount,
+      pagesScanned: lastCrawl?.pagesScanned ?? 0,
+      issuesFound: lastCrawl?.issuesFound ?? 0,
+      healthScore: lastCrawl?.healthScore ?? project.healthScore,
       geoVisibilityScore: project.geoVisibilityScore,
     };
   }
@@ -302,22 +323,41 @@ export class ProjectService {
       steps['crawl'] = { error: err.message };
     }
 
-    // Step 2: Keywords — queue rank checks for existing keywords
+    // Step 2: Keyword discovery (domain-based, no seed required)
     try {
-      const kwCount = await this.prisma.keyword.count({ where: { projectId } });
-      steps['keywords'] = { existing: kwCount, note: 'use /keywords/discover for domain-based discovery' };
+      const discovered = await this.keywordService.discoverKeywordsForDomain(projectId, organizationId);
+      steps['keywords'] = { discovered: discovered.length, top: discovered.slice(0, 10) };
     } catch (err: any) {
+      this.logger.warn('fullScan: keyword step failed', err.message);
       steps['keywords'] = { error: err.message };
     }
 
-    // Step 3: Backlinks note (actual sync done via POST /backlinks/sync)
-    steps['backlinks'] = { note: 'trigger sync via POST /projects/:id/backlinks/sync' };
+    // Step 3: Backlink profile sync (DataForSEO → DB)
+    try {
+      const bl = await this.outreachService.syncBacklinks(projectId);
+      steps['backlinks'] = { synced: bl.synced ?? 0, total: bl.total ?? 0 };
+    } catch (err: any) {
+      this.logger.warn('fullScan: backlink step failed', err.message);
+      steps['backlinks'] = { error: err.message };
+    }
 
-    // Step 4: GEO note (actual scan done via POST /geo/scan)
-    steps['geo'] = { note: 'trigger via POST /projects/:id/geo/scan' };
+    // Step 4: GEO / AI-visibility scan (auto domain-based queries)
+    try {
+      const geo = await this.geoService.triggerScan(projectId);
+      steps['geo'] = { queued: geo.queued ?? 0 };
+    } catch (err: any) {
+      this.logger.warn('fullScan: geo step failed', err.message);
+      steps['geo'] = { error: err.message };
+    }
 
-    // Step 5: Competitor note
-    steps['competitors'] = { note: 'trigger via GET /projects/:id/competitors' };
+    // Step 5: Competitor auto-discovery (DataForSEO competitors_domain, filtered)
+    try {
+      const competitors = await this.competitorService.findCompetitors(projectId, organizationId);
+      steps['competitors'] = { found: competitors.length, top: competitors.slice(0, 5).map((c: any) => c.domain) };
+    } catch (err: any) {
+      this.logger.warn('fullScan: competitor step failed', err.message);
+      steps['competitors'] = { error: err.message };
+    }
 
     results['completedAt'] = new Date().toISOString();
     return results;

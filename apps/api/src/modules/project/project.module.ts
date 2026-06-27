@@ -5,6 +5,10 @@ import { ProjectController } from './project.controller';
 import { PrismaService } from '../../prisma.service';
 import { CrawlerModule } from '../crawler/crawler.module';
 import { DataForSeoModule } from '../dataforseo/dataforseo.module';
+import { CompetitorModule } from '../competitor/competitor.module';
+import { GeoModule } from '../geo/geo.module';
+import { OutreachModule } from '../outreach/outreach.module';
+import { KeywordModule } from '../keyword/keyword.module';
 
 @Module({
   imports: [
@@ -12,6 +16,10 @@ import { DataForSeoModule } from '../dataforseo/dataforseo.module';
     BullModule.registerQueue({ name: 'rank-tracking' }),
     CrawlerModule,
     DataForSeoModule,
+    CompetitorModule,
+    GeoModule,
+    OutreachModule,
+    KeywordModule,
   ],
   controllers: [ProjectController],
   providers: [ProjectService, PrismaService],

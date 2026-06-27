@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { Injectable, Logger, NotFoundException } from '@nestjs/common'
 import { InjectQueue } from '@nestjs/bullmq'
 import { Queue } from 'bullmq'
 import { GeoplatForm } from '@prisma/client'
@@ -82,6 +82,20 @@ export class GeoService {
       await this.geoQueue.add('check', { geoQueryId: q.id, projectId })
     }
     return { queued: queries.length }
+  }
+
+  // -------------------------------------------------------------------------
+  // deleteGeoQuery
+  // -------------------------------------------------------------------------
+  async deleteGeoQuery(projectId: string, queryId: string) {
+    const query = await this.prisma.geoQuery.findFirst({
+      where: { id: queryId, projectId },
+    })
+    if (!query) {
+      throw new NotFoundException('GEO query not found')
+    }
+    await this.prisma.geoQuery.delete({ where: { id: queryId } })
+    return { message: 'GEO query deleted' }
   }
 
   // -------------------------------------------------------------------------

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { useParams } from 'next/navigation';
-import { Brain, TrendingUp, Quote, AlertTriangle, Plus, X, Play, Loader2 } from 'lucide-react';
+import { Brain, TrendingUp, Quote, AlertTriangle, Plus, X, Play, Loader2, Trash2 } from 'lucide-react';
 import { geoApi } from '@/lib/api';
 import type { GeoVisibilityData, GeoPlatform } from '@funbreakseo/shared';
 
@@ -56,6 +56,13 @@ export default function GeoPage() {
     mutationFn: () => geoApi.triggerScan(projectId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['geo', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['geo-queries', projectId] });
+    },
+  });
+
+  const deleteQueryMutation = useMutation({
+    mutationFn: (queryId: string) => geoApi.deleteQuery(projectId, queryId),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['geo-queries', projectId] });
     },
   });
@@ -118,7 +125,17 @@ export default function GeoPage() {
             {(queriesData as Array<{ id: string; prompt: string; createdAt: string }>).map((q) => (
               <div key={q.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/5 border border-white/5">
                 <span className="text-sm text-white/70">{q.prompt}</span>
-                <span className="text-xs text-white/30">{new Date(q.createdAt).toLocaleDateString('tr-TR')}</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-white/30">{new Date(q.createdAt).toLocaleDateString('tr-TR')}</span>
+                  <button
+                    onClick={() => deleteQueryMutation.mutate(q.id)}
+                    disabled={deleteQueryMutation.isPending}
+                    className="text-white/30 hover:text-red-400 disabled:opacity-50 transition-colors"
+                    title="Sorguyu sil"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>

@@ -40,28 +40,45 @@ export class CrawlerService {
   }
 
   async getLatestAudit(projectId: string) {
-    const latest = await this.prisma.crawlJob.findFirst({
-      where: { projectId },
-      orderBy: { createdAt: 'desc' },
-      include: {
-        _count: { select: { issues: true, pages: true } },
-        issues: {
-          take: 50,
-          orderBy: { severity: 'asc' },
-          select: { id: true, severity: true, category: true, code: true, message: true, recommendation: true, crawledPage: { select: { url: true } } },
-        },
+    // Prefer the latest crawl that actually produced data. A newer QUEUED/RUNNING/FAILED
+    // job (or an empty retry) must not hide the issues/pages from the last good crawl.
+    const latest =
+      (await this.prisma.crawlJob.findFirst({
+        where: { projectId, status: CrawlJobStatus.DONE, pagesScanned: { gt: 0 } },
+        orderBy: { finishedAt: 'desc' },
+        include: this.auditInclude(),
+      })) ??
+      (await this.prisma.crawlJob.findFirst({
+        where: { projectId },
+        orderBy: { createdAt: 'desc' },
+        include: this.auditInclude(),
+      }))
+
+    return this.shapeAudit(latest)
+  }
+
+  private auditInclude() {
+    return {
+      _count: { select: { issues: true, pages: true } },
+      issues: {
+        take: 200,
+        orderBy: { severity: 'asc' as const },
+        select: { id: true, severity: true, category: true, code: true, message: true, recommendation: true, crawledPage: { select: { url: true } } },
       },
-    })
+    }
+  }
+
+  private shapeAudit(latest: any) {
     if (!latest) return null
     return {
       ...latest,
       crawledPages: latest._count.pages,
       totalIssues: latest._count.issues,
-      criticalCount: latest.issues.filter((i) => i.severity === 'CRITICAL').length,
-      warningCount: latest.issues.filter((i) => i.severity === 'WARNING').length,
-      noticeCount: latest.issues.filter((i) => i.severity === 'NOTICE').length,
+      criticalCount: latest.issues.filter((i: any) => i.severity === 'CRITICAL').length,
+      warningCount: latest.issues.filter((i: any) => i.severity === 'WARNING').length,
+      noticeCount: latest.issues.filter((i: any) => i.severity === 'NOTICE').length,
       completedAt: latest.finishedAt,
-      issues: latest.issues.map((i) => ({
+      issues: latest.issues.map((i: any) => ({
         ...i,
         url: i.crawledPage?.url,
         howToFix: i.recommendation,

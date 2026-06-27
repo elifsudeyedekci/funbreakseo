@@ -2,6 +2,18 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 import { DataForSeoService } from '../dataforseo/dataforseo.service';
 
+// Generic / non-competitor domains that pollute SERP-based competitor discovery.
+// These appear in almost every Turkish SERP but are never a real sector rival.
+const GENERIC_DOMAIN_BLOCKLIST = [
+  'youtube.com', 'youtu.be', 'facebook.com', 'instagram.com', 'twitter.com',
+  'x.com', 'wikipedia.org', 'linkedin.com', 'pinterest.com', 'tiktok.com',
+  'google.com', 'google.com.tr', 'amazon.com', 'amazon.com.tr', 'ebay.com',
+  'reddit.com', 'medium.com', 'blogspot.com', 'wordpress.com', 'tumblr.com',
+  'apple.com', 'microsoft.com', 'whatsapp.com', 'telegram.org', 'quora.com',
+  'sahibinden.com', 'hepsiburada.com', 'trendyol.com', 'gittigidiyor.com',
+  'n11.com', 'sozluk.gov.tr', 'eksisozluk.com', 'tdk.gov.tr',
+];
+
 @Injectable()
 export class CompetitorService {
   private readonly logger = new Logger(CompetitorService.name);
@@ -13,6 +25,12 @@ export class CompetitorService {
 
   private cleanDomain(url: string): string {
     return url.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '').split('/')[0];
+  }
+
+  /** True when a domain is a generic platform (not a real sector competitor). */
+  private isGenericDomain(domain: string): boolean {
+    const d = domain.toLowerCase().replace(/^www\./, '');
+    return GENERIC_DOMAIN_BLOCKLIST.some((b) => d === b || d.endsWith(`.${b}`));
   }
 
   private async getProject(projectId: string, organizationId: string) {
@@ -27,12 +45,41 @@ export class CompetitorService {
     const project = await this.getProject(projectId, organizationId);
     const domain = this.cleanDomain(project.domain);
 
-    // Get from DataForSEO
-    const fromDfs = await this.dfs.getCompetitorDomains(domain, 10);
+    // Get from DataForSEO (already location_code 2792 + language_code tr)
+    const fromDfs = await this.dfs.getCompetitorDomains(domain, 25);
 
-    // Upsert into DB
-    for (const c of fromDfs) {
-      if (!c.domain) continue;
+    // Filter out generic platforms and the project's own domain
+    const relevant = fromDfs.filter(
+      (c) =>
+        c.domain &&
+        !this.isGenericDomain(c.domain) &&
+        this.cleanDomain(c.domain) !== domain,
+    );
+
+    this.logger.log(
+      `Competitor discovery for ${domain}: ${fromDfs.length} raw → ${relevant.length} relevant (filtered ${fromDfs.length - relevant.length} generic/self)`,
+    );
+
+    // Purge previously-stored auto competitors that are now known to be generic/self,
+    // so old polluted records (e.g. youtube.com) disappear after a re-scan.
+    try {
+      const stale = await this.prisma.competitor.findMany({
+        where: { projectId, isAuto: true },
+        select: { id: true, domain: true },
+      });
+      const staleIds = stale
+        .filter((c) => this.isGenericDomain(c.domain) || this.cleanDomain(c.domain) === domain)
+        .map((c) => c.id);
+      if (staleIds.length > 0) {
+        await this.prisma.competitor.deleteMany({ where: { id: { in: staleIds } } });
+        this.logger.log(`Purged ${staleIds.length} stale generic competitor records`);
+      }
+    } catch (err) {
+      this.logger.warn('Failed to purge stale competitors', err);
+    }
+
+    // Upsert relevant competitors into DB
+    for (const c of relevant) {
       try {
         await this.prisma.competitor.upsert({
           where: { projectId_domain: { projectId, domain: c.domain } },
@@ -54,17 +101,19 @@ export class CompetitorService {
       }
     }
 
-    // Return merged list (DB + fresh DFS data)
+    // Return merged list (DB + fresh DFS data), excluding any generic leftovers
     const dbCompetitors = await this.prisma.competitor.findMany({
       where: { projectId },
       orderBy: { commonKeywords: 'desc' },
     });
 
-    const dfsMap = new Map(fromDfs.map((c) => [c.domain, c]));
-    return dbCompetitors.map((c) => ({
-      ...c,
-      etv: dfsMap.get(c.domain)?.etv ?? null,
-    }));
+    const dfsMap = new Map(relevant.map((c) => [c.domain, c]));
+    return dbCompetitors
+      .filter((c) => !this.isGenericDomain(c.domain) && this.cleanDomain(c.domain) !== domain)
+      .map((c) => ({
+        ...c,
+        etv: dfsMap.get(c.domain)?.etv ?? null,
+      }));
   }
 
   async compareWithCompetitor(projectId: string, organizationId: string, competitorDomain: string) {

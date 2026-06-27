@@ -298,12 +298,33 @@ export class KeywordService {
     const seen = new Set<string>();
     return combined
       .filter((k) => {
-        if (!k.keyword || seen.has(k.keyword.toLowerCase())) return false;
-        seen.add(k.keyword.toLowerCase());
+        if (!k.keyword) return false;
+        const kw = k.keyword.toLowerCase().trim();
+        if (seen.has(kw)) return false;
+        if (!this.isRelevantKeyword(kw)) return false;
+        seen.add(kw);
         return true;
       })
       .sort((a, b) => (b.search_volume ?? 0) - (a.search_volume ?? 0))
       .slice(0, 60);
+  }
+
+  /**
+   * Heuristic relevance/language filter for domain keyword discovery.
+   * Drops foreign-script junk (Cyrillic/Arabic/CJK), bare numbers/URLs and
+   * single-character noise so the Keşfet list stays meaningful for TR/Latin sites.
+   */
+  private isRelevantKeyword(kw: string): boolean {
+    if (kw.length < 3 || kw.length > 80) return false;
+    // Reject foreign scripts that are clearly not Turkish/Latin
+    if (/[Ѐ-ӿ؀-ۿ一-鿿぀-ヿ가-힯]/.test(kw)) {
+      return false;
+    }
+    // Must contain at least one letter (Latin + Turkish chars), not just digits/symbols
+    if (!/[a-zçğıöşü]/i.test(kw)) return false;
+    // Reject raw URLs / domains accidentally returned as keywords
+    if (/^https?:\/\//.test(kw) || /\.(com|net|org|tr|io)\b/.test(kw)) return false;
+    return true;
   }
 
   // ─── Keyword research via DataForSEO ─────────────────────────────────────────
