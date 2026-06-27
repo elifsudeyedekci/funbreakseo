@@ -370,15 +370,27 @@ export class KeywordService {
 
     const { maxPosition } = filters;
 
-    // Use $queryRaw so reads work even before `prisma generate` regenerates the client.
-    const rows = await this.prisma.$queryRaw<Array<{
-      id: string; gscAccessToken: string | null; gscRefreshToken: string | null; gscTokenExpiry: Date | null;
-    }>>`
-      SELECT id, "gscAccessToken", "gscRefreshToken", "gscTokenExpiry"
-      FROM organizations WHERE id = ${organizationId} LIMIT 1
-    `;
-    const orgGsc = rows[0] ?? null;
+    process.stdout.write(`[GSC] getRankedKeywordsForProject — org=${organizationId} project=${projectId}\n`);
+
+    // $queryRaw bypasses Prisma generated-client schema — works even without prisma generate
+    let orgGsc: { id: string; gscAccessToken: string | null; gscRefreshToken: string | null; gscTokenExpiry: Date | null } | null = null;
+    try {
+      const rows = await this.prisma.$queryRaw<Array<{
+        id: string; gscAccessToken: string | null; gscRefreshToken: string | null; gscTokenExpiry: Date | null;
+      }>>`
+        SELECT id, "gscAccessToken", "gscRefreshToken", "gscTokenExpiry"
+        FROM organizations WHERE id = ${organizationId} LIMIT 1
+      `;
+      orgGsc = rows[0] ?? null;
+      process.stdout.write(
+        `[GSC] token lookup — rows=${rows.length} gscAccessToken=${orgGsc?.gscAccessToken ? 'PRESENT(len=' + orgGsc.gscAccessToken.length + ')' : 'NULL'} gscRefreshToken=${orgGsc?.gscRefreshToken ? 'PRESENT' : 'NULL'}\n`,
+      );
+    } catch (err) {
+      process.stderr.write(`[GSC] $queryRaw failed: ${(err as Error).message}\n`);
+    }
+
     if (orgGsc?.gscAccessToken) {
+      process.stdout.write(`[GSC] attempting GSC fetch for org=${organizationId} domain=${project.domain}\n`);
       try {
         // fetchFromGsc already strips position<=0 and impressions<=0
         const gscKeywords = await this.fetchFromGsc(project.domain, orgGsc);
@@ -391,8 +403,11 @@ export class KeywordService {
         // Return even if 0 — do NOT fall through to DataForSEO when GSC is connected
         return filtered;
       } catch (err) {
+        process.stderr.write(`[GSC] fetchFromGsc threw: ${(err as Error).message}\n`);
         this.logger.warn('GSC fetch failed, falling back to DataForSEO', err);
       }
+    } else {
+      process.stdout.write(`[GSC] no token found — skipping GSC, using DataForSEO fallback\n`);
     }
 
     // Fallback: DataForSEO ranked_keywords/live
