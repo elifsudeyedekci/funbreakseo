@@ -68,6 +68,7 @@ export default function KeywordsPage() {
   const [seedInput, setSeedInput] = useState('');
   const [discoverResults, setDiscoverResults] = useState<ResearchResult[]>([]);
   const [selectedKws, setSelectedKws] = useState<Set<string>>(new Set());
+  const [rankedStatus, setRankedStatus] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['keywords', projectId],
@@ -152,18 +153,24 @@ export default function KeywordsPage() {
     mutationFn: () => keywordApi.refreshRanks(projectId),
   });
 
-  // Fetch every keyword the domain already ranks for on Google and add them to
-  // the tracked list (positions backfill via the rank job).
+  // GET /projects/:id/keywords/ranked → DataForSEO ranked_keywords/live → add to tracked list.
   const fetchRankedMutation = useMutation({
     mutationFn: async () => {
+      setRankedStatus(null);
       const r = await keywordApi.ranked(projectId);
       const raw: any[] = Array.isArray(r.data) ? r.data : (r.data?.data ?? []);
-      const phrases = Array.from(new Set(raw.map((k) => k.keyword).filter(Boolean)));
+      const phrases = Array.from(new Set(raw.map((k: any) => k.keyword ?? k.phrase).filter(Boolean)));
       if (phrases.length === 0) return { added: 0 };
       await keywordApi.add(projectId, phrases);
       return { added: phrases.length };
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['keywords', projectId] }),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['keywords', projectId] });
+      setRankedStatus(result.added > 0 ? `${result.added} kelime eklendi` : 'Sıralanan kelime bulunamadı');
+    },
+    onError: (err: any) => {
+      setRankedStatus(`Hata: ${err?.response?.data?.message ?? err?.message ?? 'bilinmeyen hata'}`);
+    },
   });
 
   const keywords = data || [];
@@ -316,15 +323,22 @@ export default function KeywordsPage() {
           >
             ✦ Keşfet
           </button>
-          <button
-            onClick={() => fetchRankedMutation.mutate()}
-            disabled={fetchRankedMutation.isPending}
-            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-white/70 hover:bg-white/10 transition-all disabled:opacity-50"
-            title="Domainin Google'da sıralandığı tüm kelimeleri getir"
-          >
-            <Search className={cn('h-4 w-4', fetchRankedMutation.isPending && 'animate-pulse')} />
-            {fetchRankedMutation.isPending ? 'Getiriliyor…' : 'Sıralanan Kelimeleri Getir'}
-          </button>
+          <div className="flex flex-col items-end gap-1">
+            <button
+              onClick={() => fetchRankedMutation.mutate()}
+              disabled={fetchRankedMutation.isPending}
+              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-white/70 hover:bg-white/10 transition-all disabled:opacity-50"
+              title="Domainin Google'da sıralandığı tüm kelimeleri getir (/projects/:id/keywords/ranked)"
+            >
+              <Search className={cn('h-4 w-4', fetchRankedMutation.isPending && 'animate-pulse')} />
+              {fetchRankedMutation.isPending ? 'Getiriliyor…' : 'Sıralanan Kelimeleri Getir'}
+            </button>
+            {rankedStatus && (
+              <span className={cn('text-xs', rankedStatus.startsWith('Hata') ? 'text-red-400' : 'text-emerald-400')}>
+                {rankedStatus}
+              </span>
+            )}
+          </div>
           {keywords.length > 0 && (
             <button
               onClick={() => refreshMetricsMutation.mutate()}
