@@ -76,7 +76,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
   const { data: consents = MOCK_CONSENTS } = useQuery({
     queryKey: ['customer-consents', id],
     queryFn: async () => {
-      try { const r = await adminApi.get(`/admin/customers/${id}/consents`); return r.data?.data ?? MOCK_CONSENTS; }
+      try { const r = await adminApi.get(`/admin/customers/${id}/consents`); return r.data?.data ?? r.data ?? MOCK_CONSENTS; }
       catch { return MOCK_CONSENTS; }
     },
   });
@@ -84,7 +84,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
   const { data: auditLog = MOCK_AUDIT } = useQuery({
     queryKey: ['customer-audit', id],
     queryFn: async () => {
-      try { const r = await adminApi.get(`/admin/customers/${id}/audit-log`); return r.data?.data ?? MOCK_AUDIT; }
+      try { const r = await adminApi.get(`/admin/customers/${id}/audit-log`); return r.data?.data ?? r.data ?? MOCK_AUDIT; }
       catch { return MOCK_AUDIT; }
     },
   });
@@ -93,7 +93,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
   const { data: subscription = MOCK_SUBSCRIPTION } = useQuery({
     queryKey: ['customer-subscription', id],
     queryFn: async () => {
-      try { const r = await adminApi.get(`/admin/customers/${id}/subscription`); return r.data?.data ?? MOCK_SUBSCRIPTION; }
+      try { const r = await adminApi.get(`/admin/customers/${id}/subscription`); return r.data?.data ?? r.data ?? MOCK_SUBSCRIPTION; }
       catch { return MOCK_SUBSCRIPTION; }
     },
   });
@@ -102,7 +102,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
   const { data: invoices = MOCK_INVOICES } = useQuery({
     queryKey: ['customer-invoices', id],
     queryFn: async () => {
-      try { const r = await adminApi.get(`/admin/customers/${id}/invoices`); return r.data?.data ?? MOCK_INVOICES; }
+      try { const r = await adminApi.get(`/admin/customers/${id}/invoices`); return r.data?.data ?? r.data ?? MOCK_INVOICES; }
       catch { return MOCK_INVOICES; }
     },
   });
@@ -111,7 +111,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
   const { data: usage = MOCK_USAGE } = useQuery({
     queryKey: ['customer-usage', id],
     queryFn: async () => {
-      try { const r = await adminApi.get(`/admin/customers/${id}/usage`); return r.data?.data ?? MOCK_USAGE; }
+      try { const r = await adminApi.get(`/admin/customers/${id}/usage`); return r.data?.data ?? r.data ?? MOCK_USAGE; }
       catch { return MOCK_USAGE; }
     },
   });

@@ -52,7 +52,11 @@ export default function SupportPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['admin-tickets'],
     queryFn: async () => {
-      try { const r = await adminApi.get('/admin/support/tickets'); return r.data?.data ?? MOCK_TICKETS; }
+      try {
+        const r = await adminApi.get('/admin/support/tickets');
+        const payload = Array.isArray(r.data) ? r.data : (r.data?.data ?? r.data?.items ?? r.data);
+        return Array.isArray(payload) && payload.length > 0 ? payload : MOCK_TICKETS;
+      }
       catch { return MOCK_TICKETS; }
     },
   });

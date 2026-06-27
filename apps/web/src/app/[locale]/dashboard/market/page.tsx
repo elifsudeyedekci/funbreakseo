@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { marketApi } from '@/lib/api';
 
@@ -27,6 +27,19 @@ export default function MarketPage() {
     queryKey: ['market-orders'],
     queryFn: () => marketApi.getOrders().then(r => (Array.isArray(r.data) ? r.data : (r.data?.data ?? [])) as any[]),
     enabled: tab === 'orders',
+  });
+
+  const qc = useQueryClient();
+  const [buyingId, setBuyingId] = useState<string | null>(null);
+
+  const orderMutation = useMutation({
+    mutationFn: (listingId: string) => marketApi.createOrder({ listingId }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['market-orders'] });
+      setTab('orders');
+      setBuyingId(null);
+    },
+    onError: () => setBuyingId(null),
   });
 
   const orderStatusLabel = (status: string) => {
@@ -141,10 +154,12 @@ export default function MarketPage() {
                   )}
 
                   <button
-                    className="w-full py-2 rounded-lg text-sm font-medium transition hover:opacity-90"
+                    onClick={() => { setBuyingId(listing.id); orderMutation.mutate(listing.id); }}
+                    disabled={orderMutation.isPending && buyingId === listing.id}
+                    className="w-full py-2 rounded-lg text-sm font-medium transition hover:opacity-90 disabled:opacity-50"
                     style={{ background: 'var(--accent)', color: '#fff' }}
                   >
-                    {t('buyBtn')}
+                    {orderMutation.isPending && buyingId === listing.id ? '...' : t('buyBtn')}
                   </button>
                 </div>
               ))}

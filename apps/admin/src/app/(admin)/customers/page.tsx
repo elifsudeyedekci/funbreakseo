@@ -49,7 +49,8 @@ export default function CustomersPage() {
     queryFn: async () => {
       try {
         const r = await adminApi.get('/admin/customers', { params: { limit: 100 } });
-        const orgs = Array.isArray(r.data) ? r.data : (r.data?.data ?? r.data?.items ?? []);
+        const payload = r.data?.data ?? r.data?.items ?? r.data;
+        const orgs = Array.isArray(payload) ? payload : [];
         return orgs.map((org: Record<string, unknown>) => ({
           id: org.id,
           fullName: (org.users as Array<{fullName?: string}>)?.[0]?.fullName ?? (org.name as string) ?? 'Bilinmiyor',

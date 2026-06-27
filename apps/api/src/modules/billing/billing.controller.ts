@@ -10,6 +10,7 @@ import {
   HttpCode,
   HttpStatus,
   Res,
+  BadRequestException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -113,13 +114,23 @@ export class SubscribeDto {
 }
 
 export class ChangePlanDto {
+  @IsOptional()
   @IsString()
-  planId!: string;
+  planId?: string;
+
+  @IsOptional()
+  @IsString()
+  planKey?: string;
+
+  @IsOptional()
+  @IsString()
+  billingCycle?: string;
 }
 
 export class CancelDto {
+  @IsOptional()
   @IsEnum(CancellationReason)
-  reason!: CancellationReason;
+  reason?: CancellationReason;
 
   @IsOptional()
   @IsString()
@@ -142,9 +153,10 @@ export class WalletTopupDto {
   @Min(10)
   amount!: number;
 
+  @IsOptional()
   @ValidateNested()
   @Type(() => CardDto)
-  card!: CardDto;
+  card?: CardDto;
 }
 
 // ─── Controller ──────────────────────────────────────────────────────────────
@@ -184,7 +196,9 @@ export class BillingController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Change subscription plan' })
   async changePlan(@CurrentUser() user: User, @Body() dto: ChangePlanDto) {
-    return this.billingService.changePlan(user.organizationId!, dto.planId);
+    const planId = dto.planId ?? await this.billingService.resolvePlanId(dto.planKey);
+    if (!planId) throw new BadRequestException('planId or planKey required');
+    return this.billingService.changePlan(user.organizationId!, planId);
   }
 
   @Post('billing/cancel')
@@ -195,7 +209,7 @@ export class BillingController {
   async cancelSubscription(@CurrentUser() user: User, @Body() dto: CancelDto) {
     return this.billingService.cancelSubscription(
       user.organizationId!,
-      dto.reason,
+      dto.reason ?? CancellationReason.OTHER,
       dto.feedback,
     );
   }

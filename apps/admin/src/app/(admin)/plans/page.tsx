@@ -62,12 +62,22 @@ export default function PlansPage() {
 
   const { data: plans, isLoading: plansLoading } = useQuery({
     queryKey: ['admin-plans'],
-    queryFn: async () => { try { const r = await adminApi.get('/admin/plans'); return r.data?.data ?? MOCK_PLANS; } catch { return MOCK_PLANS; } },
+    queryFn: async () => {
+      try {
+        const r = await adminApi.get('/admin/plans');
+        return Array.isArray(r.data) ? r.data : (r.data?.data ?? r.data?.items ?? []);
+      } catch { return []; }
+    },
   });
 
   const { data: coupons, isLoading: couponsLoading } = useQuery({
     queryKey: ['admin-coupons'],
-    queryFn: async () => { try { const r = await adminApi.get('/admin/coupons'); return r.data?.data ?? MOCK_COUPONS; } catch { return MOCK_COUPONS; } },
+    queryFn: async () => {
+      try {
+        const r = await adminApi.get('/admin/coupons');
+        return Array.isArray(r.data) ? r.data : (r.data?.data ?? r.data?.items ?? []);
+      } catch { return []; }
+    },
   });
 
   const updatePlanMutation = useMutation({
@@ -144,8 +154,8 @@ export default function PlansPage() {
 
   if (plansLoading) return <PageSpinner />;
 
-  const planList = (plans ?? MOCK_PLANS) as Plan[];
-  const couponList = (coupons ?? MOCK_COUPONS) as Coupon[];
+  const planList = (plans ?? []) as Plan[];
+  const couponList = (coupons ?? []) as Coupon[];
   const activePlanCount = planList.filter((p) => p.isActive).length;
   const activeCouponCount = couponList.filter((c) => c.isActive).length;
 
@@ -184,7 +194,7 @@ export default function PlansPage() {
         <TabsContent value="plans">
           <div className="section-card" style={{ marginTop: 16 }}>
             <div className="section-card-header"><span className="section-card-title">Abonelik Planları</span></div>
-            <DataTable columns={planCols} data={(plans ?? MOCK_PLANS) as Plan[]} searchPlaceholder="Plan ara..." emptyMessage="Plan bulunamadı." noBorder />
+            <DataTable columns={planCols} data={planList} searchPlaceholder="Plan ara..." emptyMessage="Plan bulunamadı." noBorder />
           </div>
         </TabsContent>
 
@@ -197,7 +207,7 @@ export default function PlansPage() {
               </Button>
             </div>
             {couponsLoading ? <PageSpinner /> : (
-              <DataTable columns={couponCols} data={(coupons ?? MOCK_COUPONS) as Coupon[]} searchPlaceholder="Kupon kodu ara..." emptyMessage="Kupon bulunamadı." noBorder />
+              <DataTable columns={couponCols} data={couponList} searchPlaceholder="Kupon kodu ara..." emptyMessage="Kupon bulunamadı." noBorder />
             )}
           </div>
         </TabsContent>

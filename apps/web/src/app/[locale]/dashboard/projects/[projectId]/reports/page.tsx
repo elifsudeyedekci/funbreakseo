@@ -6,6 +6,15 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { Download, Plus, FileText } from 'lucide-react';
 import { reportsApi } from '@/lib/api';
 
+// ReportRecord from backend: { id, projectId, format, data, createdAt }
+// 'data' is the full JSON report blob, 'format' is PDF | HTML | JSON
+interface ReportRecord {
+  id: string;
+  format: string;
+  data: Record<string, unknown> | null;
+  createdAt: string;
+}
+
 interface Report {
   id: string;
   name: string;
@@ -13,6 +22,21 @@ interface Report {
   status: 'PENDING' | 'GENERATING' | 'READY' | 'FAILED';
   fileUrl: string | null;
   createdAt: string;
+  rawData: Record<string, unknown> | null;
+}
+
+function mapRecord(r: ReportRecord): Report {
+  const domain = (r.data as any)?.project?.domain ?? (r.data as any)?.project?.name ?? null;
+  const createdDate = new Date(r.createdAt).toLocaleDateString('tr-TR');
+  return {
+    id: r.id,
+    name: domain ? `${domain} — ${createdDate}` : `${r.format} Raporu — ${createdDate}`,
+    type: r.format ?? 'JSON',
+    status: 'READY',
+    fileUrl: null,
+    createdAt: r.createdAt,
+    rawData: r.data,
+  };
 }
 
 export default function ReportsPage() {
@@ -22,12 +46,15 @@ export default function ReportsPage() {
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['reports', projectId],
-    queryFn: () => reportsApi.list(projectId).then((r) => (Array.isArray(r.data) ? r.data : (r.data?.data ?? [])) as Report[]),
-    refetchInterval: (q) => (q.state.data as Report[] | undefined)?.some((r) => r.status === 'GENERATING' || r.status === 'PENDING') ? 5000 : false,
+    queryFn: () =>
+      reportsApi.list(projectId).then((r) => {
+        const raw = Array.isArray(r.data) ? r.data : (r.data?.data ?? []);
+        return (raw as ReportRecord[]).map(mapRecord);
+      }),
   });
 
   const generateMutation = useMutation({
-    mutationFn: () => reportsApi.generate(projectId, { type: reportType }),
+    mutationFn: () => reportsApi.generate(projectId, { format: 'JSON', reportType }),
     onSuccess: () => refetch(),
   });
 
@@ -94,11 +121,21 @@ export default function ReportsPage() {
                   <td className={['px-4 py-3 text-xs font-medium', statusConfig[r.status]?.color || ''].join(' ')}>{statusConfig[r.status]?.label || r.status}</td>
                   <td className="px-4 py-3 text-white/40 text-xs">{r.createdAt ? new Date(r.createdAt).toLocaleDateString('tr-TR') : '-'}</td>
                   <td className="px-4 py-3">
-                    {r.status === 'READY' && r.fileUrl && (
-                      <a href={r.fileUrl} target="_blank" rel="noopener noreferrer"
-                        className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors inline-block">
+                    {r.status === 'READY' && r.rawData && (
+                      <button
+                        onClick={() => {
+                          const blob = new Blob([JSON.stringify(r.rawData, null, 2)], { type: 'application/json' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `${r.name.replace(/[^a-z0-9]/gi, '_')}.json`;
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        }}
+                        className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+                      >
                         <Download className="h-4 w-4" />
-                      </a>
+                      </button>
                     )}
                   </td>
                 </tr>

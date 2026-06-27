@@ -141,6 +141,14 @@ export class BillingService {
     return { html3d, transactionId, orderId };
   }
 
+  // ─── Resolve plan UUID from slug/key ─────────────────────────────────────────
+
+  async resolvePlanId(planKey?: string): Promise<string | null> {
+    if (!planKey) return null;
+    const plan = await this.prisma.plan.findFirst({ where: { slug: planKey } });
+    return plan?.id ?? null;
+  }
+
   // ─── Change Plan ─────────────────────────────────────────────────────────────
 
   async changePlan(orgId: string, planId: string) {
@@ -269,7 +277,20 @@ export class BillingService {
 
   // ─── Wallet ───────────────────────────────────────────────────────────────────
 
-  async walletTopup(orgId: string, amount: number, card: CardData) {
+  async walletTopup(orgId: string, amount: number, card?: CardData) {
+    if (!card) {
+      // Direct wallet credit for admin-initiated or pre-approved topups
+      const tx = await this.prisma.walletTransaction.create({
+        data: {
+          organizationId: orgId,
+          amount,
+          balanceAfter: 0,
+          type: 'TOPUP',
+          description: `Bakiye yükleme talebi: ₺${amount}`,
+        },
+      });
+      return { message: 'Bakiye yükleme talebiniz alındı. Ödeme için kart bilgileri gerekiyor.', transactionId: tx.id, requiresCard: true };
+    }
     const callbackUrl = `${this.config.get('APP_BASE_URL', 'https://app.funbreakseo.com')}/api/v1/webhooks/vakifbank`;
     const orderId = `WAL-${orgId.slice(0, 8)}-${Date.now()}`;
 
