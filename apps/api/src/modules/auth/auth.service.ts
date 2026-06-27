@@ -685,6 +685,19 @@ export class AuthService {
     }
   }
 
+  async disconnectGsc(orgId: string) {
+    // Clear tokens from Organization
+    await (this.prisma.organization as any).update({
+      where: { id: orgId },
+      data: { gscAccessToken: null, gscRefreshToken: null, gscTokenExpiry: null },
+    });
+    // Mark ApiIntegration as disconnected
+    await this.prisma.apiIntegration.updateMany({
+      where: { organizationId: orgId, provider: 'GSC' },
+      data: { status: 'disconnected', credentials: {} as object },
+    });
+  }
+
   async connectGsc(orgId: string, dto: Record<string, unknown>) {
     const existing = await this.prisma.apiIntegration.findFirst({
       where: { organizationId: orgId, provider: 'GSC' },

@@ -246,6 +246,7 @@ export const accountApi = {
   verify2fa: (code: string) => api.post('/account/2fa/verify', { code }),
   integrations: () => api.get('/account/integrations'),
   connectGsc: (d: Record<string, unknown>) => api.post('/account/integrations/gsc', d),
+  disconnectGsc: () => api.delete('/account/integrations/gsc'),
 };
 
 // Extend outreachApi with backlink-specific methods

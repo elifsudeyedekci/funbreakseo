@@ -88,6 +88,11 @@ export default function AccountPage() {
   const gscConnected = (integrations as Array<{ provider: string; status: string }> | undefined)
     ?.some((i) => i.provider === 'GSC' && i.status === 'connected') ?? false;
 
+  const disconnectGscMutation = useMutation({
+    mutationFn: () => accountApi.disconnectGsc(),
+    onSuccess: () => refetchIntegrations(),
+  });
+
   const handleGscConnect = () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : '';
     const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.funbreakseo.com/api/v1';
@@ -318,9 +323,18 @@ export default function AccountPage() {
                 </div>
               </div>
               {gscConnected ? (
-                <div className="flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                  <span className="text-xs font-semibold text-emerald-400">Bağlandı ✓</span>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                    <span className="text-xs font-semibold text-emerald-400">Bağlandı ✓</span>
+                  </div>
+                  <button
+                    onClick={() => disconnectGscMutation.mutate()}
+                    disabled={disconnectGscMutation.isPending}
+                    className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2 text-xs font-semibold text-red-400 hover:bg-red-500/20 transition-all disabled:opacity-50"
+                  >
+                    {disconnectGscMutation.isPending ? 'Kesiliyor…' : 'Bağlantıyı Kes'}
+                  </button>
                 </div>
               ) : (
                 <button

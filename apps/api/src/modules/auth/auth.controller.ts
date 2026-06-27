@@ -3,6 +3,7 @@ import {
   Post,
   Get,
   Patch,
+  Delete,
   Body,
   UseGuards,
   Req,
@@ -398,5 +399,12 @@ export class AccountController {
   @ApiOperation({ summary: 'Connect Google Search Console' })
   async connectGsc(@CurrentUser() user: User, @Body() dto: Record<string, unknown>) {
     return this.authService.connectGsc(user.organizationId!, dto);
+  }
+
+  @Delete('integrations/gsc')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Disconnect Google Search Console' })
+  async disconnectGsc(@CurrentUser() user: User) {
+    return this.authService.disconnectGsc(user.organizationId!);
   }
 }
