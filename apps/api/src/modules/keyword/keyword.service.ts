@@ -90,14 +90,15 @@ export class KeywordService {
     // Fetch volumes from DataForSEO
     let volumeMap: Record<string, { volume: number; difficulty: number; cpc: number; intent: string }> = {};
     try {
-      const research = await this.dfs.keywordResearch(
-        dto.phrases,
-        dto.location ?? 'Turkey',
-      );
+      const [research, difficultyMap] = await Promise.all([
+        this.dfs.keywordResearch(dto.phrases, dto.location ?? 'Turkey'),
+        this.dfs.getBulkKeywordDifficulty(dto.phrases),
+      ]);
       for (const r of research) {
-        volumeMap[(r.keyword ?? '').toLowerCase()] = {
+        const key = (r.keyword ?? '').toLowerCase();
+        volumeMap[key] = {
           volume: r.search_volume ?? 0,
-          difficulty: r.keyword_difficulty ?? 0,
+          difficulty: difficultyMap.get(key) ?? r.keyword_difficulty ?? 0,
           cpc: r.cpc ?? 0,
           intent: r.intent ?? 'INFORMATIONAL',
         };
@@ -191,7 +192,10 @@ export class KeywordService {
       try {
         const phrases = batch.map((k) => k.phrase);
         const location = batch[0].location ?? 'Turkey';
-        const research = await this.dfs.keywordResearch(phrases, location);
+        const [research, difficultyMap] = await Promise.all([
+          this.dfs.keywordResearch(phrases, location),
+          this.dfs.getBulkKeywordDifficulty(phrases),
+        ]);
 
         const volumeMap: Record<string, typeof research[0]> = {};
         for (const r of research) {
@@ -199,13 +203,14 @@ export class KeywordService {
         }
 
         for (const kw of batch) {
-          const vol = volumeMap[kw.phrase.toLowerCase()];
+          const key = kw.phrase.toLowerCase();
+          const vol = volumeMap[key];
           if (!vol) continue;
           await this.prisma.keyword.update({
             where: { id: kw.id },
             data: {
               searchVolume: vol.search_volume ?? undefined,
-              difficulty: vol.keyword_difficulty ?? undefined,
+              difficulty: difficultyMap.get(key) ?? vol.keyword_difficulty ?? undefined,
               cpc: vol.cpc ?? undefined,
               intent: this.mapIntent(vol.intent ?? undefined),
             },

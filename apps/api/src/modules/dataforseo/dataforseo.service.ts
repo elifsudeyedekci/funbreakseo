@@ -170,13 +170,11 @@ export class DataForSeoService {
           referring_domains?: number;
           dofollow?: number;
           nofollow?: number;
-          items?: BacklinkProfile['sample'];
         }>;
       }>;
     }>('/backlinks/summary/live', [
       {
         target: domain,
-        limit: 50,
         include_subdomains: true,
       },
     ]);
@@ -186,14 +184,60 @@ export class DataForSeoService {
       return { domain_rank: 0, backlinks_num: 0, referring_domains: 0, dofollow: 0, nofollow: 0, sample: [] };
     }
 
+    // summary/live does NOT return individual backlinks — fetch them separately
+    const backlinks = await this.getBacklinkList(domain, 50);
+
     return {
       domain_rank: result.domain_rank ?? 0,
       backlinks_num: result.backlinks ?? 0,
       referring_domains: result.referring_domains ?? 0,
       dofollow: result.dofollow ?? 0,
       nofollow: result.nofollow ?? 0,
-      sample: result.items ?? [],
+      sample: backlinks,
     };
+  }
+
+  async getBacklinkList(domain: string, limit = 100): Promise<BacklinkProfile['sample']> {
+    const cleanDomain = domain.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    try {
+      const response = await this.request<{
+        tasks: Array<{
+          result?: Array<{
+            items?: Array<{
+              url_from?: string;
+              url_to?: string;
+              domain_from?: string;
+              rank?: number;
+              domain_from_rank?: number;
+              dofollow?: boolean;
+              is_broken?: boolean;
+              anchor?: string;
+            }>;
+          }>;
+        }>;
+      }>('/backlinks/backlinks/live', [
+        {
+          target: cleanDomain,
+          limit,
+          include_subdomains: true,
+          broken_backlinks: false,
+          broken_pages: false,
+        },
+      ]);
+
+      const items = response.tasks?.[0]?.result?.[0]?.items ?? [];
+      return items.map((item) => ({
+        url_from: item.url_from ?? '',
+        url_to: item.url_to ?? '',
+        domain_from: item.domain_from ?? '',
+        rank: item.rank ?? item.domain_from_rank ?? 0,
+        is_dofollow: item.dofollow ?? true,
+        anchor: item.anchor ?? '',
+      }));
+    } catch (err) {
+      this.logger.warn(`getBacklinkList failed for ${domain}`, err);
+      return [];
+    }
   }
 
   // ─── LLM Mentions (GEO) ──────────────────────────────────────────────────────
@@ -291,6 +335,35 @@ export class DataForSeoService {
       cited_urls: aiItem?.sources?.map((s) => s.url),
       organic_results: organic,
     };
+  }
+
+  // ─── Bulk Keyword Difficulty ─────────────────────────────────────────────────
+
+  async getBulkKeywordDifficulty(keywords: string[], locationCode = 2792): Promise<Map<string, number>> {
+    const map = new Map<string, number>();
+    if (!keywords.length) return map;
+    try {
+      const response = await this.request<{
+        tasks: Array<{
+          result?: Array<{
+            items?: Array<{ keyword?: string; keyword_difficulty?: number }>;
+          }>;
+        }>;
+      }>('/dataforseo_labs/google/bulk_keyword_difficulty/live', [
+        {
+          keywords,
+          location_code: locationCode,
+          language_code: 'tr',
+        },
+      ]);
+      const items = response.tasks?.[0]?.result?.[0]?.items ?? [];
+      for (const item of items) {
+        if (item.keyword) map.set(item.keyword.toLowerCase(), item.keyword_difficulty ?? 0);
+      }
+    } catch (err) {
+      this.logger.warn('getBulkKeywordDifficulty failed', err);
+    }
+    return map;
   }
 
   // ─── Related Keywords ─────────────────────────────────────────────────────────

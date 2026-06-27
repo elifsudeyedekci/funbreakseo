@@ -97,7 +97,7 @@ export default function GeoPage() {
           <div className="flex gap-2">
             <button
               onClick={() => scanMutation.mutate()}
-              disabled={scanMutation.isPending || !queriesData?.length}
+              disabled={scanMutation.isPending}
               className="inline-flex items-center gap-2 rounded-xl border border-purple-500/30 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-400 hover:bg-purple-500/20 disabled:opacity-50 transition-all"
             >
               {scanMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
@@ -124,7 +124,7 @@ export default function GeoPage() {
           </div>
         ) : (
           <p className="text-sm text-white/30 text-center py-4">
-            Henüz sorgu eklenmedi. "Sorgu Ekle" butonuna basarak AI görünürlük testi için sorgular tanımlayın.
+            Henüz sorgu yok. "Tarama Başlat" butonuna basarak domain adınıza göre otomatik sorgu oluşturulur; ya da manuel sorgu ekleyebilirsiniz.
           </p>
         )}
       </div>

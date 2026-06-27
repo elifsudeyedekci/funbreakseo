@@ -218,52 +218,57 @@ export class CrawlerWorker extends WorkerHost {
         const analysis = this.analysePage(pageData)
         const issues = this.runRules(pageData, analysis, titlesSeen, metasSeen, domain)
 
-        // Persist CrawledPage
-        const crawledPage = await this.prisma.crawledPage.create({
-          data: {
-            crawlJobId,
-            url: pageData.url,
-            statusCode: pageData.statusCode,
-            title: analysis.title,
-            titleLength: analysis.titleLength,
-            metaDescription: analysis.metaDescription,
-            metaLength: analysis.metaLength,
-            h1Count: analysis.h1Count,
-            wordCount: analysis.wordCount,
-            loadTimeMs: pageData.loadTimeMs,
-            isIndexable: analysis.isIndexable,
-            canonicalUrl: analysis.canonicalUrl,
-            hasSchema: analysis.hasSchema,
-            depth: this.estimateDepth(pageData.url, domain),
-          },
-        })
-
-        // Persist SeoIssues
-        if (issues.length > 0) {
-          await this.prisma.seoIssue.createMany({
-            data: issues.map((issue) => ({
+        try {
+          // Persist CrawledPage
+          const crawledPage = await this.prisma.crawledPage.create({
+            data: {
               crawlJobId,
-              crawledPageId: crawledPage.id,
-              ruleId: ruleIdByCode.get(issue.code) ?? null,
-              category: issue.category,
-              severity: issue.severity,
-              code: issue.code,
-              message: issue.message,
-              recommendation: issue.recommendation,
-              autoFixable: issue.autoFixable,
-              fixed: false,
-            })),
+              url: pageData.url,
+              statusCode: pageData.statusCode,
+              title: analysis.title,
+              titleLength: analysis.titleLength,
+              metaDescription: analysis.metaDescription,
+              metaLength: analysis.metaLength,
+              h1Count: analysis.h1Count,
+              wordCount: analysis.wordCount,
+              loadTimeMs: pageData.loadTimeMs,
+              isIndexable: analysis.isIndexable,
+              canonicalUrl: analysis.canonicalUrl,
+              hasSchema: analysis.hasSchema,
+              depth: this.estimateDepth(pageData.url, domain),
+            },
           })
+
+          // Persist SeoIssues
+          if (issues.length > 0) {
+            await this.prisma.seoIssue.createMany({
+              data: issues.map((issue) => ({
+                crawlJobId,
+                crawledPageId: crawledPage.id,
+                ruleId: ruleIdByCode.get(issue.code) ?? null,
+                category: issue.category,
+                severity: issue.severity,
+                code: issue.code,
+                message: issue.message,
+                recommendation: issue.recommendation,
+                autoFixable: issue.autoFixable,
+                fixed: false,
+              })),
+            })
+          }
+
+          totalIssues += issues.length
+          pagesScanned++
+
+          // Accumulate per-page health contribution
+          const pageScore = this.calculatePageScore(issues)
+          cumulativeScore += pageScore
+        } catch (pageErr: any) {
+          this.logger.warn(`[Job ${job.id}] Failed to persist page ${pageData.url}: ${pageErr.message}`)
+          // Continue crawling remaining pages even if one fails to save
         }
 
-        totalIssues += issues.length
-        pagesScanned++
-
-        // Accumulate per-page health contribution
-        const pageScore = this.calculatePageScore(issues)
-        cumulativeScore += pageScore
-
-        // Track duplicates
+        // Track duplicates (outside try/catch — safe operations)
         if (analysis.title) {
           titlesSeen.set(analysis.title, pageData.url)
         }

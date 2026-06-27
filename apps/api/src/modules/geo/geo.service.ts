@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, Logger } from '@nestjs/common'
 import { InjectQueue } from '@nestjs/bullmq'
 import { Queue } from 'bullmq'
 import { GeoplatForm } from '@prisma/client'
@@ -12,6 +12,8 @@ export interface AddGeoQueryDto {
 
 @Injectable()
 export class GeoService {
+  private readonly logger = new Logger(GeoService.name)
+
   constructor(
     private readonly prisma: PrismaService,
     @InjectQueue('geo') private readonly geoQueue: Queue,
@@ -39,16 +41,51 @@ export class GeoService {
   // 2. listGeoQueries
   // -------------------------------------------------------------------------
   async triggerScan(projectId: string) {
-    const queries = await this.prisma.geoQuery.findMany({
+    let queries = await this.prisma.geoQuery.findMany({
       where: { projectId },
-      select: { id: true },
+      select: { id: true, prompt: true },
     })
+
+    // Auto-create domain-based queries if none exist
+    if (queries.length === 0) {
+      const project = await this.prisma.project.findUnique({
+        where: { id: projectId },
+        select: { domain: true, name: true },
+      })
+      if (project) {
+        const cleanDomain = (project.domain ?? '')
+          .replace(/^https?:\/\//, '')
+          .replace(/^www\./, '')
+          .split('/')[0]
+        const brandName = project.name ?? cleanDomain.split('.')[0]
+        const autoPrompts = [
+          `${brandName} nedir`,
+          `${brandName} nasıl kullanılır`,
+          `en iyi ${brandName} alternatifleri`,
+          `${brandName} kullanıcı yorumları`,
+        ].filter(Boolean)
+
+        for (const prompt of autoPrompts) {
+          try {
+            const q = await this.prisma.geoQuery.create({
+              data: { projectId, prompt, location: 'Turkey', language: 'tr' },
+            })
+            queries.push({ id: q.id, prompt: q.prompt })
+          } catch (err) {
+            this.logger.warn(`Auto-query creation failed: ${prompt}`, err)
+          }
+        }
+      }
+    }
+
     for (const q of queries) {
       await this.geoQueue.add('check', { geoQueryId: q.id, projectId })
     }
     return { queued: queries.length }
   }
 
+  // -------------------------------------------------------------------------
+  // 2. listGeoQueries
   // -------------------------------------------------------------------------
   async listGeoQueries(projectId: string) {
     return this.prisma.geoQuery.findMany({

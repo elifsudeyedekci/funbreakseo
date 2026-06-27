@@ -47,7 +47,11 @@ export function LanguageSwitcher({ variant = 'dropdown' }: { variant?: 'dropdown
   }, []);
 
   function switchLocale(newLocale: string) {
-    // next-intl's useRouter handles locale prefix automatically
+    // Persist locale in cookie so next-intl middleware reads it on refresh
+    if (typeof document !== 'undefined') {
+      document.cookie = `NEXT_LOCALE=${newLocale}; path=/; max-age=31536000; SameSite=Lax`;
+    }
+    // next-intl's useRouter handles locale prefix in URL automatically
     router.replace(pathname, { locale: newLocale });
     setOpen(false);
   }
