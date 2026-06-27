@@ -713,7 +713,9 @@ export class DataForSeoService {
         // task fail and returns zero keywords — so keep the verified one.
         order_by: ['keyword_data.keyword_info.search_volume,desc'],
       }]);
-      const items = response.tasks?.[0]?.result?.[0]?.items ?? [];
+      const task = response.tasks?.[0] as any;
+      const items = task?.result?.[0]?.items ?? [];
+      this.logger.log(`getRankedKeywordsDetailed ${cleanDomain}: total_count=${task?.result?.[0]?.total_count ?? '?'} items=${items.length}`);
       return (items as any[])
         .map((item) => {
           const serp = item.ranked_serp_element?.serp_item;

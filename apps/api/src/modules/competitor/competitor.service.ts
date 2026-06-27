@@ -167,6 +167,32 @@ export class CompetitorService {
       }));
   }
 
+  /**
+   * Build a map of the project's own keywords → its Google position. Combines
+   * the tracked keywords table with the domain's live ranked_keywords, so the
+   * "common keywords" comparison works even when few keywords are tracked.
+   */
+  private async getProjectKeywordMap(
+    projectId: string, projectDomain: string, locationCode: number, language: string,
+  ): Promise<Map<string, number | null>> {
+    const map = new Map<string, number | null>();
+    const tracked = await this.prisma.keyword.findMany({
+      where: { projectId },
+      select: { phrase: true, ranks: { orderBy: { checkedAt: 'desc' }, take: 1, select: { position: true } } },
+    });
+    for (const k of tracked) {
+      if (k.phrase) map.set(k.phrase.toLowerCase().trim(), k.ranks?.[0]?.position ?? null);
+    }
+    try {
+      const ranked = await this.dfs.getRankedKeywordsDetailed(projectDomain, 1000, locationCode, language);
+      for (const r of ranked) {
+        const key = r.keyword.toLowerCase().trim();
+        if (!map.has(key)) map.set(key, r.position);
+      }
+    } catch { /* domain may not rank yet */ }
+    return map;
+  }
+
   async compareWithCompetitor(projectId: string, organizationId: string, competitorDomain: string) {
     const project = await this.getProject(projectId, organizationId);
     const domain = this.cleanDomain(project.domain);
@@ -174,16 +200,41 @@ export class CompetitorService {
     const locationCode = this.dfs.resolveLocationCode(project.country ?? 'TR');
     const language = project.language ?? 'tr';
 
-    return this.dfs.getDomainIntersection(domain, cleanCompetitor, 200, locationCode, language);
+    // Real shared keywords: competitor's ranked keywords ∩ our keywords
+    // (tracked + ranked). Works for manual competitors too (domain_intersection
+    // needed both domains to rank and often returned 0).
+    const projMap = await this.getProjectKeywordMap(projectId, domain, locationCode, language);
+    const compRanked = await this.dfs.getRankedKeywordsDetailed(cleanCompetitor, 1000, locationCode, language);
+    const shared = compRanked
+      .filter((c) => projMap.has(c.keyword.toLowerCase().trim()))
+      .map((c) => ({
+        keyword: c.keyword,
+        searchVolume: c.searchVolume ?? 0,
+        domain1Position: projMap.get(c.keyword.toLowerCase().trim()) ?? null,
+        domain2Position: c.position,
+      }));
+    return shared;
   }
 
   async addCompetitor(projectId: string, organizationId: string, domain: string) {
-    await this.getProject(projectId, organizationId);
+    const project = await this.getProject(projectId, organizationId);
     const cleanDomain = this.cleanDomain(domain);
+    const locationCode = this.dfs.resolveLocationCode(project.country ?? 'TR');
+    const language = project.language ?? 'tr';
+    // Compute real common-keyword count against our keywords so manual
+    // competitors don't show "Ortak kelime: 0".
+    let commonKeywords = 0;
+    try {
+      const projMap = await this.getProjectKeywordMap(projectId, this.cleanDomain(project.domain), locationCode, language);
+      const compRanked = await this.dfs.getRankedKeywordsDetailed(cleanDomain, 1000, locationCode, language);
+      commonKeywords = compRanked.filter((c) => projMap.has(c.keyword.toLowerCase().trim())).length;
+    } catch (err) {
+      this.logger.warn(`addCompetitor common-keyword calc failed for ${cleanDomain}`, err);
+    }
     return this.prisma.competitor.upsert({
       where: { projectId_domain: { projectId, domain: cleanDomain } },
-      update: {},
-      create: { projectId, domain: cleanDomain, isAuto: false },
+      update: { commonKeywords },
+      create: { projectId, domain: cleanDomain, isAuto: false, commonKeywords },
     });
   }
 
@@ -199,8 +250,9 @@ export class CompetitorService {
     // Detailed ranked keywords include the competitor's live Google position.
     // Fetch a high limit so ALL of the competitor's ranking keywords show, not
     // just a handful. Uses the PROJECT's country/language.
-    const ranked = await this.dfs.getRankedKeywordsDetailed(this.cleanDomain(competitor.domain), 300, locationCode, language);
-    return ranked
+    const ranked = await this.dfs.getRankedKeywordsDetailed(this.cleanDomain(competitor.domain), 1000, locationCode, language);
+    const projMap = await this.getProjectKeywordMap(projectId, this.cleanDomain(project.domain), locationCode, language);
+    const mapped = ranked
       .filter((k) => k.keyword)
       .map((k) => ({
         keyword: k.keyword,
@@ -209,7 +261,15 @@ export class CompetitorService {
         difficulty: k.difficulty ?? 0,
         cpc: k.cpc ?? 0,
         url: k.url,
+        // True when WE also target/rank for this keyword (a shared keyword).
+        shared: projMap.has(k.keyword.toLowerCase().trim()),
+        myPosition: projMap.get(k.keyword.toLowerCase().trim()) ?? null,
       }));
+    // Persist the real common-keyword count so the list reflects it.
+    const common = mapped.filter((m) => m.shared).length;
+    await this.prisma.competitor.updateMany({ where: { id: competitorId, projectId }, data: { commonKeywords: common } }).catch(() => {});
+    // Shared keywords first.
+    return mapped.sort((a, b) => Number(b.shared) - Number(a.shared));
   }
 
   /** Diagnostics: what the APP actually receives from DataForSEO for this domain. */

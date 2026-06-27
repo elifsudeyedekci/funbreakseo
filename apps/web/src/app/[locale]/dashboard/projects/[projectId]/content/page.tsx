@@ -287,15 +287,23 @@ export default function ContentPage() {
 
                 {/* Score breakdown */}
                 {Array.isArray(detail.scoreBreakdowns) && detail.scoreBreakdowns.length > 0 && (
-                  <details className="rounded-xl border border-white/10 bg-white/2 p-3">
-                    <summary className="text-sm font-medium text-white/70 cursor-pointer">SEO/GEO Skor Detayı</summary>
-                    <div className="mt-2 space-y-1">
-                      {detail.scoreBreakdowns.map((b: { criterion: string; score: number; maxScore: number; note: string }, i: number) => (
-                        <div key={i} className="flex items-center justify-between text-xs">
-                          <span className="text-white/50">{b.criterion}</span>
-                          <span className="text-white/70">{b.score}/{b.maxScore}</span>
-                        </div>
-                      ))}
+                  <details className="rounded-xl border border-white/10 bg-white/2 p-3" open>
+                    <summary className="text-sm font-medium text-white/70 cursor-pointer">SEO/GEO Skor Detayı — her kriter ayrı ölçüldü</summary>
+                    <div className="mt-2 space-y-2">
+                      {detail.scoreBreakdowns.map((b: { criterion: string; score: number; maxScore: number; note: string }, i: number) => {
+                        const pass = b.score >= b.maxScore * 0.6;
+                        return (
+                          <div key={i} className="text-xs">
+                            <div className="flex items-center justify-between">
+                              <span className="text-white/70">
+                                {pass ? <span className="text-emerald-400">✓</span> : <span className="text-red-400">✗</span>} {CRITERION_LABELS[b.criterion] ?? b.criterion}
+                              </span>
+                              <span className={pass ? 'text-emerald-400 font-medium' : 'text-yellow-400 font-medium'}>{b.score}/{b.maxScore}</span>
+                            </div>
+                            {b.note && <p className="text-[10px] text-white/35 mt-0.5">{b.note}</p>}
+                          </div>
+                        );
+                      })}
                     </div>
                   </details>
                 )}
@@ -339,6 +347,23 @@ export default function ContentPage() {
     </div>
   );
 }
+
+/** Turkish labels for SEO/GEO scoring criteria. */
+const CRITERION_LABELS: Record<string, string> = {
+  KEYWORD_USAGE: 'Anahtar kelime kullanımı/yoğunluğu',
+  HEADING_STRUCTURE: 'Başlık yapısı (H1/H2/H3)',
+  META: 'Meta başlık & açıklama',
+  INTERNAL_LINKS: 'İç bağlantılar',
+  SCHEMA: 'Şema işaretlemesi (JSON-LD)',
+  ENTITY_COVERAGE: 'Varlık/konu kapsamı',
+  ANSWER_FIRST: 'Cevap-önce yapısı',
+  READABILITY: 'Okunabilirlik',
+  answer_first: 'AI: Cevap-önce',
+  entity_clarity: 'AI: Varlık netliği',
+  structured_data: 'AI: Yapılandırılmış veri',
+  citation_worthy: 'AI: Kaynak gösterilebilirlik',
+  question_format: 'AI: Soru-cevap formatı',
+};
 
 /** Trigger a client-side file download. */
 function downloadFile(filename: string, content: string, mime: string) {

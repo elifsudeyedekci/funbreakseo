@@ -177,47 +177,60 @@ export class OutreachService {
       this.logger.log(`DataForSEO returned ${profile.sample.length} backlinks, total: ${profile.backlinks_num}`)
 
       const now = new Date()
-      let synced = 0
 
       // Replace-all: clear this project's backlinks then insert the fresh set.
-      // The previous findFirst+update path left stale rows and could mask the
-      // true count; a clean replace guarantees the DB mirrors DataForSEO exactly.
-      await this.prisma.backlink.deleteMany({ where: { projectId } })
+      let delOk = true
+      try {
+        await this.prisma.backlink.deleteMany({ where: { projectId } })
+      } catch (e) {
+        delOk = false
+        this.logger.error(`Backlink deleteMany FAILED for ${domain}: ${(e as Error).message}`)
+      }
 
-      // De-dupe by sourceUrl within the response (sourceUrl is effectively unique).
-      const seen = new Set<string>()
-      for (const item of profile.sample) {
-        if (!item.url_from || seen.has(item.url_from)) continue
-        seen.add(item.url_from)
-        let sourceDomain = item.domain_from
-        if (!sourceDomain) {
-          try { sourceDomain = new URL(item.url_from).hostname } catch { sourceDomain = item.url_from }
-        }
-        try {
-          await this.prisma.backlink.create({
-            data: {
-              projectId,
-              sourceDomain,
-              sourceUrl: item.url_from,
-              targetUrl: item.url_to || `https://${domain}`,
-              anchorText: item.anchor ?? null,
-              // DR = source domain authority (domain_from_rank), already resolved
-              // in getBacklinkList into item.rank.
-              domainRating: item.rank ?? null,
-              isDofollow: item.is_dofollow,
-              firstSeen: now,
-              lastSeen: now,
-              status: 'ACTIVE',
-            },
-          })
-          synced++
-        } catch (err) {
-          this.logger.warn(`Failed to sync backlink ${item.url_from}`, err)
+      // Build rows for EVERY backlink the API returned. Do NOT de-dupe by
+      // url_from — a single source page can legitimately link multiple times
+      // (different anchors), and as_is counts each. De-duping collapsed 27 → 13.
+      const rows = profile.sample
+        .filter((item) => item.url_from)
+        .map((item) => {
+          let sourceDomain = item.domain_from
+          if (!sourceDomain) {
+            try { sourceDomain = new URL(item.url_from).hostname } catch { sourceDomain = item.url_from }
+          }
+          return {
+            projectId,
+            sourceDomain,
+            sourceUrl: item.url_from,
+            targetUrl: item.url_to || `https://${domain}`,
+            anchorText: item.anchor ?? null,
+            domainRating: item.rank ?? null,
+            isDofollow: item.is_dofollow,
+            firstSeen: now,
+            lastSeen: now,
+            status: 'ACTIVE' as const,
+          }
+        })
+
+      let synced = 0
+      let createOk = true
+      try {
+        const res = await this.prisma.backlink.createMany({ data: rows })
+        synced = res.count
+      } catch (e) {
+        createOk = false
+        this.logger.error(`Backlink createMany FAILED for ${domain}: ${(e as Error).message}`)
+        // Fallback: insert one-by-one so a single bad row doesn't lose all 27.
+        for (const row of rows) {
+          try { await this.prisma.backlink.create({ data: row }); synced++ } catch (err) {
+            this.logger.warn(`backlink row failed ${row.sourceUrl}: ${(err as Error).message}`)
+          }
         }
       }
 
       const dbCount = await this.prisma.backlink.count({ where: { projectId } })
-      this.logger.log(`Persisted ${synced} backlinks for ${domain} (DB count now: ${dbCount}, summary total: ${profile.backlinks_num})`)
+      this.logger.log(
+        `Backlink sync ${domain}: API items=${profile.sample.length}, rows=${rows.length}, deleteMany ${delOk ? 'OK' : 'FAIL'}, createMany ${createOk ? 'OK' : 'FALLBACK'}, synced=${synced}, DB COUNT=${dbCount}, summary total=${profile.backlinks_num}`,
+      )
       const returnedBacklinks = await this.prisma.backlink.findMany({ where: { projectId }, orderBy: { domainRating: 'desc' } })
       return {
         synced,

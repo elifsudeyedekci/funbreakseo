@@ -376,21 +376,29 @@ export default function GeoPage() {
                     </div>
                   </div>
                 </div>
-                {q.platforms.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {q.platforms.map((p, i) => (
-                      <div key={i} className={`rounded-lg border px-2.5 py-1.5 text-[11px] ${PLATFORM_COLORS[p.platform] ?? 'border-white/10 text-white/50'}`}>
-                        <span className="font-semibold">{PLATFORM_LABELS[p.platform] ?? p.platform}</span>
+                {/* Show ALL 6 platforms — even "yok" ones — so the customer sees
+                    the full picture and where to act. */}
+                <div className="flex flex-wrap gap-2">
+                  {platforms.map(([platform, label]) => {
+                    const p = q.platforms.find((x) => x.platform === platform);
+                    const shown = p && (p.mentioned || p.cited);
+                    return (
+                      <div
+                        key={platform}
+                        title={PLATFORM_DESC[platform]}
+                        className={`rounded-lg border px-2.5 py-1.5 text-[11px] cursor-help ${shown ? PLATFORM_COLORS[platform] : 'border-white/10 text-white/35'}`}
+                      >
+                        <span className="font-semibold">{label}</span>
                         <span className="opacity-70">
                           {' · '}
-                          {p.mentioned ? 'bahsedildi' : 'yok'}
-                          {p.cited ? ' · kaynak' : ''}
-                          {p.position != null ? ` · #${p.position}` : ''}
+                          {p ? (p.mentioned ? 'bahsedildi' : 'yok') : 'yok'}
+                          {p?.cited ? ' · kaynak' : ''}
+                          {p?.position != null ? ` · #${p.position}` : ''}
                         </span>
                       </div>
-                    ))}
-                  </div>
-                )}
+                    );
+                  })}
+                </div>
                 {/* Action: brand not shown for this query → offer to write content */}
                 {!q.mentioned && (
                   <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2">

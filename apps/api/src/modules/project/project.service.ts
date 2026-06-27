@@ -231,7 +231,7 @@ export class ProjectService {
 
     const lastCrawl = lastDoneCrawl ?? latestCrawl;
 
-    const [rankTrend, geoTrend, latestGeoSnapshot, activities, todos] = await Promise.all([
+    const [rankTrend, geoTrend, latestGeoSnapshot, activities, todos, geoTotalChecks, geoMentionedChecks] = await Promise.all([
       this.buildRankTrend(id),
       this.buildGeoTrend(id),
       this.prisma.geoVisibilitySnapshot.findFirst({
@@ -240,7 +240,13 @@ export class ProjectService {
       }),
       this.buildActivities(id),
       this.buildTodos(id, allKeywords),
+      // Same basis as the GEO page: visibility = mentioned / (queries × platforms).
+      this.prisma.geoResult.count({ where: { geoQuery: { projectId: id } } }),
+      this.prisma.geoResult.count({ where: { geoQuery: { projectId: id }, brandMentioned: true } }),
     ]);
+    const geoVisibilityScore = geoTotalChecks > 0
+      ? Math.round((geoMentionedChecks / geoTotalChecks) * 100)
+      : project.geoVisibilityScore;
 
     return {
       project,
@@ -257,17 +263,7 @@ export class ProjectService {
       pagesScanned: lastCrawl?.pagesScanned ?? 0,
       issuesFound: lastCrawl?.issuesFound ?? 0,
       healthScore: lastCrawl?.healthScore ?? project.healthScore,
-      geoVisibilityScore:
-        latestGeoSnapshot?.mentionCount != null
-          ? Math.min(
-              100,
-              Math.round(
-                ((latestGeoSnapshot.mentionCount ?? 0) +
-                  (latestGeoSnapshot.citationCount ?? 0) * 2) *
-                  5,
-              ),
-            )
-          : project.geoVisibilityScore,
+      geoVisibilityScore,
       latestGeoSnapshot,
       rankTrend,
       geoTrend,
