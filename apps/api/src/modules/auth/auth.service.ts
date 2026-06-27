@@ -622,24 +622,46 @@ export class AuthService {
   }
 
   async exchangeGoogleCode(code: string): Promise<{ accessToken: string; refreshToken?: string; expiryDate: number }> {
+    const clientId = this.config.get<string>('GOOGLE_CLIENT_ID') ?? '';
+    const clientSecret = this.config.get<string>('GOOGLE_CLIENT_SECRET') ?? '';
+    const redirectUri = this.config.get<string>('GOOGLE_CALLBACK_URL') ?? '';
+
+    console.log('[GSC exchangeGoogleCode] params:', {
+      client_id: clientId ? `${clientId.substring(0, 20)}…` : '(EMPTY)',
+      client_secret: clientSecret ? `${clientSecret.substring(0, 8)}…` : '(EMPTY)',
+      redirect_uri: redirectUri || '(EMPTY)',
+      code: code ? `${code.substring(0, 12)}…` : '(EMPTY)',
+      grant_type: 'authorization_code',
+    });
+
     // Google token endpoint requires application/x-www-form-urlencoded, not JSON.
     const body = new URLSearchParams({
       code,
-      client_id: this.config.get<string>('GOOGLE_CLIENT_ID') ?? '',
-      client_secret: this.config.get<string>('GOOGLE_CLIENT_SECRET') ?? '',
-      redirect_uri: this.config.get<string>('GOOGLE_CALLBACK_URL') ?? '',
+      client_id: clientId,
+      client_secret: clientSecret,
+      redirect_uri: redirectUri,
       grant_type: 'authorization_code',
     });
-    const { data } = await axios.post<{ access_token: string; refresh_token?: string; expires_in?: number }>(
-      'https://oauth2.googleapis.com/token',
-      body,
-      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
-    );
-    return {
-      accessToken: data.access_token,
-      refreshToken: data.refresh_token,
-      expiryDate: Date.now() + (data.expires_in ?? 3600) * 1000,
-    };
+
+    console.log('[GSC exchangeGoogleCode] raw body:', body.toString().replace(/client_secret=[^&]+/, 'client_secret=REDACTED'));
+
+    try {
+      const { data } = await axios.post<{ access_token: string; refresh_token?: string; expires_in?: number }>(
+        'https://oauth2.googleapis.com/token',
+        body,
+        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
+      );
+      console.log('[GSC exchangeGoogleCode] success — has access_token:', !!data.access_token, 'has refresh_token:', !!data.refresh_token);
+      return {
+        accessToken: data.access_token,
+        refreshToken: data.refresh_token,
+        expiryDate: Date.now() + (data.expires_in ?? 3600) * 1000,
+      };
+    } catch (err: unknown) {
+      const axErr = err as { response?: { status?: number; data?: unknown }; message?: string };
+      console.error('[GSC exchangeGoogleCode] 401/error — status:', axErr.response?.status, 'body:', JSON.stringify(axErr.response?.data));
+      throw err;
+    }
   }
 
   async saveGscOAuthTokens(orgId: string, tokens: { accessToken: string; refreshToken?: string; expiryDate: number }) {
