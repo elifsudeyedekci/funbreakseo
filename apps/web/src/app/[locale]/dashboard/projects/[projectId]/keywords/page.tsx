@@ -71,10 +71,8 @@ export default function KeywordsPage() {
   const [rankedStatus, setRankedStatus] = useState<string | null>(null);
   // Bulk selection for the tracked keywords table
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  // GSC fetch filters
-  const [gscMaxPosition, setGscMaxPosition] = useState<string>('100');
-  const [gscMinClicks, setGscMinClicks] = useState<string>('0');
-  const [gscMinImpressions, setGscMinImpressions] = useState<string>('1');
+  // GSC fetch filter
+  const [gscMaxPosition, setGscMaxPosition] = useState<string>('50');
 
   const { data, isLoading } = useQuery({
     queryKey: ['keywords', projectId],
@@ -172,14 +170,8 @@ export default function KeywordsPage() {
     mutationFn: async () => {
       setRankedStatus(null);
       const maxPos = parseInt(gscMaxPosition, 10);
-      const minClk = parseInt(gscMinClicks, 10);
-      const minImp = parseInt(gscMinImpressions, 10);
-      const params = {
-        ...(maxPos > 0 && maxPos < 1000 && { maxPosition: maxPos }),
-        ...(minClk > 0 && { minClicks: minClk }),
-        ...(minImp > 0 && { minImpressions: minImp }),
-      };
-      const r = await keywordApi.ranked(projectId, Object.keys(params).length ? params : undefined);
+      const params = maxPos > 0 && maxPos < 1000 ? { maxPosition: maxPos } : undefined;
+      const r = await keywordApi.ranked(projectId, params);
       const raw: any[] = Array.isArray(r.data) ? r.data : (r.data?.data ?? []);
       const phrases = Array.from(new Set(raw.map((k: any) => k.keyword ?? k.phrase).filter(Boolean)));
       if (phrases.length === 0) return { added: 0 };
@@ -394,34 +386,14 @@ export default function KeywordsPage() {
           <div className="flex flex-col items-end gap-1.5">
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1.5">
-                <label className="text-xs text-white/40 whitespace-nowrap">Max poz.</label>
+                <label className="text-xs text-white/40 whitespace-nowrap">Max pozisyon</label>
                 <input
                   type="number"
                   min={1}
                   max={1000}
                   value={gscMaxPosition}
                   onChange={(e) => setGscMaxPosition(e.target.value)}
-                  className="w-14 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white text-center focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-              <div className="flex items-center gap-1.5">
-                <label className="text-xs text-white/40 whitespace-nowrap">Min imp.</label>
-                <input
-                  type="number"
-                  min={1}
-                  value={gscMinImpressions}
-                  onChange={(e) => setGscMinImpressions(e.target.value)}
-                  className="w-14 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white text-center focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-              <div className="flex items-center gap-1.5">
-                <label className="text-xs text-white/40 whitespace-nowrap">Min tık.</label>
-                <input
-                  type="number"
-                  min={0}
-                  value={gscMinClicks}
-                  onChange={(e) => setGscMinClicks(e.target.value)}
-                  className="w-14 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white text-center focus:outline-none focus:border-indigo-500"
+                  className="w-16 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white text-center focus:outline-none focus:border-indigo-500"
                 />
               </div>
               <button
@@ -433,6 +405,7 @@ export default function KeywordsPage() {
                 {fetchRankedMutation.isPending ? 'Getiriliyor…' : 'Sıralanan Kelimeleri Getir'}
               </button>
             </div>
+            <p className="text-xs text-white/30">Google&apos;da ilk {gscMaxPosition} sırada olduğunuz kelimeler eklenir (GSC verisi)</p>
             {rankedStatus && (
               <span className={cn('text-xs', rankedStatus.startsWith('Hata') ? 'text-red-400' : 'text-emerald-400')}>
                 {rankedStatus}

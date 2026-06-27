@@ -359,7 +359,7 @@ export class KeywordService {
   async getRankedKeywordsForProject(
     projectId: string,
     organizationId: string,
-    filters: { maxPosition?: number; minClicks?: number; minImpressions?: number } = {},
+    filters: { maxPosition?: number } = {},
   ) {
     await this.assertProjectAccess(projectId, organizationId);
     const project = await this.prisma.project.findUnique({
@@ -368,24 +368,24 @@ export class KeywordService {
     });
     if (!project) throw new NotFoundException('Project not found');
 
-    const { maxPosition, minClicks, minImpressions } = filters;
+    const { maxPosition } = filters;
 
-    // Try GSC first if the organization has connected Google Search Console.
-    const gscIntegration = await this.prisma.apiIntegration.findFirst({
-      where: { organizationId, provider: 'GSC', status: 'connected' },
-    });
-    if (gscIntegration) {
+    // Try GSC via Organization-level token columns (faster than ApiIntegration join).
+    // Cast to any because Prisma client types won't include the new columns until
+    // `prisma generate` is run on the server after the migration.
+    const orgGsc = await (this.prisma.organization as any).findUnique({
+      where: { id: organizationId },
+      select: { id: true, gscAccessToken: true, gscRefreshToken: true, gscTokenExpiry: true },
+    }) as { id: string; gscAccessToken: string | null; gscRefreshToken: string | null; gscTokenExpiry: Date | null } | null;
+    if (orgGsc?.gscAccessToken) {
       try {
         // fetchFromGsc already strips position<=0 and impressions<=0
-        const gscKeywords = await this.fetchFromGsc(project.domain, gscIntegration);
-        const filtered = gscKeywords.filter((k) => {
-          if (maxPosition !== undefined && k.position > maxPosition) return false;
-          if (minClicks !== undefined && k.clicks < minClicks) return false;
-          if (minImpressions !== undefined && k.impressions < minImpressions) return false;
-          return true;
-        });
+        const gscKeywords = await this.fetchFromGsc(project.domain, orgGsc);
+        const filtered = maxPosition !== undefined
+          ? gscKeywords.filter((k) => k.position <= maxPosition)
+          : gscKeywords;
         process.stdout.write(
-          `[GSC ranked] valid=${gscKeywords.length} after_user_filter=${filtered.length} (maxPos=${maxPosition ?? '-'} minClk=${minClicks ?? '-'} minImp=${minImpressions ?? '-'})\n`,
+          `[GSC ranked] valid=${gscKeywords.length} after_filter=${filtered.length} maxPos=${maxPosition ?? '-'}\n`,
         );
         // Return even if 0 — do NOT fall through to DataForSEO when GSC is connected
         return filtered;
@@ -425,25 +425,20 @@ export class KeywordService {
 
   private async fetchFromGsc(
     domain: string,
-    integration: { id: string; credentials: unknown },
+    org: { id: string; gscAccessToken: string | null; gscRefreshToken: string | null; gscTokenExpiry: Date | null },
   ): Promise<Array<{ keyword: string; position: number; searchVolume: number; difficulty: number; cpc: number; url: null; clicks: number; impressions: number; ctr: number }>> {
-    const creds = integration.credentials as { accessToken?: string; refreshToken?: string; expiryDate?: number };
-    let token = creds.accessToken;
+    let token = org.gscAccessToken;
+    const expiryMs = org.gscTokenExpiry ? org.gscTokenExpiry.getTime() : 0;
 
-    // Refresh if expired (5-min buffer)
-    if (!token || (creds.expiryDate && creds.expiryDate < Date.now() + 5 * 60 * 1000)) {
-      if (!creds.refreshToken) return [];
-      const refreshed = await this.refreshGscToken(creds.refreshToken);
+    // Refresh if missing or expiring within 5 minutes
+    if (!token || expiryMs < Date.now() + 5 * 60 * 1000) {
+      if (!org.gscRefreshToken) return [];
+      const refreshed = await this.refreshGscToken(org.gscRefreshToken);
       token = refreshed.access_token;
-      await this.prisma.apiIntegration.update({
-        where: { id: integration.id },
-        data: {
-          credentials: {
-            ...creds,
-            accessToken: refreshed.access_token,
-            expiryDate: Date.now() + (refreshed.expires_in ?? 3600) * 1000,
-          } as object,
-        },
+      const newExpiry = new Date(Date.now() + (refreshed.expires_in ?? 3600) * 1000);
+      await (this.prisma.organization as any).update({
+        where: { id: org.id },
+        data: { gscAccessToken: token, gscTokenExpiry: newExpiry },
       });
     }
 

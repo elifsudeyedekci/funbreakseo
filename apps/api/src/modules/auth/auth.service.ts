@@ -659,6 +659,17 @@ export class AuthService {
   }
 
   async saveGscOAuthTokens(orgId: string, tokens: { accessToken: string; refreshToken?: string; expiryDate: number }) {
+    // Store directly on Organization for fast access during keyword fetching.
+    // Cast to any until `prisma generate` is run on the server after migration.
+    await (this.prisma.organization as any).update({
+      where: { id: orgId },
+      data: {
+        gscAccessToken: tokens.accessToken,
+        ...(tokens.refreshToken && { gscRefreshToken: tokens.refreshToken }),
+        gscTokenExpiry: new Date(tokens.expiryDate),
+      },
+    });
+    // Also maintain ApiIntegration for integrations-page status display
     const existing = await this.prisma.apiIntegration.findFirst({
       where: { organizationId: orgId, provider: 'GSC' },
     });
