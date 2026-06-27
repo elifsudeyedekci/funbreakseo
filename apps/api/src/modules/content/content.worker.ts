@@ -265,7 +265,13 @@ Respond in this exact JSON format (no markdown fences):
       }
 
       // ── Step 7: Score the content ────────────────────────────────────────
-      const scoreResult = scoreContent(bodyMarkdown, dto.focusKeyword, language)
+      const hasFaqSchema = schemas.some((s) => s['@type'] === 'FAQPage')
+      const scoreResult = scoreContent(bodyMarkdown, dto.focusKeyword, language, {
+        metaTitle,
+        metaDescription,
+        hasSchema: schemas.length > 0,
+        hasFaqSchema,
+      })
 
       const wordCount = bodyMarkdown
         .replace(/```[\s\S]*?```/g, '')
@@ -277,7 +283,10 @@ Respond in this exact JSON format (no markdown fences):
       await this.prisma.contentItem.update({
         where: { id: contentItemId },
         data: {
-          status: ContentStatus.REVIEW,
+          // Generated content goes straight to DRAFT — immediately viewable,
+          // editable and publishable by the customer. No admin approval gate
+          // (the approve flow stays available but is optional).
+          status: ContentStatus.DRAFT,
           bodyMarkdown,
           wordCount,
           seoScore: scoreResult.seoScore,
@@ -433,10 +442,17 @@ Return ONLY the rewritten section content (including its heading), nothing else.
       })
 
       // ── Re-score updated content ────────────────────────────────────────
+      const jsonLdStr = item.jsonLd ? JSON.stringify(item.jsonLd) : ''
       const scoreResult = scoreContent(
         updatedMarkdown,
         item.focusKeyword ?? '',
         'tr',
+        {
+          metaTitle: item.metaTitle,
+          metaDescription: item.metaDescription,
+          hasSchema: Boolean(item.jsonLd),
+          hasFaqSchema: jsonLdStr.includes('FAQPage'),
+        },
       )
 
       const wordCount = updatedMarkdown
@@ -502,7 +518,16 @@ Return ONLY the rewritten section content (including its heading), nothing else.
 }
 
 // ─── Standalone scoring function (mirrors ContentService.scoreContent) ───────
-function scoreContent(markdown: string, keyword: string, language: string): ScoreResult {
+// `opts` carries the separately-generated artifacts (meta + schema) so META and
+// SCHEMA criteria score against what the system ACTUALLY produces — these live in
+// dedicated DB fields, not in the markdown body, so scanning the markdown alone
+// always returned 0 and depressed the SEO score.
+function scoreContent(
+  markdown: string,
+  keyword: string,
+  language: string,
+  opts: { metaTitle?: string | null; metaDescription?: string | null; hasSchema?: boolean; hasFaqSchema?: boolean } = {},
+): ScoreResult {
   const text = markdown
   const lowerText = text.toLowerCase()
   const lowerKeyword = keyword.toLowerCase()
@@ -555,29 +580,34 @@ function scoreContent(markdown: string, keyword: string, language: string): Scor
     })
   }
 
-  // 3. META (15p)
+  // 3. META (15p) — score the actual generated meta fields, not the markdown.
   {
     const MAX = 15
-    const metaTitleMatch = text.match(/meta[_-]?title:\s*["']?(.+?)["']?\n/i)
-    const metaDescMatch = text.match(/meta[_-]?description:\s*["']?(.+?)["']?\n/i)
     let score = 0
+    const mt = (opts.metaTitle ?? '').trim()
+    const md = (opts.metaDescription ?? '').trim()
+    // Fallback: also accept meta embedded in markdown front-matter if present.
+    const mtFallback = text.match(/meta[_-]?title:\s*["']?(.+?)["']?\n/i)?.[1]?.trim()
+    const mdFallback = text.match(/meta[_-]?description:\s*["']?(.+?)["']?\n/i)?.[1]?.trim()
+    const title = mt || mtFallback || ''
+    const desc = md || mdFallback || ''
 
-    if (metaTitleMatch) {
-      const mt = metaTitleMatch[1].trim()
-      if (mt.length <= 60) score += 5
-      if (mt.toLowerCase().includes(lowerKeyword)) score += 5
+    if (title) {
+      if (title.length >= 15 && title.length <= 60) score += 5
+      else if (title.length > 0) score += 2
+      if (title.toLowerCase().includes(lowerKeyword)) score += 5
     }
-    if (metaDescMatch) {
-      const md = metaDescMatch[1].trim()
-      if (md.length <= 155) score += 3
-      if (md.toLowerCase().includes(lowerKeyword)) score += 2
+    if (desc) {
+      if (desc.length >= 50 && desc.length <= 160) score += 3
+      else if (desc.length > 0) score += 1
+      if (desc.toLowerCase().includes(lowerKeyword)) score += 2
     }
 
     breakdown.push({
       criterion: 'META',
       score: Math.min(score, MAX),
       maxScore: MAX,
-      note: metaTitleMatch ? 'Meta fields detected in markdown' : 'No meta fields found in markdown',
+      note: title ? `Meta title (${title.length}c) + description (${desc.length}c)` : 'No meta generated',
     })
   }
 
@@ -596,10 +626,11 @@ function scoreContent(markdown: string, keyword: string, language: string): Scor
     })
   }
 
-  // 5. SCHEMA (10p)
+  // 5. SCHEMA (10p) — JSON-LD is generated into a dedicated field, not the body.
   {
     const MAX = 10
     const hasJsonLd =
+      (opts.hasSchema ?? false) ||
       /"@context"\s*:\s*"https?:\/\/schema\.org"/.test(text) ||
       /```json/.test(text)
     const score = hasJsonLd ? 10 : 0
@@ -608,7 +639,7 @@ function scoreContent(markdown: string, keyword: string, language: string): Scor
       criterion: 'SCHEMA',
       score,
       maxScore: MAX,
-      note: hasJsonLd ? 'JSON-LD schema block detected' : 'No schema markup found',
+      note: hasJsonLd ? 'JSON-LD schema generated' : 'No schema markup',
     })
   }
 
@@ -698,9 +729,13 @@ function scoreContent(markdown: string, keyword: string, language: string): Scor
   {
     const MAX = 25
     const definitionPatterns = [
+      // English
       /[A-Z][a-zA-Z]+\s+is\s+/g,
       /[A-Z][a-zA-Z]+,\s+(?:a|an|the)\s+/g,
       /[A-Z][a-zA-Z]+\s+refers\s+to\s+/gi,
+      // Turkish: "X bir ...", "X, ... ", "X olarak", "X demektir/denir", "X ise"
+      /\b\p{Lu}[\p{L}]+\s+(?:bir|bu|şu)\s+/gu,
+      /\b\p{Lu}[\p{L}]+\s+(?:olarak|demektir|denir|tanımlanır|anlamına gelir)\b/gu,
     ]
     let definitionCount = 0
     for (const pattern of definitionPatterns) {
@@ -717,11 +752,11 @@ function scoreContent(markdown: string, keyword: string, language: string): Scor
     })
   }
 
-  // 3. structured_data (20p)
+  // 3. structured_data (20p) — schema lives in a dedicated field.
   {
     const MAX = 20
-    const hasSchema = /"@context"\s*:\s*"https?:\/\/schema\.org"/.test(text)
-    const hasFaqSchema = /"@type"\s*:\s*"FAQPage"/.test(text)
+    const hasSchema = (opts.hasSchema ?? false) || /"@context"\s*:\s*"https?:\/\/schema\.org"/.test(text)
+    const hasFaqSchema = (opts.hasFaqSchema ?? false) || /"@type"\s*:\s*"FAQPage"/.test(text)
     let score = 0
     if (hasSchema) score += 12
     if (hasFaqSchema) score += 8
@@ -738,7 +773,7 @@ function scoreContent(markdown: string, keyword: string, language: string): Scor
   {
     const MAX = 15
     const statsPattern =
-      /\b\d+(?:\.\d+)?%|\b\d{4}\b|\baccording\s+to\b|\bstudy\b|\bresearch\b/gi
+      /%\s*\d+|\b\d+(?:[.,]\d+)?\s*%|\b\d{4}\b|\baccording\s+to\b|\bstudy\b|\bresearch\b|\bgöre\b|\baraştırma\b|\bçalışma\b|\bistatistik\b|\boran(?:ı|ında)?\b|\bverilerine\b/gi
     const statsCount = [...text.matchAll(statsPattern)].length
     const score = statsCount >= 5 ? 15 : statsCount >= 3 ? 10 : statsCount >= 1 ? 5 : 0
 

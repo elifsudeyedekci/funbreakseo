@@ -55,6 +55,21 @@ export default function ContentPage() {
     },
   });
 
+  // Detail view — open/inspect a generated article (body, meta, scores).
+  const [openId, setOpenId] = useState<string | null>(null);
+  const { data: detail, isLoading: detailLoading } = useQuery({
+    queryKey: ['content-detail', openId],
+    queryFn: () => contentApi.get(openId!).then((r) => r.data?.data ?? r.data),
+    enabled: !!openId,
+  });
+  const publishMutation = useMutation({
+    mutationFn: (id: string) => contentApi.publish(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['content', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['content-detail', openId] });
+    },
+  });
+
   const items = (data || []).filter((c) => filterStatus === 'ALL' || c.status === filterStatus);
 
   return (
@@ -111,7 +126,10 @@ export default function ContentPage() {
       ) : (
         <div className="space-y-3">
           {items.map((item) => (
-            <div key={item.id} className="rounded-2xl border border-white/10 bg-white/2 p-5 hover:bg-white/5 transition-colors cursor-pointer">
+            <div
+              key={item.id}
+              onClick={() => item.status !== 'GENERATING' && setOpenId(item.id)}
+              className="rounded-2xl border border-white/10 bg-white/2 p-5 hover:bg-white/5 transition-colors cursor-pointer">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <h3 className="font-semibold text-white truncate">{item.title || item.keyword}</h3>
@@ -228,6 +246,116 @@ export default function ContentPage() {
           </div>
         </div>
       )}
+
+      {/* Detail view — read the generated article, scores and meta */}
+      {openId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setOpenId(null)} />
+          <div className="relative w-full max-w-3xl max-h-[88vh] overflow-y-auto rounded-2xl border border-white/10 bg-[#0f0f17] p-6">
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <h2 className="text-lg font-bold text-white">{detail?.title ?? t('title')}</h2>
+              <button onClick={() => setOpenId(null)} className="p-1 rounded-lg text-white/50 hover:text-white hover:bg-white/10">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {detailLoading ? (
+              <div className="h-40 animate-pulse rounded-xl bg-white/5" />
+            ) : detail ? (
+              <div className="space-y-4">
+                {/* Score + meta summary */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="rounded-xl border border-white/10 bg-white/2 p-3 text-center">
+                    <div className={`text-xl font-bold ${(detail.seoScore ?? 0) >= 80 ? 'text-emerald-400' : (detail.seoScore ?? 0) >= 60 ? 'text-yellow-400' : 'text-red-400'}`}>{detail.seoScore ?? 0}</div>
+                    <div className="text-[10px] text-white/40">SEO Skoru</div>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/2 p-3 text-center">
+                    <div className="text-xl font-bold text-purple-400">{detail.geoScore ?? 0}</div>
+                    <div className="text-[10px] text-white/40">GEO Skoru</div>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/2 p-3 text-center">
+                    <div className="text-xl font-bold text-white">{(detail.wordCount ?? 0).toLocaleString('tr-TR')}</div>
+                    <div className="text-[10px] text-white/40">Kelime</div>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/2 p-3 text-center">
+                    <div className="text-xs font-semibold text-white/70 pt-1.5">{detail.status}</div>
+                    <div className="text-[10px] text-white/40">Durum</div>
+                  </div>
+                </div>
+
+                {/* Meta */}
+                {(detail.metaTitle || detail.metaDescription) && (
+                  <div className="rounded-xl border border-white/10 bg-white/2 p-3 text-sm">
+                    <p className="text-white/80"><span className="text-white/40">Meta Başlık:</span> {detail.metaTitle}</p>
+                    <p className="text-white/60 mt-1"><span className="text-white/40">Meta Açıklama:</span> {detail.metaDescription}</p>
+                  </div>
+                )}
+
+                {/* Score breakdown */}
+                {Array.isArray(detail.scoreBreakdowns) && detail.scoreBreakdowns.length > 0 && (
+                  <details className="rounded-xl border border-white/10 bg-white/2 p-3">
+                    <summary className="text-sm font-medium text-white/70 cursor-pointer">SEO/GEO Skor Detayı</summary>
+                    <div className="mt-2 space-y-1">
+                      {detail.scoreBreakdowns.map((b: { criterion: string; score: number; maxScore: number; note: string }, i: number) => (
+                        <div key={i} className="flex items-center justify-between text-xs">
+                          <span className="text-white/50">{b.criterion}</span>
+                          <span className="text-white/70">{b.score}/{b.maxScore}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                )}
+
+                {/* Rendered article body */}
+                <div
+                  className="prose-content rounded-xl border border-white/10 bg-white/2 p-4 text-sm text-white/80 leading-relaxed max-w-none"
+                  dangerouslySetInnerHTML={{ __html: mdToHtml(detail.bodyMarkdown ?? '') }}
+                />
+
+                {/* Actions */}
+                <div className="flex justify-end gap-3 pt-2">
+                  {detail.status !== 'PUBLISHED' && (
+                    <button
+                      onClick={() => publishMutation.mutate(detail.id)}
+                      disabled={publishMutation.isPending}
+                      className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
+                    >
+                      {publishMutation.isPending ? 'Yayınlanıyor…' : 'Yayınla'}
+                    </button>
+                  )}
+                  <button onClick={() => setOpenId(null)} className="rounded-xl border border-white/10 px-4 py-2 text-sm text-white/60 hover:bg-white/5">Kapat</button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-white/40">İçerik yüklenemedi.</p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
+}
+
+/** Minimal, safe Markdown → HTML for the read-only article preview. */
+function mdToHtml(md: string): string {
+  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const lines = esc(md).split('\n');
+  const out: string[] = [];
+  let inList = false;
+  const inline = (s: string) =>
+    s
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-indigo-400 underline">$1</a>');
+  for (const raw of lines) {
+    const line = raw.trimEnd();
+    if (/^###\s+/.test(line)) { if (inList) { out.push('</ul>'); inList = false; } out.push(`<h3 class="text-base font-semibold text-white mt-4 mb-1">${inline(line.replace(/^###\s+/, ''))}</h3>`); }
+    else if (/^##\s+/.test(line)) { if (inList) { out.push('</ul>'); inList = false; } out.push(`<h2 class="text-lg font-bold text-white mt-5 mb-2">${inline(line.replace(/^##\s+/, ''))}</h2>`); }
+    else if (/^#\s+/.test(line)) { if (inList) { out.push('</ul>'); inList = false; } out.push(`<h1 class="text-xl font-bold text-white mt-2 mb-3">${inline(line.replace(/^#\s+/, ''))}</h1>`); }
+    else if (/^[-*]\s+/.test(line)) { if (!inList) { out.push('<ul class="list-disc pl-5 space-y-1">'); inList = true; } out.push(`<li>${inline(line.replace(/^[-*]\s+/, ''))}</li>`); }
+    else if (line.trim() === '') { if (inList) { out.push('</ul>'); inList = false; } }
+    else { if (inList) { out.push('</ul>'); inList = false; } out.push(`<p class="my-2">${inline(line)}</p>`); }
+  }
+  if (inList) out.push('</ul>');
+  return out.join('\n');
 }
