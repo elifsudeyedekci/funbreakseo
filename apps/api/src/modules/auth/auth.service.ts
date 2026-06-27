@@ -622,13 +622,19 @@ export class AuthService {
   }
 
   async exchangeGoogleCode(code: string): Promise<{ accessToken: string; refreshToken?: string; expiryDate: number }> {
-    const { data } = await axios.post('https://oauth2.googleapis.com/token', {
+    // Google token endpoint requires application/x-www-form-urlencoded, not JSON.
+    const body = new URLSearchParams({
       code,
-      client_id: this.config.get('GOOGLE_CLIENT_ID'),
-      client_secret: this.config.get('GOOGLE_CLIENT_SECRET'),
-      redirect_uri: this.config.get('GOOGLE_CALLBACK_URL'),
+      client_id: this.config.get<string>('GOOGLE_CLIENT_ID') ?? '',
+      client_secret: this.config.get<string>('GOOGLE_CLIENT_SECRET') ?? '',
+      redirect_uri: this.config.get<string>('GOOGLE_CALLBACK_URL') ?? '',
       grant_type: 'authorization_code',
     });
+    const { data } = await axios.post<{ access_token: string; refresh_token?: string; expires_in?: number }>(
+      'https://oauth2.googleapis.com/token',
+      body,
+      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
+    );
     return {
       accessToken: data.access_token,
       refreshToken: data.refresh_token,
