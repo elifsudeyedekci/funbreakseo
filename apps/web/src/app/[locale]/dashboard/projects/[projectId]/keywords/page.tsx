@@ -74,6 +74,7 @@ export default function KeywordsPage() {
   // GSC fetch filters
   const [gscMaxPosition, setGscMaxPosition] = useState<string>('100');
   const [gscMinClicks, setGscMinClicks] = useState<string>('0');
+  const [gscMinImpressions, setGscMinImpressions] = useState<string>('1');
 
   const { data, isLoading } = useQuery({
     queryKey: ['keywords', projectId],
@@ -172,9 +173,11 @@ export default function KeywordsPage() {
       setRankedStatus(null);
       const maxPos = parseInt(gscMaxPosition, 10);
       const minClk = parseInt(gscMinClicks, 10);
+      const minImp = parseInt(gscMinImpressions, 10);
       const params = {
         ...(maxPos > 0 && maxPos < 1000 && { maxPosition: maxPos }),
         ...(minClk > 0 && { minClicks: minClk }),
+        ...(minImp > 0 && { minImpressions: minImp }),
       };
       const r = await keywordApi.ranked(projectId, Object.keys(params).length ? params : undefined);
       const raw: any[] = Array.isArray(r.data) ? r.data : (r.data?.data ?? []);
@@ -391,24 +394,34 @@ export default function KeywordsPage() {
           <div className="flex flex-col items-end gap-1.5">
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1.5">
-                <label className="text-xs text-white/40 whitespace-nowrap">Max pozisyon</label>
+                <label className="text-xs text-white/40 whitespace-nowrap">Max poz.</label>
                 <input
                   type="number"
                   min={1}
                   max={1000}
                   value={gscMaxPosition}
                   onChange={(e) => setGscMaxPosition(e.target.value)}
-                  className="w-16 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white text-center focus:outline-none focus:border-indigo-500"
+                  className="w-14 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white text-center focus:outline-none focus:border-indigo-500"
                 />
               </div>
               <div className="flex items-center gap-1.5">
-                <label className="text-xs text-white/40 whitespace-nowrap">Min tıklama</label>
+                <label className="text-xs text-white/40 whitespace-nowrap">Min imp.</label>
+                <input
+                  type="number"
+                  min={1}
+                  value={gscMinImpressions}
+                  onChange={(e) => setGscMinImpressions(e.target.value)}
+                  className="w-14 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white text-center focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <label className="text-xs text-white/40 whitespace-nowrap">Min tık.</label>
                 <input
                   type="number"
                   min={0}
                   value={gscMinClicks}
                   onChange={(e) => setGscMinClicks(e.target.value)}
-                  className="w-16 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white text-center focus:outline-none focus:border-indigo-500"
+                  className="w-14 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white text-center focus:outline-none focus:border-indigo-500"
                 />
               </div>
               <button

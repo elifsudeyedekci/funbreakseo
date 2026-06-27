@@ -359,7 +359,7 @@ export class KeywordService {
   async getRankedKeywordsForProject(
     projectId: string,
     organizationId: string,
-    filters: { maxPosition?: number; minClicks?: number } = {},
+    filters: { maxPosition?: number; minClicks?: number; minImpressions?: number } = {},
   ) {
     await this.assertProjectAccess(projectId, organizationId);
     const project = await this.prisma.project.findUnique({
@@ -368,7 +368,7 @@ export class KeywordService {
     });
     if (!project) throw new NotFoundException('Project not found');
 
-    const { maxPosition, minClicks } = filters;
+    const { maxPosition, minClicks, minImpressions } = filters;
 
     // Try GSC first if the organization has connected Google Search Console.
     const gscIntegration = await this.prisma.apiIntegration.findFirst({
@@ -378,8 +378,12 @@ export class KeywordService {
       try {
         const gscKeywords = await this.fetchFromGsc(project.domain, gscIntegration);
         const filtered = gscKeywords.filter((k) => {
+          // Base: must have actually appeared in search results
+          if (k.position <= 0 || k.impressions <= 0) return false;
+          // User-defined filters
           if (maxPosition !== undefined && k.position > maxPosition) return false;
           if (minClicks !== undefined && k.clicks < minClicks) return false;
+          if (minImpressions !== undefined && k.impressions < minImpressions) return false;
           return true;
         });
         if (filtered.length > 0) {
