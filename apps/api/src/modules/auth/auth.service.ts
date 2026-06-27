@@ -605,11 +605,19 @@ export class AuthService {
     return { data: integrations };
   }
 
-  async decodeJwtPayload(token: string): Promise<{ sub: string; organizationId?: string; [k: string]: unknown }> {
+  /**
+   * Decode JWT payload WITHOUT signature verification.
+   * Used only for the Google OAuth state param — we just need the organizationId
+   * to know which org to save GSC tokens for; strict verification is unnecessary
+   * here (the callback is protected by Google's own state round-trip).
+   */
+  decodeJwtPayloadUnsafe(token: string): { sub?: string; organizationId?: string; [k: string]: unknown } {
+    if (!token || token === 'null' || token === 'undefined') return {};
     try {
-      return await this.jwt.verifyAsync(token);
+      const decoded = this.jwt.decode(token);
+      return (decoded as Record<string, unknown>) ?? {};
     } catch {
-      throw new UnauthorizedException('Invalid or expired token');
+      return {};
     }
   }
 

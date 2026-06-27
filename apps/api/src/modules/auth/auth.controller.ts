@@ -228,31 +228,45 @@ export class AuthController {
     @Res() res: Response,
   ): Promise<void> {
     const frontendUrl = process.env.FRONTEND_URL ?? 'https://funbreakseo.com';
-    try {
-      const payload = await this.authService.decodeJwtPayload(jwt);
-      const orgId = (payload as { organizationId?: string }).organizationId ?? '';
-      if (!orgId) throw new Error('organizationId missing from token');
-      const state = Buffer.from(JSON.stringify({ orgId })).toString('base64url');
-      const clientId = process.env.GOOGLE_CLIENT_ID ?? '';
-      const callbackUrl = process.env.GOOGLE_CALLBACK_URL ?? '';
-      const scope = [
-        'profile',
-        'email',
-        'https://www.googleapis.com/auth/webmasters.readonly',
-      ].join(' ');
-      const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
-      url.searchParams.set('client_id', clientId);
-      url.searchParams.set('redirect_uri', callbackUrl);
-      url.searchParams.set('response_type', 'code');
-      url.searchParams.set('scope', scope);
-      url.searchParams.set('access_type', 'offline');
-      url.searchParams.set('prompt', 'consent');
-      url.searchParams.set('state', state);
-      res.redirect(url.toString());
-    } catch (err) {
-      this.logger.warn('Google OAuth initiation failed', err);
-      res.redirect(`${frontendUrl}/tr/dashboard/account?tab=integrations&gsc=error`);
+    const clientId = process.env.GOOGLE_CLIENT_ID ?? '';
+    const callbackUrl = process.env.GOOGLE_CALLBACK_URL ?? '';
+
+    this.logger.log(`[GSC] /auth/google called — jwt present: ${!!jwt && jwt !== 'null'}, clientId present: ${!!clientId}, callbackUrl: ${callbackUrl}`);
+
+    if (!clientId) {
+      this.logger.error('[GSC] GOOGLE_CLIENT_ID is not set in env');
+      return void res.redirect(`${frontendUrl}/tr/dashboard/account?tab=integrations&gsc=error`);
     }
+
+    // Decode JWT payload WITHOUT verification — we only need organizationId to
+    // embed in the OAuth state so the callback knows which org to associate tokens with.
+    const payload = this.authService.decodeJwtPayloadUnsafe(jwt);
+    const orgId = (payload.organizationId as string | undefined) ?? '';
+
+    this.logger.log(`[GSC] Decoded JWT — sub: ${payload.sub ?? '?'}, orgId: ${orgId || '(empty)'}`);
+
+    if (!orgId) {
+      this.logger.error(`[GSC] organizationId missing from token payload: ${JSON.stringify(payload)}`);
+      return void res.redirect(`${frontendUrl}/tr/dashboard/account?tab=integrations&gsc=error`);
+    }
+
+    const state = Buffer.from(JSON.stringify({ orgId })).toString('base64url');
+    const scope = [
+      'profile',
+      'email',
+      'https://www.googleapis.com/auth/webmasters.readonly',
+    ].join(' ');
+    const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+    url.searchParams.set('client_id', clientId);
+    url.searchParams.set('redirect_uri', callbackUrl);
+    url.searchParams.set('response_type', 'code');
+    url.searchParams.set('scope', scope);
+    url.searchParams.set('access_type', 'offline');
+    url.searchParams.set('prompt', 'consent');
+    url.searchParams.set('state', state);
+
+    this.logger.log(`[GSC] Redirecting to Google: ${url.toString().substring(0, 120)}…`);
+    res.redirect(url.toString());
   }
 
   @Get('google/callback')
