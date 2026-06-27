@@ -144,4 +144,16 @@ export class ProjectController {
   async fullScanStatus(@CurrentUser() _user: User, @Param('id') id: string) {
     return this.projectService.getFullScanStatus(id);
   }
+
+  @Get(':id/scan-history')
+  @ApiOperation({ summary: 'List archived full-scan reports (newest first)' })
+  async scanHistory(@CurrentUser() user: User, @Param('id') id: string) {
+    return this.projectService.getScanHistory(id, user.organizationId!);
+  }
+
+  @Get(':id/scan-history/:scanId')
+  @ApiOperation({ summary: 'Get a single archived scan report' })
+  async scanHistoryItem(@CurrentUser() user: User, @Param('id') id: string, @Param('scanId') scanId: string) {
+    return this.projectService.getScanHistoryItem(id, scanId, user.organizationId!);
+  }
 }

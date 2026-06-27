@@ -661,10 +661,57 @@ export class ProjectService {
     progress.status = 'completed';
     progress.currentStep = 'done';
     progress.completedAt = new Date().toISOString();
+
+    // Archive this scan so the customer can browse past scans by date.
+    try {
+      const ov: any = await this.getOverview(projectId, organizationId);
+      await this.prisma.scanHistory.create({
+        data: {
+          projectId,
+          healthScore: ov.healthScore ?? 0,
+          pagesScanned: ov.pagesScanned ?? 0,
+          issuesFound: ov.issuesFound ?? 0,
+          keywordCount: ov.keywordCount ?? 0,
+          rankedCount: ov.rankedCount ?? 0,
+          firstPageCount: ov.firstPageCount ?? 0,
+          avgPosition: ov.avgPosition ?? null,
+          backlinkCount: ov.backlinkCount ?? 0,
+          referringDomains: ov.referringDomains ?? 0,
+          geoVisibilityScore: ov.geoVisibilityScore ?? 0,
+          geoMentions: ov.latestGeoSnapshot?.mentionCount ?? 0,
+          geoCitations: ov.latestGeoSnapshot?.citationCount ?? 0,
+          competitorCount: progress.summary.competitors ?? 0,
+          data: { steps: progress.steps, summary: progress.summary } as any,
+        },
+      });
+    } catch (err: any) {
+      this.logger.warn(`fullScan: scan history archive failed: ${err.message}`);
+    }
+
     this.logger.log(`fullScan completed for project ${projectId}`);
   }
 
   getFullScanStatus(projectId: string): FullScanProgress | { status: 'idle' } {
     return this.fullScanProgress.get(projectId) ?? { status: 'idle' };
+  }
+
+  /** List archived scans for a project (newest first). */
+  async getScanHistory(projectId: string, organizationId: string) {
+    await this.findOne(projectId, organizationId);
+    return this.prisma.scanHistory.findMany({
+      where: { projectId },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+  }
+
+  /** Get a single archived scan. */
+  async getScanHistoryItem(projectId: string, scanId: string, organizationId: string) {
+    await this.findOne(projectId, organizationId);
+    const item = await this.prisma.scanHistory.findFirst({
+      where: { id: scanId, projectId },
+    });
+    if (!item) throw new NotFoundException('Scan not found');
+    return item;
   }
 }

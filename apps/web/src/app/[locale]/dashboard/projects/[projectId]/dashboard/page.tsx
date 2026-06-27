@@ -38,6 +38,24 @@ interface RankedKeyword {
   url?: string | null;
 }
 
+interface ScanHistoryItem {
+  id: string;
+  createdAt: string;
+  healthScore: number;
+  pagesScanned: number;
+  issuesFound: number;
+  keywordCount: number;
+  rankedCount: number;
+  firstPageCount: number;
+  avgPosition: number | null;
+  backlinkCount: number;
+  referringDomains: number;
+  geoVisibilityScore: number;
+  geoMentions: number;
+  geoCitations: number;
+  competitorCount: number;
+}
+
 function StatCard({
   label, value, hint, icon: Icon, color = 'indigo',
 }: {
@@ -120,7 +138,7 @@ export default function ProjectDashboardPage() {
 
   const fullScanMutation = useMutation({
     mutationFn: () => projectApi.fullScan(projectId).then((r) => r.data),
-    onSuccess: () => { setScanning(true); setScanModalOpen(true); },
+    onSuccess: () => { setScanning(true); setScanModalOpen(true); setSelectedScan(null); },
   });
   const base = `/${locale}/dashboard/projects/${projectId}`;
 
@@ -149,6 +167,15 @@ export default function ProjectDashboardPage() {
         .catch(() => []),
   });
 
+  // Scan history archive
+  const [selectedScan, setSelectedScan] = useState<ScanHistoryItem | null>(null);
+  const { data: scanHistory = [] } = useQuery<ScanHistoryItem[]>({
+    queryKey: ['scan-history', projectId],
+    queryFn: () => projectApi.scanHistory(projectId).then((r) => (Array.isArray(r.data) ? r.data : (r.data?.data ?? [])) as ScanHistoryItem[]).catch(() => []),
+    // refresh after a scan completes
+    refetchInterval: scanProgress?.status === 'completed' ? false : undefined,
+  });
+
   if (isLoading) {
     return (
       <div className="p-6 space-y-4">
@@ -169,6 +196,25 @@ export default function ProjectDashboardPage() {
 
   const lastCrawlDate = data?.lastCrawl?.finishedAt ?? data?.lastCrawl?.createdAt ?? null;
 
+  // Report modal renders either a selected historical scan or the live overview.
+  const reportData: OverviewData = selectedScan
+    ? {
+        healthScore: selectedScan.healthScore,
+        pagesScanned: selectedScan.pagesScanned,
+        issuesFound: selectedScan.issuesFound,
+        keywordCount: selectedScan.keywordCount,
+        rankedCount: selectedScan.rankedCount,
+        firstPageCount: selectedScan.firstPageCount,
+        avgPosition: selectedScan.avgPosition,
+        backlinkCount: selectedScan.backlinkCount,
+        geoVisibilityScore: selectedScan.geoVisibilityScore,
+        latestGeoSnapshot: { mentionCount: selectedScan.geoMentions, citationCount: selectedScan.geoCitations },
+      }
+    : (data ?? {});
+  const reportSummary: Record<string, number> = selectedScan
+    ? { keywords: selectedScan.rankedCount, backlinks: selectedScan.backlinkCount, competitors: selectedScan.competitorCount }
+    : (scanProgress?.summary ?? {});
+
   return (
     <div className="p-6 space-y-6">
       {/* Full Scan Banner */}
@@ -180,7 +226,7 @@ export default function ProjectDashboardPage() {
         <div className="flex items-center gap-2">
           {(data && (data.pagesScanned ?? 0) > 0) && (
             <button
-              onClick={() => setScanModalOpen(true)}
+              onClick={() => { setSelectedScan(null); setScanModalOpen(true); }}
               className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white/70 hover:bg-white/10 transition-all"
             >
               <FileBarChart className="h-4 w-4" /> Son Raporu Gör
@@ -210,8 +256,14 @@ export default function ProjectDashboardPage() {
             <button onClick={() => setScanModalOpen(false)} className="p-1 rounded-lg text-white/50 hover:text-white hover:bg-white/10"><X className="h-5 w-5" /></button>
           </div>
 
-      {/* Live scan progress */}
-      {scanProgress && scanProgress.status !== 'idle' && (
+      {selectedScan && (
+        <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/60">
+          Geçmiş tarama: <span className="text-white font-medium">{new Date(selectedScan.createdAt).toLocaleString('tr-TR')}</span>
+        </div>
+      )}
+
+      {/* Live scan progress (only for an active scan, not history view) */}
+      {!selectedScan && scanProgress && scanProgress.status !== 'idle' && (
         <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm font-semibold text-white">
@@ -250,7 +302,7 @@ export default function ProjectDashboardPage() {
 
       {/* Comprehensive scan result report — shown on completion (and persists as
           long as overview data exists, so it doubles as the latest-scan report). */}
-      {(scanProgress?.status === 'completed' || (data && (data.pagesScanned ?? 0) > 0)) && (
+      {(selectedScan || scanProgress?.status === 'completed' || ((reportData.pagesScanned ?? 0) > 0)) && (() => { const data = reportData; const sum = reportSummary; return (
         <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/4 to-white/2 p-6 space-y-5">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="h-5 w-5 text-emerald-400" />
@@ -290,7 +342,7 @@ export default function ProjectDashboardPage() {
             <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-5">
               <div className="flex items-center gap-2 mb-3"><Search className="h-4 w-4 text-indigo-400" /><span className="text-xs font-semibold text-white">Anahtar Kelime</span></div>
               <div className="space-y-1.5 text-sm">
-                <div className="flex justify-between"><span className="text-white/50">Sıralanan kelime</span><span className="font-bold text-white">{data?.rankedCount ?? scanProgress?.summary?.keywords ?? 0}</span></div>
+                <div className="flex justify-between"><span className="text-white/50">Sıralanan kelime</span><span className="font-bold text-white">{data?.rankedCount ?? sum?.keywords ?? 0}</span></div>
                 <div className="flex justify-between"><span className="text-white/50">Ort. pozisyon</span><span className="font-bold text-white">{data?.avgPosition?.toFixed(1) ?? '—'}</span></div>
                 <div className="flex justify-between"><span className="text-white/50">İlk sayfada</span><span className="font-bold text-white">{data?.firstPageCount ?? 0}</span></div>
               </div>
@@ -302,8 +354,8 @@ export default function ProjectDashboardPage() {
               <div className="space-y-1.5 text-sm">
                 <div className="flex justify-between"><span className="text-white/50">AI görünürlük</span><span className="font-bold text-white">{data?.geoVisibilityScore ?? 0}%</span></div>
                 <div className="flex justify-between"><span className="text-white/50">AI bahsedilme</span><span className="font-bold text-white">{data?.latestGeoSnapshot?.mentionCount ?? 0}</span></div>
-                <div className="flex justify-between"><span className="text-white/50">Backlink</span><span className="font-bold text-white">{data?.backlinkCount ?? scanProgress?.summary?.backlinks ?? 0}</span></div>
-                <div className="flex justify-between"><span className="text-white/50">Rakip</span><span className="font-bold text-white">{scanProgress?.summary?.competitors ?? 0}</span></div>
+                <div className="flex justify-between"><span className="text-white/50">Backlink</span><span className="font-bold text-white">{data?.backlinkCount ?? sum?.backlinks ?? 0}</span></div>
+                <div className="flex justify-between"><span className="text-white/50">Rakip</span><span className="font-bold text-white">{sum?.competitors ?? 0}</span></div>
               </div>
             </div>
           </div>
@@ -356,14 +408,14 @@ export default function ProjectDashboardPage() {
           {/* Download report */}
           <div className="flex justify-end">
             <button
-              onClick={() => downloadReport(base.split('/').pop() || 'proje', data, scanProgress?.summary)}
+              onClick={() => downloadReport(base.split('/').pop() || 'proje', data, sum)}
               className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
             >
               <Download className="h-4 w-4" /> Raporu İndir (HTML)
             </button>
           </div>
         </div>
-      )}
+      ); })()}
         </div>
       </div>
       )}
@@ -467,6 +519,51 @@ export default function ProjectDashboardPage() {
           </div>
         )}
       </div>
+
+      {/* Scan history archive */}
+      {scanHistory.length > 0 && (
+        <div className="rounded-2xl border border-white/10 bg-white/2 p-5">
+          <div className="flex items-center gap-2 mb-1">
+            <FileBarChart className="h-4 w-4 text-indigo-400" />
+            <h2 className="text-sm font-semibold text-white">Tarama Geçmişi</h2>
+          </div>
+          <p className="text-[11px] text-white/35 mb-4">Geçmiş taramalarınız — tarihe tıklayıp o günün raporunu açın</p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-[11px] uppercase text-white/40 border-b border-white/10">
+                  <th className="py-2 pr-4 font-medium">Tarih</th>
+                  <th className="py-2 pr-4 font-medium text-center">Sağlık</th>
+                  <th className="py-2 pr-4 font-medium text-center">Sorun</th>
+                  <th className="py-2 pr-4 font-medium text-center">Kelime</th>
+                  <th className="py-2 pr-4 font-medium text-center">Ort. Poz.</th>
+                  <th className="py-2 pr-4 font-medium text-center">Backlink</th>
+                  <th className="py-2 pr-4 font-medium text-center">GEO</th>
+                  <th className="py-2 font-medium text-right">Rapor</th>
+                </tr>
+              </thead>
+              <tbody>
+                {scanHistory.map((s) => (
+                  <tr
+                    key={s.id}
+                    onClick={() => { setSelectedScan(s); setScanModalOpen(true); }}
+                    className="border-b border-white/5 hover:bg-white/5 cursor-pointer"
+                  >
+                    <td className="py-2 pr-4 text-white/80">{new Date(s.createdAt).toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' })}</td>
+                    <td className="py-2 pr-4 text-center"><span className={s.healthScore >= 70 ? 'text-emerald-400' : s.healthScore >= 40 ? 'text-yellow-400' : 'text-red-400'}>{s.healthScore}</span></td>
+                    <td className="py-2 pr-4 text-center text-white/60">{s.issuesFound}</td>
+                    <td className="py-2 pr-4 text-center text-white/60">{s.rankedCount}</td>
+                    <td className="py-2 pr-4 text-center text-white/60">{s.avgPosition?.toFixed(1) ?? '—'}</td>
+                    <td className="py-2 pr-4 text-center text-white/60">{s.backlinkCount}</td>
+                    <td className="py-2 pr-4 text-center text-white/60">{s.geoVisibilityScore}%</td>
+                    <td className="py-2 text-right"><span className="inline-flex items-center gap-1 text-indigo-400 text-xs">Aç <ArrowRight className="h-3 w-3" /></span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Bottom row: activities + todos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

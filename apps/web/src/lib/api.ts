@@ -99,6 +99,8 @@ export const projectApi = {
   connectGsc: (id: string) => api.post(`/projects/${id}/connect-gsc`),
   fullScan: (id: string) => api.post(`/projects/${id}/full-scan`),
   fullScanStatus: (id: string) => api.get(`/projects/${id}/full-scan/status`),
+  scanHistory: (id: string) => api.get(`/projects/${id}/scan-history`),
+  scanHistoryItem: (id: string, scanId: string) => api.get(`/projects/${id}/scan-history/${scanId}`),
 };
 
 export const competitorApi = {

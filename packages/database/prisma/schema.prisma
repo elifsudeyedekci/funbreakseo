@@ -757,12 +757,39 @@ model Project {
   contentProject        ContentProject?
   reportRecords         ReportRecord[]
   internalLinkSuggestions InternalLinkSuggestion[]
+  scanHistory           ScanHistory[]
   createdAt             DateTime            @default(now())
   updatedAt             DateTime            @updatedAt
   deletedAt             DateTime?
 
   @@index([organizationId])
   @@map("projects")
+}
+
+/// Archived snapshot of a completed Full Scan — lets customers browse past
+/// scans by date and reopen each report.
+model ScanHistory {
+  id                 String   @id @default(uuid())
+  projectId          String
+  project            Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  healthScore        Int      @default(0)
+  pagesScanned       Int      @default(0)
+  issuesFound        Int      @default(0)
+  keywordCount       Int      @default(0)
+  rankedCount        Int      @default(0)
+  firstPageCount     Int      @default(0)
+  avgPosition        Float?
+  backlinkCount      Int      @default(0)
+  referringDomains   Int      @default(0)
+  geoVisibilityScore Int      @default(0)
+  geoMentions        Int      @default(0)
+  geoCitations       Int      @default(0)
+  competitorCount    Int      @default(0)
+  data               Json?
+  createdAt          DateTime @default(now())
+
+  @@index([projectId, createdAt])
+  @@map("scan_history")
 }
 
 model PendingProject {
