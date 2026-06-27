@@ -178,10 +178,12 @@ export class OutreachService {
 
       const now = new Date()
 
-      // Replace-all: clear this project's backlinks then insert the fresh set.
+      // Replace-all: clear THIS project's backlinks then insert the fresh set.
+      let deletedCount = 0
       let delOk = true
       try {
-        await this.prisma.backlink.deleteMany({ where: { projectId } })
+        const del = await this.prisma.backlink.deleteMany({ where: { projectId } })
+        deletedCount = del.count
       } catch (e) {
         delOk = false
         this.logger.error(`Backlink deleteMany FAILED for ${domain}: ${(e as Error).message}`)
@@ -229,7 +231,7 @@ export class OutreachService {
 
       const dbCount = await this.prisma.backlink.count({ where: { projectId } })
       this.logger.log(
-        `Backlink sync ${domain}: API items=${profile.sample.length}, rows=${rows.length}, deleteMany ${delOk ? 'OK' : 'FAIL'}, createMany ${createOk ? 'OK' : 'FALLBACK'}, synced=${synced}, DB COUNT=${dbCount}, summary total=${profile.backlinks_num}`,
+        `Backlink sync ${domain}: API ${profile.sample.length} geldi → deleteMany: ${deletedCount} silindi (${delOk ? 'OK' : 'FAIL'}), createMany: ${synced} yazıldı (${createOk ? 'OK' : 'FALLBACK'}), DB COUNT: ${dbCount} (summary total: ${profile.backlinks_num})`,
       )
       const returnedBacklinks = await this.prisma.backlink.findMany({ where: { projectId }, orderBy: { domainRating: 'desc' } })
       return {
