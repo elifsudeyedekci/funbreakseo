@@ -383,11 +383,10 @@ export class GeoWorker extends WorkerHost {
     const today = new Date(now)
     today.setHours(0, 0, 0, 0)
 
-    // Get all results for this project for today's aggregation
+    // Get all results for this project — same filter as getGeoOverview() so the
+    // persisted geoVisibilityScore matches exactly what the GEO page shows.
     const allProjectResults = await this.prisma.geoResult.findMany({
-      where: {
-        geoQuery: { projectId, status: GeoQueryStatus.ACTIVE },
-      },
+      where: { geoQuery: { projectId } },
     })
 
     const totalMentions = allProjectResults.filter((r) => r.brandMentioned).length

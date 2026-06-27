@@ -5,26 +5,78 @@ import { DataForSeoService } from '../dataforseo/dataforseo.service';
 // Generic / non-competitor domains that pollute SERP-based competitor discovery.
 // These appear in almost every Turkish SERP but are never a real sector rival.
 const GENERIC_DOMAIN_BLOCKLIST = [
+  // Social media
   'youtube.com', 'youtu.be', 'facebook.com', 'instagram.com', 'twitter.com',
-  'x.com', 'wikipedia.org', 'linkedin.com', 'pinterest.com', 'tiktok.com',
-  'google.com', 'google.com.tr', 'amazon.com', 'amazon.com.tr', 'ebay.com',
-  'reddit.com', 'medium.com', 'blogspot.com', 'wordpress.com', 'tumblr.com',
-  'apple.com', 'microsoft.com', 'whatsapp.com', 'telegram.org', 'quora.com',
-  'sahibinden.com', 'hepsiburada.com', 'trendyol.com', 'gittigidiyor.com',
-  'n11.com', 'sozluk.gov.tr', 'eksisozluk.com', 'tdk.gov.tr',
-  'yandex.com', 'yandex.com.tr', 'maps.yandex.com', 'bing.com',
-  'maps.google.com', 'play.google.com', 'foursquare.com', 'yelp.com',
-  'booking.com', 'tripadvisor.com', 'tripadvisor.com.tr', 'dailymotion.com',
-  'vimeo.com', 'github.com', 'yahoo.com', 'duckduckgo.com',
-  // TR aggregators / directories / news / gov that rank for everything and are
-  // never a real sector rival.
-  'armut.com', 'sahibinden.com', 'letgo.com', 'dolap.com', 'kariyer.net',
-  'indeed.com', 'glassdoor.com', 'yenibiris.com', 'eleman.net',
-  'hangikredi.com', 'enuygun.com', 'cimri.com', 'akakce.com', 'epey.com',
-  'sikayetvar.com', 'sozcu.com.tr', 'hurriyet.com.tr', 'milliyet.com.tr',
-  'haberturk.com', 'mynet.com', 'milliyet.com', 'cnnturk.com', 'ntv.com.tr',
-  'wikiwand.com', 'webtekno.com', 'donanimhaber.com', 'nesine.com',
-  'gov.tr', 'edu.tr', 'bel.tr', 'barobirlik.org.tr', 'turkiye.gov.tr',
+  'x.com', 'linkedin.com', 'pinterest.com', 'tiktok.com', 'snapchat.com',
+  'reddit.com', 'tumblr.com', 'twitch.tv', 'discord.com', 'threads.net',
+
+  // Search / maps / browsers
+  'google.com', 'google.com.tr', 'bing.com', 'yahoo.com', 'duckduckgo.com',
+  'yandex.com', 'yandex.com.tr', 'maps.yandex.com', 'maps.google.com',
+  'foursquare.com', 'yelp.com',
+
+  // Music & streaming
+  'spotify.com', 'open.spotify.com', 'soundcloud.com', 'music.apple.com',
+  'deezer.com', 'tidal.com', 'bandcamp.com', 'last.fm', 'musixmatch.com',
+  'shazam.com', 'youtube.com', 'vimeo.com', 'dailymotion.com',
+  'podcast.com', 'anchor.fm', 'spreaker.com',
+
+  // E-commerce & marketplaces
+  'amazon.com', 'amazon.com.tr', 'ebay.com', 'etsy.com',
+  'hepsiburada.com', 'trendyol.com', 'gittigidiyor.com', 'n11.com',
+  'ciceksepeti.com', 'morhipo.com', 'boyner.com.tr', 'mavi.com',
+
+  // Food delivery / restaurant
+  'yemeksepeti.com', 'getir.com', 'migros.com.tr', 'a101.com.tr',
+  'bim.com.tr', 'şok.com.tr', 'carrefoursa.com.tr', 'toserve.com',
+  'restoran.com.tr', 'tripadvisor.com', 'tripadvisor.com.tr',
+
+  // Travel / transport / airport
+  'booking.com', 'airbnb.com', 'hotels.com', 'expedia.com',
+  'enuygun.com', 'obilet.com', 'biletall.com', 'jolly.com.tr',
+  'sabihagokcen.aero', 'istairport.com', 'dhmi.gov.tr', 'thy.com',
+  'turkishairlines.com', 'sunexpress.com', 'pegasusairlines.com',
+
+  // Software / SaaS / dev tools (generic, not sector rivals)
+  'github.com', 'gitlab.com', 'stackoverflow.com', 'medium.com',
+  'blogspot.com', 'wordpress.com', 'wix.com', 'squarespace.com',
+  'shopify.com', 'webflow.com', 'framer.com', 'notion.so',
+  'akinsoft.com', 'akinsoft.com.tr', 'qrmenu.akinsoft.com.tr',
+  'logo.com.tr', 'mikro.com.tr', 'netsis.com.tr', 'paraşüt.com',
+  'ikas.com', 'tsoft.com.tr', 'softtech.com.tr',
+
+  // Messaging / communication
+  'whatsapp.com', 'telegram.org', 'zoom.us', 'teams.microsoft.com',
+  'slack.com', 'skype.com',
+
+  // Tech / hardware
+  'apple.com', 'microsoft.com', 'samsung.com', 'sony.com',
+
+  // Knowledge / reference
+  'wikipedia.org', 'wikiwand.com', 'quora.com', 'sozluk.gov.tr',
+  'eksisozluk.com', 'tdk.gov.tr', 'play.google.com',
+
+  // News / media (TR)
+  'sozcu.com.tr', 'hurriyet.com.tr', 'milliyet.com.tr', 'milliyet.com',
+  'haberturk.com', 'mynet.com', 'cnnturk.com', 'ntv.com.tr',
+  'sabah.com.tr', 'cumhuriyet.com.tr', 'posta.com.tr', 'habertürk.com',
+  'webtekno.com', 'donanimhaber.com', 'shiftdelete.net', 'chip.com.tr',
+
+  // Job boards / HR
+  'kariyer.net', 'indeed.com', 'glassdoor.com', 'yenibiris.com', 'eleman.net',
+  'linkedin.com',
+
+  // Finance / comparison
+  'hangikredi.com', 'cimri.com', 'akakce.com', 'epey.com',
+
+  // Classifieds / local
+  'sahibinden.com', 'letgo.com', 'dolap.com', 'armut.com',
+
+  // Misc TR
+  'nesine.com', 'bilyoner.com', 'misli.com', 'sikayetvar.com',
+
+  // Gov / edu / org
+  'gov.tr', 'edu.tr', 'bel.tr', 'turkiye.gov.tr', 'barobirlik.org.tr',
 ];
 
 @Injectable()
@@ -67,7 +119,7 @@ export class CompetitorService {
       orderBy: { commonKeywords: 'desc' },
     });
     return dbCompetitors
-      .filter((c) => !this.isGenericDomain(c.domain) && this.cleanDomain(c.domain) !== domain)
+      .filter((c) => !this.isGenericDomain(c.domain) && this.cleanDomain(c.domain) !== domain && c.commonKeywords >= 2)
       .map((c) => ({ ...c, etv: null }));
   }
 
@@ -114,7 +166,7 @@ export class CompetitorService {
     }
 
     const discovered = [...domainCount.entries()]
-      .filter(([, count]) => count > 0)
+      .filter(([, count]) => count >= 2)   // min 2 ortak kelime — tekli çakışmalar alakasız
       .sort((a, b) => b[1] - a[1])
       .slice(0, 25);
     this.logger.log(
@@ -160,7 +212,7 @@ export class CompetitorService {
       orderBy: { commonKeywords: 'desc' },
     });
     return dbCompetitors
-      .filter((c) => !this.isGenericDomain(c.domain) && this.cleanDomain(c.domain) !== domain)
+      .filter((c) => !this.isGenericDomain(c.domain) && this.cleanDomain(c.domain) !== domain && (c.isAuto ? c.commonKeywords >= 2 : true))
       .map((c) => ({ ...c, etv: null }));
   }
 
