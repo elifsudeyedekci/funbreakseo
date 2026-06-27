@@ -67,9 +67,9 @@ export default function CouponsPage() {
     queryFn: async () => {
       try {
         const r = await adminApi.get('/admin/coupons');
-        return (r.data?.data ?? MOCK_COUPONS) as Coupon[];
+        return (r.data?.data ?? []) as Coupon[];
       } catch {
-        return MOCK_COUPONS;
+        return [];
       }
     },
   });

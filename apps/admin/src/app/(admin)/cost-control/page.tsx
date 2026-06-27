@@ -96,7 +96,7 @@ export default function CostControlPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<Record<string, { limit: string; behavior: string }>>({});
 
-  const items = (data?.items ?? MOCK_COSTS) as CostItem[];
+  const items = (data?.items ?? []) as CostItem[];
   const ks = (data?.killSwitch ?? MOCK_KILL_SWITCH) as KillSwitch;
 
   const totalSpend = items.reduce((a, i) => a + i.spentThisMonth, 0);

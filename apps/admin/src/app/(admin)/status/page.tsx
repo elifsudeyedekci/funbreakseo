@@ -42,13 +42,12 @@ export default function StatusPage() {
   const { data, isLoading, refetch, isFetching } = useQuery({
     queryKey: ['admin-system-status'],
     queryFn: async () => {
-      try { const r = await adminApi.get('/admin/system-health'); return r.data?.data ?? MOCK_STATUS; }
-      catch { return MOCK_STATUS; }
+      const r = await adminApi.get('/admin/system-health'); return r.data?.data ?? r.data ?? [];
     },
     refetchInterval: 30000, // Auto-refresh every 30s
   });
 
-  const services = (data ?? MOCK_STATUS) as ServiceHealth[];
+  const services = (data ?? []) as ServiceHealth[];
   const downCount = services.filter((s) => s.status === 'DOWN').length;
   const degradedCount = services.filter((s) => s.status === 'DEGRADED').length;
   const upCount = services.filter((s) => s.status === 'UP').length;

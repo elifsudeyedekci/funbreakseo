@@ -62,7 +62,7 @@ export default function BlogPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-blog'],
-    queryFn: async () => { try { const r = await adminApi.get('/admin/blog'); return r.data?.data ?? MOCK_POSTS; } catch { return MOCK_POSTS; } },
+    queryFn: async () => { try { const r = await adminApi.get('/admin/blog'); return r.data?.data ?? []; } catch { return []; } },
   });
 
   const createMutation = useMutation({
@@ -94,7 +94,7 @@ export default function BlogPage() {
     setValue('status', post.status as 'DRAFT' | 'PUBLISHED'); setValue('body', '');
   };
 
-  const posts = (data ?? MOCK_POSTS) as BlogPost[];
+  const posts = (data ?? []) as BlogPost[];
   const filtered = localeFilter ? posts.filter((p) => p.locale === localeFilter) : posts;
 
   const columns: ColumnDef<BlogPost>[] = [

@@ -61,19 +61,19 @@ export default function MarketingPage() {
   const [campaignModal, setCampaignModal] = useState(false);
   const [previewCampaign, setPreviewCampaign] = useState<EmailCampaign | null>(null);
 
-  const { data: testimonials = MOCK_TESTIMONIALS } = useQuery({
+  const { data: testimonials = [] } = useQuery({
     queryKey: ['admin-testimonials'],
-    queryFn: async () => { try { const r = await adminApi.get('/admin/testimonials'); return r.data?.data ?? MOCK_TESTIMONIALS; } catch { return MOCK_TESTIMONIALS; } },
+    queryFn: async () => { try { const r = await adminApi.get('/admin/testimonials'); return r.data?.data ?? []; } catch { return []; } },
   });
 
-  const { data: caseStudies = MOCK_CASE_STUDIES } = useQuery({
+  const { data: caseStudies = [] } = useQuery({
     queryKey: ['admin-case-studies'],
-    queryFn: async () => { try { const r = await adminApi.get('/admin/marketing/case-studies'); return r.data?.data ?? MOCK_CASE_STUDIES; } catch { return MOCK_CASE_STUDIES; } },
+    queryFn: async () => { try { const r = await adminApi.get('/admin/marketing/case-studies'); return r.data?.data ?? []; } catch { return []; } },
   });
 
-  const { data: campaigns = MOCK_CAMPAIGNS } = useQuery({
+  const { data: campaigns = [] } = useQuery({
     queryKey: ['admin-campaigns'],
-    queryFn: async () => { try { const r = await adminApi.get('/admin/marketing/campaigns'); return r.data?.data ?? MOCK_CAMPAIGNS; } catch { return MOCK_CAMPAIGNS; } },
+    queryFn: async () => { try { const r = await adminApi.get('/admin/marketing/campaigns'); return r.data?.data ?? []; } catch { return []; } },
   });
 
   const approveMutation = useMutation({

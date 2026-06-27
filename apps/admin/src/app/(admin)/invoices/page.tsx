@@ -54,8 +54,8 @@ export default function InvoicesPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['admin-invoices'],
     queryFn: async () => {
-      try { const r = await adminApi.get('/admin/invoices', { params: { limit: 100 } }); return r.data?.data ?? MOCK_INVOICES; }
-      catch { return MOCK_INVOICES; }
+      try { const r = await adminApi.get('/admin/invoices', { params: { limit: 100 } }); return r.data?.data ?? []; }
+      catch { return []; }
     },
   });
 
@@ -75,7 +75,7 @@ export default function InvoicesPage() {
     defaultValues: { type: 'full' },
   });
 
-  const invoices = (data ?? MOCK_INVOICES) as Invoice[];
+  const invoices = (data ?? []) as Invoice[];
 
   const columns: ColumnDef<Invoice>[] = [
     {

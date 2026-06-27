@@ -415,14 +415,14 @@ export default function SystemPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
 
-  const { data: queues = MOCK_QUEUES } = useQuery({
+  const { data: queues = [] } = useQuery({
     queryKey: ['admin-queues'],
-    queryFn: async () => { try { const r = await adminApi.get('/admin/queue-health'); return r.data?.data ?? MOCK_QUEUES; } catch { return MOCK_QUEUES; } },
+    queryFn: async () => { try { const r = await adminApi.get('/admin/queue-health'); return r.data?.data ?? []; } catch { return []; } },
   });
 
-  const { data: settings = MOCK_SETTINGS } = useQuery({
+  const { data: settings = [] } = useQuery({
     queryKey: ['admin-settings'],
-    queryFn: async () => { try { const r = await adminApi.get('/admin/settings'); return r.data?.data ?? MOCK_SETTINGS; } catch { return MOCK_SETTINGS; } },
+    queryFn: async () => { try { const r = await adminApi.get('/admin/settings'); return r.data?.data ?? []; } catch { return []; } },
   });
 
   const { data: apiKeys = {} } = useQuery<Record<string, string>>({
@@ -435,14 +435,14 @@ export default function SystemPage() {
     },
   });
 
-  const { data: apiUsage = MOCK_API_USAGE } = useQuery({
+  const { data: apiUsage = [] } = useQuery({
     queryKey: ['admin-api-usage'],
-    queryFn: async () => { try { const r = await adminApi.get('/admin/api-usage'); return r.data?.data ?? MOCK_API_USAGE; } catch { return MOCK_API_USAGE; } },
+    queryFn: async () => { try { const r = await adminApi.get('/admin/api-usage'); return r.data?.data ?? []; } catch { return []; } },
   });
 
-  const { data: auditLog = MOCK_AUDIT } = useQuery({
+  const { data: auditLog = [] } = useQuery({
     queryKey: ['admin-audit-log'],
-    queryFn: async () => { try { const r = await adminApi.get('/admin/audit-logs', { params: { limit: 50 } }); return r.data?.data ?? MOCK_AUDIT; } catch { return MOCK_AUDIT; } },
+    queryFn: async () => { try { const r = await adminApi.get('/admin/audit-logs', { params: { limit: 50 } }); return r.data?.data ?? []; } catch { return []; } },
   });
 
   const retryMutation = useMutation({

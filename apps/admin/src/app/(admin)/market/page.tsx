@@ -54,19 +54,19 @@ export default function MarketPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
 
-  const { data: offers = MOCK_OFFERS, isLoading: offersLoading } = useQuery({
+  const { data: offers = [], isLoading: offersLoading } = useQuery({
     queryKey: ['admin-offers'],
-    queryFn: async () => { try { const r = await adminApi.get('/admin/market/offers'); return r.data?.data ?? MOCK_OFFERS; } catch { return MOCK_OFFERS; } },
+    queryFn: async () => { try { const r = await adminApi.get('/admin/market/offers'); return r.data?.data ?? []; } catch { return []; } },
   });
 
-  const { data: listings = MOCK_LISTINGS } = useQuery({
+  const { data: listings = [] } = useQuery({
     queryKey: ['admin-listings'],
-    queryFn: async () => { try { const r = await adminApi.get('/admin/market/listings'); return r.data?.data ?? MOCK_LISTINGS; } catch { return MOCK_LISTINGS; } },
+    queryFn: async () => { try { const r = await adminApi.get('/admin/market/listings'); return r.data?.data ?? []; } catch { return []; } },
   });
 
-  const { data: orders = MOCK_ORDERS } = useQuery({
+  const { data: orders = [] } = useQuery({
     queryKey: ['admin-orders'],
-    queryFn: async () => { try { const r = await adminApi.get('/admin/market/orders'); return r.data?.data ?? MOCK_ORDERS; } catch { return MOCK_ORDERS; } },
+    queryFn: async () => { try { const r = await adminApi.get('/admin/market/orders'); return r.data?.data ?? []; } catch { return []; } },
   });
 
   // State for approve modal

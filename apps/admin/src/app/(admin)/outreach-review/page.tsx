@@ -47,8 +47,8 @@ export default function OutreachReviewPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['admin-outreach-review'],
     queryFn: async () => {
-      try { const r = await adminApi.get('/admin/outreach-review'); return r.data?.data ?? MOCK_REPLIES; }
-      catch { return MOCK_REPLIES; }
+      try { const r = await adminApi.get('/admin/outreach-review'); return r.data?.data ?? []; }
+      catch { return []; }
     },
   });
 
@@ -64,7 +64,7 @@ export default function OutreachReviewPage() {
     onError: () => toast('İşlem başarısız', 'error'),
   });
 
-  const replies = (data ?? MOCK_REPLIES) as OutreachReply[];
+  const replies = (data ?? []) as OutreachReply[];
 
   const columns: ColumnDef<OutreachReply>[] = [
     {

@@ -49,12 +49,12 @@ export default function ConsentsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['admin-all-consents'],
     queryFn: async () => {
-      try { const r = await adminApi.get('/admin/consents'); return r.data?.data ?? MOCK_CONSENTS; }
-      catch { return MOCK_CONSENTS; }
+      try { const r = await adminApi.get('/admin/consents'); return r.data?.data ?? []; }
+      catch { return []; }
     },
   });
 
-  const consents = (data ?? MOCK_CONSENTS) as ConsentRecord[];
+  const consents = (data ?? []) as ConsentRecord[];
   const filtered = typeFilter ? consents.filter((c) => c.type === typeFilter) : consents;
 
   const handleBulkCSV = async () => {

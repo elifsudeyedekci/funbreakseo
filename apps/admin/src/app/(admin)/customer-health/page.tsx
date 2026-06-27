@@ -33,12 +33,12 @@ export default function CustomerHealthPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['customer-health-list'],
     queryFn: async () => {
-      try { const r = await adminApi.get('/admin/customer-health'); return r.data?.data ?? MOCK_HEALTH; }
-      catch { return MOCK_HEALTH; }
+      try { const r = await adminApi.get('/admin/customer-health'); return r.data?.data ?? []; }
+      catch { return []; }
     },
   });
 
-  const rows = (data ?? MOCK_HEALTH) as HealthRow[];
+  const rows = (data ?? []) as HealthRow[];
   const sorted = [...rows].sort((a, b) => {
     const riskOrder = { HIGH: 0, MEDIUM: 1, LOW: 2 };
     return riskOrder[a.churnRisk] - riskOrder[b.churnRisk] || a.healthScore - b.healthScore;

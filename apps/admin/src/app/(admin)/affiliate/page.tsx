@@ -59,19 +59,19 @@ export default function AffiliatePage() {
   const { toast } = useToast();
   const qc = useQueryClient();
 
-  const { data: affiliates = MOCK_AFFILIATES, isLoading } = useQuery({
+  const { data: affiliates = [], isLoading } = useQuery({
     queryKey: ['admin-affiliates'],
     queryFn: async () => {
-      try { const r = await adminApi.get('/admin/affiliates'); return r.data?.data ?? MOCK_AFFILIATES; }
-      catch { return MOCK_AFFILIATES; }
+      try { const r = await adminApi.get('/admin/affiliates'); return r.data?.data ?? []; }
+      catch { return []; }
     },
   });
 
-  const { data: payouts = MOCK_PAYOUTS } = useQuery({
+  const { data: payouts = [] } = useQuery({
     queryKey: ['admin-affiliate-payouts'],
     queryFn: async () => {
-      try { const r = await adminApi.get('/admin/affiliates/payouts'); return r.data?.data ?? MOCK_PAYOUTS; }
-      catch { return MOCK_PAYOUTS; }
+      try { const r = await adminApi.get('/admin/affiliates/payouts'); return r.data?.data ?? []; }
+      catch { return []; }
     },
   });
 

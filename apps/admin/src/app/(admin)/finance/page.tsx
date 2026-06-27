@@ -11,27 +11,20 @@ import { LineChart } from '@/components/charts/LineChart';
 import { useToast } from '@/components/ui/Toaster';
 import { Save } from 'lucide-react';
 
-const MOCK_FINANCE = {
-  revenue: 48250,
-  expenses: 2515,
-  netProfit: 45735,
-  mrr: 48250,
-  profitMargin: 94.8,
-  revenueBreakdown: { subscriptions: 42000, renewals: 4500, backlinkMarket: 1500, walletTopups: 250 },
-  expenseBreakdown: { dataForSeo: 820, llm: 1240, autopilot: 320, server: 135 },
-  trend: [
-    { month: 'Oca', revenue: 38000, expenses: 2100, profit: 35900 },
-    { month: 'Şub', revenue: 40500, expenses: 2200, profit: 38300 },
-    { month: 'Mar', revenue: 42000, expenses: 2300, profit: 39700 },
-    { month: 'Nis', revenue: 43500, expenses: 2350, profit: 41150 },
-    { month: 'May', revenue: 45000, expenses: 2420, profit: 42580 },
-    { month: 'Haz', revenue: 48250, expenses: 2515, profit: 45735 },
-  ],
+const ZERO_FINANCE = {
+  revenue: 0,
+  expenses: 0,
+  netProfit: 0,
+  mrr: 0,
+  profitMargin: 0,
+  revenueBreakdown: { subscriptions: 0, renewals: 0, backlinkMarket: 0, walletTopups: 0 },
+  expenseBreakdown: { dataForSeo: 0, llm: 0, autopilot: 0, server: 0 },
+  trend: [] as { month: string; revenue: number; expenses: number; profit: number }[],
   notificationSettings: {
-    weeklyDigestEmail: 'doganizzetcan@gmail.com',
-    enableWeeklyDigest: true,
-    enableSaleNotification: true,
-    saleNotificationEmail: 'doganizzetcan@gmail.com',
+    weeklyDigestEmail: '',
+    enableWeeklyDigest: false,
+    enableSaleNotification: false,
+    saleNotificationEmail: '',
   },
 };
 
@@ -40,15 +33,15 @@ export default function FinancePage() {
   const qc = useQueryClient();
   const [editingNotif, setEditingNotif] = useState(false);
   const [notifValues, setNotifValues] = useState({
-    weeklyDigestEmail: MOCK_FINANCE.notificationSettings.weeklyDigestEmail,
-    enableWeeklyDigest: MOCK_FINANCE.notificationSettings.enableWeeklyDigest,
-    enableSaleNotification: MOCK_FINANCE.notificationSettings.enableSaleNotification,
-    saleNotificationEmail: MOCK_FINANCE.notificationSettings.saleNotificationEmail,
+    weeklyDigestEmail: ZERO_FINANCE.notificationSettings.weeklyDigestEmail,
+    enableWeeklyDigest: ZERO_FINANCE.notificationSettings.enableWeeklyDigest,
+    enableSaleNotification: ZERO_FINANCE.notificationSettings.enableSaleNotification,
+    saleNotificationEmail: ZERO_FINANCE.notificationSettings.saleNotificationEmail,
   });
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-finance'],
-    queryFn: async () => { try { const r = await adminApi.get('/admin/revenue'); return r.data; } catch { return MOCK_FINANCE; } },
+    queryFn: async () => { try { const r = await adminApi.get('/admin/revenue'); return r.data; } catch { return {}; } },
   });
 
   const updateMutation = useMutation({
@@ -57,14 +50,14 @@ export default function FinancePage() {
     onError: () => toast('Güncelleme başarısız', 'error'),
   });
 
-  const rawData = (data ?? {}) as Partial<typeof MOCK_FINANCE>;
-  const f: typeof MOCK_FINANCE = {
-    ...MOCK_FINANCE,
+  const rawData = (data ?? {}) as Partial<typeof ZERO_FINANCE>;
+  const f: typeof ZERO_FINANCE = {
+    ...ZERO_FINANCE,
     ...rawData,
-    notificationSettings: rawData.notificationSettings ?? MOCK_FINANCE.notificationSettings,
-    revenueBreakdown: rawData.revenueBreakdown ?? MOCK_FINANCE.revenueBreakdown,
-    expenseBreakdown: rawData.expenseBreakdown ?? MOCK_FINANCE.expenseBreakdown,
-    trend: rawData.trend ?? MOCK_FINANCE.trend,
+    notificationSettings: rawData.notificationSettings ?? ZERO_FINANCE.notificationSettings,
+    revenueBreakdown: rawData.revenueBreakdown ?? ZERO_FINANCE.revenueBreakdown,
+    expenseBreakdown: rawData.expenseBreakdown ?? ZERO_FINANCE.expenseBreakdown,
+    trend: rawData.trend ?? ZERO_FINANCE.trend,
   };
 
   if (isLoading) return <PageSpinner />;

@@ -57,7 +57,7 @@ export default function SupportPage() {
         const payload = Array.isArray(r.data) ? r.data : (r.data?.data ?? r.data?.items ?? r.data);
         return Array.isArray(payload) && payload.length > 0 ? payload : MOCK_TICKETS;
       }
-      catch { return MOCK_TICKETS; }
+      catch { return []; }
     },
   });
 
@@ -79,7 +79,7 @@ export default function SupportPage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-tickets'] }); toast('Atama yapıldı', 'success'); },
   });
 
-  const tickets = (data ?? MOCK_TICKETS) as Ticket[];
+  const tickets = (data ?? []) as Ticket[];
   const inProgressCount = tickets.filter((t) => t.status === 'IN_PROGRESS').length;
   const resolvedCount = tickets.filter((t) => t.status === 'RESOLVED' || t.status === 'CLOSED').length;
   const openCount = tickets.filter((t) => t.status === 'OPEN').length;

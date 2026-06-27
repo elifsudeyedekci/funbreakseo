@@ -53,8 +53,8 @@ export default function ContentReviewPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['admin-content-review'],
     queryFn: async () => {
-      try { const r = await adminApi.get('/admin/content-review'); return r.data?.data ?? MOCK_CONTENT; }
-      catch { return MOCK_CONTENT; }
+      try { const r = await adminApi.get('/admin/content-review'); return r.data?.data ?? []; }
+      catch { return []; }
     },
   });
 
@@ -70,7 +70,7 @@ export default function ContentReviewPage() {
     onError: () => toast('İşlem başarısız', 'error'),
   });
 
-  const content = (data ?? MOCK_CONTENT) as ContentItem[];
+  const content = (data ?? []) as ContentItem[];
 
   const columns: ColumnDef<ContentItem>[] = [
     {

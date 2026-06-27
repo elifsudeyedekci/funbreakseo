@@ -47,8 +47,8 @@ export default function SubscriptionsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['admin-subscriptions'],
     queryFn: async () => {
-      try { const r = await adminApi.get('/admin/subscriptions', { params: { limit: 100 } }); return r.data?.data ?? MOCK_SUBS; }
-      catch { return MOCK_SUBS; }
+      try { const r = await adminApi.get('/admin/subscriptions', { params: { limit: 100 } }); return r.data?.data ?? []; }
+      catch { return []; }
     },
   });
 
@@ -58,7 +58,7 @@ export default function SubscriptionsPage() {
     onError: () => toast('İşlem başarısız', 'error'),
   });
 
-  const subs = (data ?? MOCK_SUBS) as Subscription[];
+  const subs = (data ?? []) as Subscription[];
   const pastDue = subs.filter((s) => s.status === 'PAST_DUE');
   const planCounts = ['STARTER', 'GROWTH', 'PRO', 'ENTERPRISE'].map((p, i) => ({
     name: p, value: subs.filter((s) => s.plan === p).length, color: PIE_COLORS[i],

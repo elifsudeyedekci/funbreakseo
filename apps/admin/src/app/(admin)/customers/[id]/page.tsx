@@ -73,19 +73,19 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
     },
   });
 
-  const { data: consents = MOCK_CONSENTS } = useQuery({
+  const { data: consents = [] } = useQuery({
     queryKey: ['customer-consents', id],
     queryFn: async () => {
-      try { const r = await adminApi.get(`/admin/customers/${id}/consents`); return r.data?.data ?? r.data ?? MOCK_CONSENTS; }
-      catch { return MOCK_CONSENTS; }
+      try { const r = await adminApi.get(`/admin/customers/${id}/consents`); return r.data?.data ?? r.data ?? []; }
+      catch { return []; }
     },
   });
 
-  const { data: auditLog = MOCK_AUDIT } = useQuery({
+  const { data: auditLog = [] } = useQuery({
     queryKey: ['customer-audit', id],
     queryFn: async () => {
-      try { const r = await adminApi.get(`/admin/customers/${id}/audit-log`); return r.data?.data ?? r.data ?? MOCK_AUDIT; }
-      catch { return MOCK_AUDIT; }
+      try { const r = await adminApi.get(`/admin/customers/${id}/audit-log`); return r.data?.data ?? r.data ?? []; }
+      catch { return []; }
     },
   });
 
@@ -99,11 +99,11 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
   });
 
   const MOCK_INVOICES = Array.from({ length: 3 }, (_, i) => ({ id: `inv-${i}`, number: `INV-2026-${String(i + 1).padStart(3, '0')}`, amount: 49, currency: 'USD', status: i === 0 ? 'PAID' : i === 1 ? 'PAID' : 'PAID', createdAt: new Date(Date.now() - 86400000 * 30 * (i + 1)).toISOString(), pdfUrl: null }));
-  const { data: invoices = MOCK_INVOICES } = useQuery({
+  const { data: invoices = [] } = useQuery({
     queryKey: ['customer-invoices', id],
     queryFn: async () => {
-      try { const r = await adminApi.get(`/admin/customers/${id}/invoices`); return r.data?.data ?? r.data ?? MOCK_INVOICES; }
-      catch { return MOCK_INVOICES; }
+      try { const r = await adminApi.get(`/admin/customers/${id}/invoices`); return r.data?.data ?? r.data ?? []; }
+      catch { return []; }
     },
   });
 

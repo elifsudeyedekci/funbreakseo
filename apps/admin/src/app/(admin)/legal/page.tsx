@@ -64,9 +64,9 @@ export default function LegalPage() {
     queryFn: async () => {
       try {
         const r = await adminApi.get('/admin/legal-docs');
-        return (r.data?.data ?? MOCK_DOCS) as LegalDoc[];
+        return (r.data?.data ?? []) as LegalDoc[];
       } catch {
-        return MOCK_DOCS;
+        return [];
       }
     },
   });
@@ -99,7 +99,7 @@ export default function LegalPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4">
-        {(docs ?? MOCK_DOCS).map((doc) => (
+        {(docs ?? []).map((doc) => (
           <Card key={doc.id}>
             <CardHeader>
               <div className="flex items-start justify-between gap-4">

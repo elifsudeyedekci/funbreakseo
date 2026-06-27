@@ -65,8 +65,8 @@ export default function StaffPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['admin-staff'],
     queryFn: async () => {
-      try { const r = await adminApi.get('/admin/staff'); return r.data?.data ?? MOCK_STAFF; }
-      catch { return MOCK_STAFF; }
+      try { const r = await adminApi.get('/admin/staff'); return r.data?.data ?? []; }
+      catch { return []; }
     },
   });
 
@@ -97,7 +97,7 @@ export default function StaffPage() {
     setValue('permissions', s.permissions ?? []);
   };
 
-  const staff = (data ?? MOCK_STAFF) as StaffMember[];
+  const staff = (data ?? []) as StaffMember[];
   const isEditing = !!editingStaff;
   const isModalOpen = modal || isEditing;
   const closeModal = () => { setModal(false); setEditingStaff(null); reset(); };
