@@ -274,19 +274,61 @@ export class AuthController {
   async googleCallback(
     @Query('code') code: string,
     @Query('state') state: string,
+    @Query('error') oauthError: string,
     @Res() res: Response,
   ): Promise<void> {
     const frontendUrl = process.env.FRONTEND_URL ?? 'https://funbreakseo.com';
-    try {
-      const { orgId } = JSON.parse(Buffer.from(state, 'base64url').toString('utf-8')) as { orgId: string };
-      const tokens = await this.authService.exchangeGoogleCode(code);
-      await this.authService.saveGscOAuthTokens(orgId, tokens);
-      this.logger.log(`GSC connected for org ${orgId}`);
-      res.redirect(`${frontendUrl}/tr/dashboard/account?tab=integrations&gsc=success`);
-    } catch (err) {
-      this.logger.warn('Google OAuth callback failed', err);
-      res.redirect(`${frontendUrl}/tr/dashboard/account?tab=integrations&gsc=error`);
+    const errorUrl = `${frontendUrl}/tr/dashboard/account?tab=integrations&gsc=error`;
+
+    this.logger.log(`[GSC callback] code present: ${!!code}, state present: ${!!state}, oauth_error: ${oauthError ?? 'none'}`);
+
+    // Google returned an error (user denied access, etc.)
+    if (oauthError) {
+      this.logger.warn(`[GSC callback] Google returned error: ${oauthError}`);
+      return void res.redirect(errorUrl);
     }
+
+    if (!code || !state) {
+      this.logger.error(`[GSC callback] Missing code or state — code: ${!!code}, state: ${!!state}`);
+      return void res.redirect(errorUrl);
+    }
+
+    // 1. Decode state → orgId
+    let orgId: string;
+    try {
+      const decoded = JSON.parse(Buffer.from(state, 'base64url').toString('utf-8')) as { orgId?: string };
+      orgId = decoded.orgId ?? '';
+      this.logger.log(`[GSC callback] Decoded state orgId: ${orgId || '(empty)'}`);
+      if (!orgId) throw new Error('orgId missing from state');
+    } catch (err) {
+      this.logger.error(`[GSC callback] Failed to decode state: ${(err as Error).message} — state value: ${state?.substring(0, 50)}`);
+      return void res.redirect(errorUrl);
+    }
+
+    // 2. Exchange code for tokens
+    let tokens: { accessToken: string; refreshToken?: string; expiryDate: number };
+    try {
+      tokens = await this.authService.exchangeGoogleCode(code);
+      this.logger.log(`[GSC callback] Token exchange successful — has refresh_token: ${!!tokens.refreshToken}`);
+    } catch (err) {
+      const msg = (err as { response?: { data?: unknown }; message?: string });
+      this.logger.error(`[GSC callback] Token exchange failed: ${msg.message ?? ''} — response: ${JSON.stringify(msg.response?.data ?? {}).substring(0, 200)}`);
+      return void res.redirect(errorUrl);
+    }
+
+    // 3. Save tokens to DB
+    try {
+      await this.authService.saveGscOAuthTokens(orgId, tokens);
+      this.logger.log(`[GSC callback] Tokens saved for org ${orgId}`);
+    } catch (err) {
+      this.logger.error(`[GSC callback] DB save failed for org ${orgId}: ${(err as Error).message}`);
+      return void res.redirect(errorUrl);
+    }
+
+    // 4. Redirect to success
+    const successUrl = `${frontendUrl}/tr/dashboard/account?tab=integrations&gsc=success`;
+    this.logger.log(`[GSC callback] Success — redirecting to ${successUrl}`);
+    res.redirect(successUrl);
   }
 }
 
