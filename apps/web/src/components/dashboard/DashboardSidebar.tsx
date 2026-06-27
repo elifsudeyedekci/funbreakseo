@@ -21,6 +21,7 @@ import {
   X,
   Zap,
   ArrowUpRight,
+  Trophy,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -35,7 +36,8 @@ export function DashboardSidebar({ mobileOpen, onClose, currentProjectId }: Side
   const pathname = usePathname();
   const t = useTranslations('dashNav');
 
-  const localePath = (path: string) => locale === 'tr' ? path : `/${locale}${path}`;
+  // With localePrefix: 'always', every URL has /{locale}/... prefix
+  const localePath = (path: string) => `/${locale}${path}`;
 
   const NAV_ITEMS = [
     { icon: FolderOpen, label: t('projects'), path: '/dashboard/projects' },
@@ -44,6 +46,7 @@ export function DashboardSidebar({ mobileOpen, onClose, currentProjectId }: Side
     { icon: FileText, label: t('content'), path: '/dashboard/content', projectScoped: true },
     { icon: Brain, label: t('geo'), path: '/dashboard/geo', projectScoped: true, geo: true },
     { icon: Link2, label: t('backlinks'), path: '/dashboard/backlinks', projectScoped: true },
+    { icon: Trophy, label: t('competitors'), path: '/dashboard/competitors', projectScoped: true },
     { icon: Mail, label: t('outreach'), path: '/dashboard/outreach', projectScoped: true },
     { icon: BarChart2, label: t('reports'), path: '/dashboard/reports', projectScoped: true },
   ];

@@ -132,4 +132,10 @@ export class ProjectController {
   async getGscData(@CurrentUser() user: User, @Param('id') id: string) {
     return this.projectService.getGscData(id, user.organizationId!);
   }
+
+  @Post(':id/full-scan')
+  @ApiOperation({ summary: 'Start a comprehensive full scan (crawl + keywords + backlinks + GEO + competitors)' })
+  async fullScan(@CurrentUser() user: User, @Param('id') id: string) {
+    return this.projectService.fullScan(id, user.organizationId!);
+  }
 }

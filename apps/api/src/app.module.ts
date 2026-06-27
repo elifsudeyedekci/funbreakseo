@@ -30,6 +30,7 @@ import { EmailNotificationModule } from './modules/email-notification/email-noti
 import { PublicModule } from './modules/public/public.module';
 import { CustomerApiModule } from './modules/customer-api/customer-api.module';
 import { HealthModule } from './modules/health/health.module';
+import { CompetitorModule } from './modules/competitor/competitor.module';
 
 @Module({
   imports: [
@@ -89,6 +90,7 @@ import { HealthModule } from './modules/health/health.module';
     PublicModule,
     CustomerApiModule,
     HealthModule,
+    CompetitorModule,
   ],
 })
 export class AppModule {}

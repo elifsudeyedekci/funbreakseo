@@ -142,32 +142,47 @@ export class OutreachService {
       where: { id: projectId },
       select: { domain: true },
     })
-    if (!project) return { synced: 0 }
+    if (!project) return { synced: 0, backlinks: [], total: 0 }
 
-    const domain = project.domain.replace(/^https?:\/\//, '').split('/')[0]
+    const domain = project.domain
+      .replace(/^https?:\/\//, '')
+      .replace(/^www\./, '')
+      .replace(/\/$/, '')
+      .split('/')[0]
+
+    this.logger.log(`Syncing backlinks for domain: ${domain}`)
 
     try {
       const profile = await this.dfs.getBacklinks(domain)
+      this.logger.log(`DataForSEO returned ${profile.sample.length} backlinks, total: ${profile.backlinks_num}`)
+
       const now = new Date()
       let synced = 0
+      const returnedBacklinks: Array<{
+        id: string; sourceDomain: string; sourceUrl: string; targetUrl: string;
+        anchorText: string | null; domainRating: number | null; isDofollow: boolean;
+        firstSeen: Date; lastSeen: Date; status: string;
+      }> = []
 
       for (const item of profile.sample) {
+        if (!item.url_from) continue
         try {
           const existing = await this.prisma.backlink.findFirst({
             where: { projectId, sourceUrl: item.url_from },
           })
+          let saved: any
           if (existing) {
-            await this.prisma.backlink.update({
+            saved = await this.prisma.backlink.update({
               where: { id: existing.id },
               data: { lastSeen: now, status: 'ACTIVE', isDofollow: item.is_dofollow, anchorText: item.anchor ?? null },
             })
           } else {
-            await this.prisma.backlink.create({
+            saved = await this.prisma.backlink.create({
               data: {
                 projectId,
-                sourceDomain: item.domain_from,
+                sourceDomain: item.domain_from || new URL(item.url_from).hostname,
                 sourceUrl: item.url_from,
-                targetUrl: item.url_to,
+                targetUrl: item.url_to || `https://${domain}`,
                 anchorText: item.anchor ?? null,
                 domainRating: item.rank ?? null,
                 isDofollow: item.is_dofollow,
@@ -177,16 +192,23 @@ export class OutreachService {
               },
             })
           }
+          if (saved) returnedBacklinks.push(saved)
           synced++
         } catch (err) {
           this.logger.warn(`Failed to sync backlink ${item.url_from}`, err)
         }
       }
 
-      return { synced, total: profile.backlinks_num, referringDomains: profile.referring_domains }
+      return {
+        synced,
+        total: profile.backlinks_num,
+        referringDomains: profile.referring_domains,
+        backlinks: returnedBacklinks,
+        domain,
+      }
     } catch (err) {
       this.logger.error('DataForSEO backlinks sync failed', err)
-      return { synced: 0, error: 'DataForSEO fetch failed' }
+      return { synced: 0, error: 'DataForSEO fetch failed', backlinks: [], total: 0, domain }
     }
   }
 

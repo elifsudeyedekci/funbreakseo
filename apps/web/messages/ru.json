@@ -1,4 +1,4 @@
-{
+﻿{
   "common": {
     "loading": "Загрузка...",
     "error": "Произошла ошибка",
@@ -467,6 +467,7 @@
     "content": "Контент",
     "geo": "GEO",
     "backlinks": "Обратные ссылки",
+    "competitors": "Анализ конкурентов",
     "outreach": "Аутрич",
     "reports": "Отчёты",
     "accountSection": "Аккаунт",

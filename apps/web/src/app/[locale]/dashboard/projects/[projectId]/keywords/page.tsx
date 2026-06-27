@@ -12,7 +12,7 @@ import {
   getSortedRowModel,
   type SortingState,
 } from '@tanstack/react-table';
-import { Plus, TrendingUp, TrendingDown, Minus, Search, X, ChevronUp, ChevronDown, Download, Trash2, RefreshCw } from 'lucide-react';
+import { Plus, TrendingUp, TrendingDown, Minus, Search, X, ChevronUp, ChevronDown, Download, Trash2, RefreshCw, Sparkles } from 'lucide-react';
 import { keywordApi } from '@/lib/api';
 import { cn, exportToCSV } from '@/lib/utils';
 import type { KeywordIntent } from '@funbreakseo/shared';
@@ -110,6 +110,18 @@ export default function KeywordsPage() {
         ),
       ];
       const unique = Array.from(new Map(items.map(i => [i.keyword, i])).values());
+      setDiscoverResults(unique);
+      setSelectedKws(new Set());
+    },
+  });
+
+  const domainDiscoverMutation = useMutation({
+    mutationFn: () => keywordApi.discover(projectId).then((r) => {
+      const raw = r.data;
+      return Array.isArray(raw) ? raw : (raw?.data ?? raw?.keywords ?? []);
+    }),
+    onSuccess: (data: ResearchResult[]) => {
+      const unique = Array.from(new Map(data.map((i: ResearchResult) => [i.keyword, i])).values());
       setDiscoverResults(unique);
       setSelectedKws(new Set());
     },
@@ -430,19 +442,36 @@ export default function KeywordsPage() {
               </p>
             </div>
 
-            <div className="px-6 pb-4 shrink-0">
+            <div className="px-6 pb-4 shrink-0 space-y-3">
+              {/* Auto-discover from domain */}
+              <button
+                onClick={() => domainDiscoverMutation.mutate()}
+                disabled={domainDiscoverMutation.isPending || researchMutation.isPending}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-indigo-500/40 bg-indigo-600/15 px-4 py-2.5 text-sm font-semibold text-indigo-300 hover:bg-indigo-600/25 disabled:opacity-50 transition-all"
+              >
+                {domainDiscoverMutation.isPending ? (
+                  <><span className="w-3.5 h-3.5 border-2 border-indigo-400/30 border-t-indigo-400 rounded-full animate-spin" /> Domain Analiz Ediliyor…</>
+                ) : (
+                  <><Sparkles className="h-4 w-4" /> Domain'den Otomatik Keşfet</>
+                )}
+              </button>
+              <div className="flex items-center gap-3 text-xs text-white/30">
+                <div className="flex-1 h-px bg-white/10" />
+                <span>ya da seed kelimeler gir</span>
+                <div className="flex-1 h-px bg-white/10" />
+              </div>
               <textarea
                 rows={2}
                 value={seedInput}
                 onChange={(e) => setSeedInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleResearch(); }}
-                placeholder="seo araçları, backlink analizi, anahtar kelime takibi"
+                placeholder="seo araçları, backlink analizi, anahtar kelime takibi (isteğe bağlı)"
                 className="w-full px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 text-sm text-white placeholder-white/30 resize-none focus:border-indigo-500/50 focus:outline-none"
               />
-              <div className="flex justify-end mt-2">
+              <div className="flex justify-end">
                 <button
                   onClick={handleResearch}
-                  disabled={!seedInput.trim() || researchMutation.isPending}
+                  disabled={!seedInput.trim() || researchMutation.isPending || domainDiscoverMutation.isPending}
                   className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 transition-all"
                 >
                   {researchMutation.isPending ? (
@@ -455,7 +484,7 @@ export default function KeywordsPage() {
               </div>
             </div>
 
-            {researchMutation.isError && (
+            {(researchMutation.isError || domainDiscoverMutation.isError) && (
               <p className="px-6 pb-4 text-sm text-red-400 shrink-0">
                 DataForSEO'dan veri alınamadı. API anahtarınızı ve kredinizi kontrol edin.
               </p>

@@ -1,4 +1,4 @@
-{
+﻿{
   "common": {
     "loading": "लोड हो रहा है...",
     "error": "एक त्रुटि हुई",
@@ -467,6 +467,7 @@
     "content": "सामग्री",
     "geo": "GEO",
     "backlinks": "बैकलिंक",
+    "competitors": "प्रतिस्पर्धी विश्लेषण",
     "outreach": "आउटरीच",
     "reports": "रिपोर्ट",
     "accountSection": "खाता",

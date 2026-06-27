@@ -430,6 +430,114 @@ export class DataForSeoService {
     return results;
   }
 
+  // ─── Keywords for Site (domain-based discovery) ──────────────────────────────
+
+  async getKeywordsForSite(domain: string, limit = 50): Promise<RelatedKeyword[]> {
+    try {
+      const cleanDomain = domain.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '');
+      const response = await this.request<{
+        tasks: Array<{ result?: Array<{ items?: Array<Record<string, unknown>> }> }>;
+      }>('/dataforseo_labs/google/keywords_for_site/live', [{
+        target: cleanDomain,
+        location_code: 2792,
+        language_code: 'tr',
+        limit,
+        order_by: ['keyword_data.keyword_info.search_volume,desc'],
+      }]);
+      const items = response.tasks?.[0]?.result?.[0]?.items ?? [];
+      return items.map((item: any) => ({
+        keyword: item.keyword as string,
+        search_volume: (item.keyword_data?.keyword_info?.search_volume as number) ?? null,
+        keyword_difficulty: (item.keyword_data?.keyword_properties?.keyword_difficulty as number) ?? null,
+        cpc: (item.keyword_data?.keyword_info?.cpc as number) ?? null,
+      })).filter((k: RelatedKeyword) => k.keyword);
+    } catch (err) {
+      this.logger.warn('getKeywordsForSite failed', err);
+      return [];
+    }
+  }
+
+  async getRankedKeywords(domain: string, limit = 50): Promise<RelatedKeyword[]> {
+    try {
+      const cleanDomain = domain.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '');
+      const response = await this.request<{
+        tasks: Array<{ result?: Array<{ items?: Array<Record<string, unknown>> }> }>;
+      }>('/dataforseo_labs/google/ranked_keywords/live', [{
+        target: cleanDomain,
+        location_code: 2792,
+        language_code: 'tr',
+        limit,
+        order_by: ['keyword_data.keyword_info.search_volume,desc'],
+      }]);
+      const items = response.tasks?.[0]?.result?.[0]?.items ?? [];
+      return items.map((item: any) => ({
+        keyword: item.keyword_data?.keyword as string,
+        search_volume: (item.keyword_data?.keyword_info?.search_volume as number) ?? null,
+        keyword_difficulty: (item.keyword_data?.keyword_properties?.keyword_difficulty as number) ?? null,
+        cpc: (item.keyword_data?.keyword_info?.cpc as number) ?? null,
+      })).filter((k: RelatedKeyword) => k.keyword);
+    } catch (err) {
+      this.logger.warn('getRankedKeywords failed', err);
+      return [];
+    }
+  }
+
+  // ─── Competitor domain discovery ─────────────────────────────────────────────
+
+  async getCompetitorDomains(domain: string, limit = 10): Promise<Array<{
+    domain: string; avgPosition: number | null; intersections: number; etv: number | null;
+  }>> {
+    try {
+      const cleanDomain = domain.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '');
+      const response = await this.request<{
+        tasks: Array<{ result?: Array<{ items?: Array<Record<string, unknown>> }> }>;
+      }>('/dataforseo_labs/google/competitors_domain/live', [{
+        target: cleanDomain,
+        location_code: 2792,
+        language_code: 'tr',
+        limit,
+      }]);
+      const items = response.tasks?.[0]?.result?.[0]?.items ?? [];
+      return (items as any[]).map((item) => ({
+        domain: item.domain as string,
+        avgPosition: (item.avg_position as number) ?? null,
+        intersections: (item.intersections as number) ?? 0,
+        etv: (item.etv as number) ?? null,
+      }));
+    } catch (err) {
+      this.logger.warn('getCompetitorDomains failed', err);
+      return [];
+    }
+  }
+
+  async getDomainIntersection(domain1: string, domain2: string, limit = 50): Promise<Array<{
+    keyword: string; searchVolume: number; domain1Position: number | null; domain2Position: number | null;
+  }>> {
+    try {
+      const clean1 = domain1.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '');
+      const clean2 = domain2.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '');
+      const response = await this.request<{
+        tasks: Array<{ result?: Array<{ items?: Array<Record<string, unknown>> }> }>;
+      }>('/dataforseo_labs/google/domain_intersection/live', [{
+        target1: clean1,
+        target2: clean2,
+        location_code: 2792,
+        language_code: 'tr',
+        limit,
+      }]);
+      const items = response.tasks?.[0]?.result?.[0]?.items ?? [];
+      return (items as any[]).map((item) => ({
+        keyword: (item.keyword_data as any)?.keyword as string,
+        searchVolume: (item.keyword_data as any)?.keyword_info?.search_volume ?? 0,
+        domain1Position: (item.first_domain_serp_element as any)?.rank_absolute ?? null,
+        domain2Position: (item.second_domain_serp_element as any)?.rank_absolute ?? null,
+      })).filter((i) => i.keyword);
+    } catch (err) {
+      this.logger.warn('getDomainIntersection failed', err);
+      return [];
+    }
+  }
+
   // ─── Internal ─────────────────────────────────────────────────────────────────
 
   private async request<T>(endpoint: string, tasks: unknown[]): Promise<T> {

@@ -272,6 +272,40 @@ export class KeywordService {
     }
   }
 
+  // ─── Discover keywords from domain (no seed needed) ─────────────────────────
+
+  async discoverKeywordsForDomain(projectId: string, organizationId: string) {
+    await this.assertProjectAccess(projectId, organizationId);
+
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      select: { domain: true, name: true },
+    });
+    if (!project) throw new NotFoundException('Project not found');
+
+    const cleanDomain = project.domain
+      .replace(/^https?:\/\//, '')
+      .replace(/^www\./, '')
+      .replace(/\/$/, '')
+      .split('/')[0];
+
+    const [siteKeywords, rankedKeywords] = await Promise.all([
+      this.dfs.getKeywordsForSite(cleanDomain, 50),
+      this.dfs.getRankedKeywords(cleanDomain, 50),
+    ]);
+
+    const combined = [...siteKeywords, ...rankedKeywords];
+    const seen = new Set<string>();
+    return combined
+      .filter((k) => {
+        if (!k.keyword || seen.has(k.keyword.toLowerCase())) return false;
+        seen.add(k.keyword.toLowerCase());
+        return true;
+      })
+      .sort((a, b) => (b.search_volume ?? 0) - (a.search_volume ?? 0))
+      .slice(0, 60);
+  }
+
   // ─── Keyword research via DataForSEO ─────────────────────────────────────────
 
   async research(

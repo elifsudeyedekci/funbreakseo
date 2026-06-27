@@ -1,12 +1,13 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar
 } from 'recharts';
-import { TrendingUp, TrendingDown, Search, Brain, AlertCircle, Clock } from 'lucide-react';
+import { TrendingUp, TrendingDown, Search, Brain, AlertCircle, Clock, Zap, CheckCircle2 } from 'lucide-react';
 import { projectApi } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import type { DashboardSummary } from '@funbreakseo/shared';
@@ -62,6 +63,12 @@ function StatCard({
 export default function ProjectDashboardPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const t = useTranslations('projectDashboard');
+  const [scanResult, setScanResult] = useState<null | { steps: Record<string, unknown> }>(null);
+
+  const fullScanMutation = useMutation({
+    mutationFn: () => projectApi.fullScan(projectId).then((r) => r.data),
+    onSuccess: (data) => setScanResult(data),
+  });
   const { data, isLoading } = useQuery({
     queryKey: ['project-dashboard', projectId],
     queryFn: () =>
@@ -105,6 +112,47 @@ export default function ProjectDashboardPage() {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Full Scan Banner */}
+      <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-4 flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-white">Tam Tarama</h3>
+          <p className="text-xs text-white/40 mt-0.5">Teknik SEO + Backlink + Rakip + GEO — tek seferde hepsini çalıştır</p>
+        </div>
+        <button
+          onClick={() => fullScanMutation.mutate()}
+          disabled={fullScanMutation.isPending}
+          className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 transition-all"
+        >
+          {fullScanMutation.isPending ? (
+            <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Taranıyor…</>
+          ) : (
+            <><Zap className="h-4 w-4" /> Tam Tarama Başlat</>
+          )}
+        </button>
+      </div>
+
+      {/* Scan result summary */}
+      {scanResult && (
+        <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 space-y-2">
+          <div className="flex items-center gap-2 text-sm font-semibold text-emerald-400">
+            <CheckCircle2 className="h-4 w-4" />
+            Tarama Başlatıldı
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+            {Object.entries(scanResult.steps ?? {}).map(([step, val]: [string, unknown]) => {
+              const v = val as Record<string, unknown>;
+              const ok = !v?.error;
+              return (
+                <div key={step} className={`rounded-xl border p-2 text-center text-xs ${ok ? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-400' : 'border-red-500/20 bg-red-500/5 text-red-400'}`}>
+                  <div className="font-semibold capitalize">{step}</div>
+                  <div className="text-white/40 mt-0.5">{ok ? (v?.jobId ? 'Sırada' : 'Hazır') : 'Hata'}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label={t('avgPos')} value={summary?.avgPosition?.toFixed(1) ?? '—'} icon={Search} color="indigo" />

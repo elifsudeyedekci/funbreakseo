@@ -1,4 +1,4 @@
-{
+﻿{
   "common": {
     "loading": "جار التحميل...",
     "error": "حدث خطأ ما",
@@ -467,6 +467,7 @@
     "content": "المحتوى",
     "geo": "GEO",
     "backlinks": "الروابط الخلفية",
+    "competitors": "تحليل المنافسين",
     "outreach": "التواصل",
     "reports": "التقارير",
     "accountSection": "الحساب",

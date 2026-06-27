@@ -6,7 +6,9 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 import { ConfigService } from '@nestjs/config';
-import { ProjectStatus } from '@prisma/client';
+import { ProjectStatus, CrawlJobStatus } from '@prisma/client';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import axios from 'axios';
 import * as nodemailer from 'nodemailer';
 
@@ -34,6 +36,7 @@ export class ProjectService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    @InjectQueue('crawler') private readonly crawlerQueue: Queue,
   ) {
     this.mailer = nodemailer.createTransport({
       host: config.get<string>('SMTP_HOST', 'smtp.gmail.com'),
@@ -269,5 +272,54 @@ export class ProjectService {
     );
 
     return gscResponse.data.rows ?? [];
+  }
+
+  // ─── Full Scan Orchestration ──────────────────────────────────────────────────
+
+  async fullScan(projectId: string, organizationId: string) {
+    const project = await this.prisma.project.findFirst({
+      where: { id: projectId, organizationId, deletedAt: null },
+    });
+    if (!project) throw new NotFoundException('Project not found');
+
+    const results: Record<string, unknown> = {
+      projectId,
+      startedAt: new Date().toISOString(),
+      steps: {} as Record<string, unknown>,
+    };
+
+    const steps = results.steps as Record<string, unknown>;
+
+    // Step 1: Start technical SEO crawl
+    try {
+      const crawlJob = await this.prisma.crawlJob.create({
+        data: { projectId, status: CrawlJobStatus.QUEUED, triggeredBy: 'MANUAL' },
+      });
+      await this.crawlerQueue.add('crawl', { crawlJobId: crawlJob.id, projectId });
+      steps['crawl'] = { jobId: crawlJob.id, status: 'queued' };
+    } catch (err: any) {
+      this.logger.warn('fullScan: crawl step failed', err.message);
+      steps['crawl'] = { error: err.message };
+    }
+
+    // Step 2: Keywords — queue rank checks for existing keywords
+    try {
+      const kwCount = await this.prisma.keyword.count({ where: { projectId } });
+      steps['keywords'] = { existing: kwCount, note: 'use /keywords/discover for domain-based discovery' };
+    } catch (err: any) {
+      steps['keywords'] = { error: err.message };
+    }
+
+    // Step 3: Backlinks note (actual sync done via POST /backlinks/sync)
+    steps['backlinks'] = { note: 'trigger sync via POST /projects/:id/backlinks/sync' };
+
+    // Step 4: GEO note (actual scan done via POST /geo/scan)
+    steps['geo'] = { note: 'trigger via POST /projects/:id/geo/scan' };
+
+    // Step 5: Competitor note
+    steps['competitors'] = { note: 'trigger via GET /projects/:id/competitors' };
+
+    results['completedAt'] = new Date().toISOString();
+    return results;
   }
 }

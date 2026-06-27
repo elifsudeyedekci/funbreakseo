@@ -1,4 +1,4 @@
-{
+﻿{
   "common": {
     "loading": "Loading...",
     "error": "An error occurred",
@@ -440,6 +440,7 @@
     "content": "Content",
     "geo": "GEO",
     "backlinks": "Backlinks",
+    "competitors": "Competitor Analysis",
     "outreach": "Outreach",
     "reports": "Reports",
     "accountSection": "Account",

@@ -24,7 +24,7 @@ export default function BacklinksPage() {
   });
 
   const syncMutation = useMutation({
-    mutationFn: () => outreachApi.syncBacklinks(projectId),
+    mutationFn: () => outreachApi.syncBacklinks(projectId).then(r => r.data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['backlinks', projectId] }),
   });
 
@@ -70,6 +70,14 @@ export default function BacklinksPage() {
               Backlinkleri Getir
             </button>
           </div>
+          {/* Sync summary */}
+          {syncMutation.data && (
+            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 text-sm text-emerald-400">
+              Senkronizasyon tamamlandı: {syncMutation.data.synced} backlink kaydedildi
+              {syncMutation.data.total ? ` (toplam ${syncMutation.data.total})` : ''}
+              {syncMutation.data.error ? ` — Hata: ${syncMutation.data.error}` : ''}
+            </div>
+          )}
           {isLoading ? (
             <div className="space-y-3">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="rounded-xl border border-white/10 h-16 animate-pulse" />)}</div>
           ) : (

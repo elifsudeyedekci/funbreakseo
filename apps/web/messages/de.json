@@ -1,4 +1,4 @@
-{
+﻿{
   "common": {
     "loading": "Laden...",
     "error": "Ein Fehler ist aufgetreten",
@@ -467,6 +467,7 @@
     "content": "Inhalte",
     "geo": "GEO",
     "backlinks": "Backlinks",
+    "competitors": "Wettbewerbsanalyse",
     "outreach": "Outreach",
     "reports": "Berichte",
     "accountSection": "Konto",

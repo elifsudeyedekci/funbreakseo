@@ -179,9 +179,17 @@ export class CrawlerWorker extends WorkerHost {
         ? project.domain
         : `https://${project.domain}`
 
-      // Pre-load rule definitions to get correct UUIDs for FK reference
-      const ruleDefs = await this.prisma.seoRuleDefinition.findMany({ select: { id: true, code: true } })
-      const ruleIdByCode = new Map(ruleDefs.map((r) => [r.code, r.id]))
+      // Pre-load rule definitions — wrapped in try/catch so crawl can proceed even if table is empty
+      let ruleIdByCode = new Map<string, string>()
+      try {
+        const ruleDefs = await this.prisma.seoRuleDefinition.findMany({ select: { id: true, code: true } })
+        ruleIdByCode = new Map(ruleDefs.map((r) => [r.code, r.id]))
+        if (ruleDefs.length === 0) {
+          this.logger.warn('[Crawler] SeoRuleDefinition table is empty — issues will be stored without ruleId FK')
+        }
+      } catch (ruleErr: any) {
+        this.logger.warn('[Crawler] Could not load rule definitions (table may not exist yet), continuing without FK links', ruleErr.message)
+      }
 
       // Step 1: Discover URLs
       const urls = await this.discoverUrls(domain)

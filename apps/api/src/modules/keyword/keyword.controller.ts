@@ -183,6 +183,15 @@ export class KeywordController {
     return this.keywordService.suggestKeywordsForDomain(projectId, user.organizationId!);
   }
 
+  @Get('projects/:projectId/keywords/discover')
+  @ApiOperation({ summary: 'Discover keywords from project domain via DataForSEO Labs (no seed required)' })
+  async discoverKeywords(
+    @CurrentUser() user: User,
+    @Param('projectId') projectId: string,
+  ) {
+    return this.keywordService.discoverKeywordsForDomain(projectId, user.organizationId!);
+  }
+
   // ─── Keyword Tags ─────────────────────────────────────────────────────────────
 
   @Get('projects/:projectId/keyword-tags')
