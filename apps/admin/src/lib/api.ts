@@ -120,9 +120,6 @@ export const admin = {
   legalDocs: () => adminApi.get('/admin/legal-docs'),
   updateLegal: (id: string, d: Record<string, unknown>) => adminApi.patch(`/admin/legal-docs/${id}`, d),
 
-  autopilotStats: () => adminApi.get('/admin/autopilot/stats'),
-  autopilotRuns: () => adminApi.get('/admin/autopilot/runs'),
-
   subscriptions: (p?: Record<string, unknown>) => adminApi.get('/admin/subscriptions', { params: p }),
   staff: () => adminApi.get('/admin/staff'),
   createStaff: (d: Record<string, unknown>) => adminApi.post('/admin/staff', d),

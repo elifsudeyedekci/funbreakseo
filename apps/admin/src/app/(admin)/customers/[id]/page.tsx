@@ -89,12 +89,12 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
     },
   });
 
-  const MOCK_SUBSCRIPTION = { planName: 'Growth', status: 'ACTIVE', currentPeriodStart: new Date(Date.now() - 86400000 * 15).toISOString(), currentPeriodEnd: new Date(Date.now() + 86400000 * 15).toISOString(), cancelAtPeriodEnd: false, price: 49, interval: 'month' };
-  const { data: subscription = MOCK_SUBSCRIPTION } = useQuery({
+  const ZERO_SUBSCRIPTION = { planName: '', status: '', currentPeriodStart: '', currentPeriodEnd: '', cancelAtPeriodEnd: false, price: 0, interval: '' };
+  const { data: subscription = ZERO_SUBSCRIPTION } = useQuery({
     queryKey: ['customer-subscription', id],
     queryFn: async () => {
-      try { const r = await adminApi.get(`/admin/customers/${id}/subscription`); return r.data?.data ?? r.data ?? MOCK_SUBSCRIPTION; }
-      catch { return MOCK_SUBSCRIPTION; }
+      try { const r = await adminApi.get(`/admin/customers/${id}/subscription`); return r.data?.data ?? r.data ?? ZERO_SUBSCRIPTION; }
+      catch { return ZERO_SUBSCRIPTION; }
     },
   });
 
@@ -107,22 +107,25 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
     },
   });
 
-  const MOCK_USAGE = { keywords: { used: 45, limit: 100 }, crawls: { used: 12, limit: 50 }, aiBlogs: { used: 8, limit: 20 }, geoQueries: { used: 3, limit: 10 } };
-  const { data: usage = MOCK_USAGE } = useQuery({
+  const ZERO_USAGE = { keywords: { used: 0, limit: 0 }, crawls: { used: 0, limit: 0 }, aiBlogs: { used: 0, limit: 0 }, geoQueries: { used: 0, limit: 0 } };
+  const { data: usage = ZERO_USAGE } = useQuery({
     queryKey: ['customer-usage', id],
     queryFn: async () => {
-      try { const r = await adminApi.get(`/admin/customers/${id}/usage`); return r.data?.data ?? r.data ?? MOCK_USAGE; }
-      catch { return MOCK_USAGE; }
+      const r = await adminApi.get(`/admin/customers/${id}/usage`); return r.data?.data ?? r.data ?? ZERO_USAGE;
     },
   });
 
-  const handleExportCSV = async () => {
-    try {
-      const r = await adminApi.get(`/admin/customers/${id}/consents/export`, { responseType: 'blob' });
-      const url = URL.createObjectURL(new Blob([r.data]));
-      const a = document.createElement('a'); a.href = url; a.download = `onaylar-${id}.csv`; a.click();
-      URL.revokeObjectURL(url);
-    } catch { /* ignore */ }
+  const handleExportCSV = () => {
+    const rows = (consents ?? []) as ConsentRow[];
+    const header = ['Sözleşme', 'Versiyon', 'Tarih', 'IP', 'Cihaz'];
+    const escape = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const csv = [
+      header.join(','),
+      ...rows.map((r) => [r.type, r.version, r.acceptedAt, r.ipAddress, r.device].map(escape).join(',')),
+    ].join('\n');
+    const url = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
+    const a = document.createElement('a'); a.href = url; a.download = `onaylar-${id}.csv`; a.click();
+    URL.revokeObjectURL(url);
   };
 
   if (isLoading || !customer) return <PageSpinner />;
@@ -224,7 +227,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
             <CardHeader><CardTitle className="text-sm">Abonelik Detayı</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               {(() => {
-                const sub = subscription as typeof MOCK_SUBSCRIPTION;
+                const sub = subscription as typeof ZERO_SUBSCRIPTION;
                 return (
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div className="flex flex-col gap-1"><span className="text-[var(--text-muted)]">Plan</span><span className="font-semibold">{sub.planName}</span></div>
@@ -268,7 +271,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
             <CardHeader><CardTitle className="text-sm">Kullanım Kotası</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               {(() => {
-                const u = usage as typeof MOCK_USAGE;
+                const u = usage as typeof ZERO_USAGE;
                 const items = [
                   { label: 'Anahtar Kelimeler', used: u.keywords.used, limit: u.keywords.limit },
                   { label: 'Site Taramaları', used: u.crawls.used, limit: u.crawls.limit },

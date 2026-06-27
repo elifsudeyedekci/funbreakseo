@@ -40,45 +40,27 @@ interface QueueItem {
   publishedAt?: string;
 }
 
-const MOCK_SETTINGS: AutopilotSettings = {
-  activeLocales: ['tr', 'en', 'de'],
-  weeklyTargetPerLocale: 5,
+const ZERO_SETTINGS: AutopilotSettings = {
+  activeLocales: [],
+  weeklyTargetPerLocale: 0,
   publishMode: 'SEMI_AUTO',
-  minSeoScore: 70,
-  minGeoScore: 60,
-  nicheTopics: ['seo', 'dijital pazarlama', 'içerik pazarlama'],
-  monthlyBudget: 500,
+  minSeoScore: 0,
+  minGeoScore: 0,
+  nicheTopics: [],
+  monthlyBudget: 0,
 };
 
-const MOCK_QUEUE: QueueItem[] = Array.from({ length: 15 }, (_, i) => ({
-  id: `aq-${i}`,
-  keyword: `anahtar kelime ${i + 1}`,
-  locale: LOCALES[i % 3],
-  status: ['PENDING', 'GENERATING', 'REVIEW', 'PUBLISHED'][i % 4],
-  seoScore: i % 4 === 3 ? 75 + Math.floor(Math.random() * 25) : undefined,
-  geoScore: i % 4 === 3 ? 65 + Math.floor(Math.random() * 30) : undefined,
-  scheduledAt: new Date(Date.now() + i * 86400000).toISOString(),
-  publishedAt: i % 4 === 3 ? new Date(Date.now() - i * 86400000).toISOString() : undefined,
-}));
-
-const MOCK_STATS = {
-  generatedThisMonth: [
-    { locale: 'tr', generated: 18, published: 15 },
-    { locale: 'en', generated: 12, published: 10 },
-    { locale: 'de', generated: 8, published: 6 },
-  ],
-  discoveredKeywords: 234,
-  rankingContentPct: 68,
-  lowPerformers: [
-    { id: 'lp1', keyword: 'düşük performans 1', locale: 'tr', avgPosition: 45 },
-    { id: 'lp2', keyword: 'düşük performans 2', locale: 'en', avgPosition: 67 },
-  ],
+const ZERO_STATS = {
+  generatedThisMonth: [] as { locale: string; generated: number; published: number }[],
+  discoveredKeywords: 0,
+  rankingContentPct: 0,
+  lowPerformers: [] as { id: string; keyword: string; locale: string; avgPosition: number }[],
 };
 
 export default function AutopilotPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
-  const [settings, setSettings] = useState<AutopilotSettings>(MOCK_SETTINGS);
+  const [settings, setSettings] = useState<AutopilotSettings>(ZERO_SETTINGS);
   const [editMode, setEditMode] = useState(false);
 
   const { data, isLoading } = useQuery({
@@ -91,12 +73,12 @@ export default function AutopilotPage() {
           adminApi.get('/admin/autopilot/queue'),
         ]);
         return { settings: settingsRes.data, stats: dashRes.data, queue: queueRes.data };
-      } catch { return { settings: MOCK_SETTINGS, queue: MOCK_QUEUE, stats: MOCK_STATS }; }
+      } catch { return { settings: ZERO_SETTINGS, queue: [], stats: ZERO_STATS }; }
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: (d: Record<string, unknown>) => adminApi.put('/admin/autopilot/settings', d),
+    mutationFn: (d: Record<string, unknown>) => adminApi.patch('/admin/autopilot/settings', d),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-autopilot'] }); toast('Ayarlar kaydedildi', 'success'); setEditMode(false); },
     onError: () => toast('Güncelleme başarısız', 'error'),
   });
@@ -108,13 +90,14 @@ export default function AutopilotPage() {
   });
 
   const discoverMutation = useMutation({
-    mutationFn: () => adminApi.post('/admin/autopilot/discover-keywords'),
+    mutationFn: () => adminApi.post('/admin/autopilot/discover?locale=tr'),
     onSuccess: () => toast('Kelime keşfi başlatıldı', 'success'),
+    onError: () => toast('Kelime keşfi başlatılamadı', 'error'),
   });
 
-  const d = data ?? { settings: MOCK_SETTINGS, queue: MOCK_QUEUE, stats: MOCK_STATS };
-  const queueData = (d.queue ?? MOCK_QUEUE) as QueueItem[];
-  const stats = (d.stats ?? MOCK_STATS) as typeof MOCK_STATS;
+  const d = data ?? { settings: ZERO_SETTINGS, queue: [], stats: ZERO_STATS };
+  const queueData = (d.queue ?? []) as QueueItem[];
+  const stats = (d.stats ?? ZERO_STATS) as typeof ZERO_STATS;
 
   if (isLoading) return <PageSpinner />;
 

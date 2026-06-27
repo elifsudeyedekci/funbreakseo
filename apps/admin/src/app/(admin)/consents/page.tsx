@@ -59,7 +59,7 @@ export default function ConsentsPage() {
 
   const handleBulkCSV = async () => {
     try {
-      const r = await adminApi.get('/admin/consents/export', { responseType: 'blob', params: typeFilter ? { type: typeFilter } : {} });
+      const r = await adminApi.get('/admin/consents/export-csv', { responseType: 'blob', params: typeFilter ? { type: typeFilter } : {} });
       const url = URL.createObjectURL(new Blob([r.data]));
       const a = document.createElement('a'); a.href = url; a.download = 'onaylar.csv'; a.click();
       URL.revokeObjectURL(url);
