@@ -12,6 +12,7 @@ import { v4 as uuidv4 } from 'uuid';
 import * as crypto from 'crypto';
 import * as nodemailer from 'nodemailer';
 import { authenticator } from 'otplib';
+import axios from 'axios';
 import {
   User,
   ConsentType,
@@ -602,6 +603,45 @@ export class AuthService {
       where: { organizationId: orgId },
     });
     return { data: integrations };
+  }
+
+  async decodeJwtPayload(token: string): Promise<{ sub: string; organizationId?: string; [k: string]: unknown }> {
+    try {
+      return await this.jwt.verifyAsync(token);
+    } catch {
+      throw new UnauthorizedException('Invalid or expired token');
+    }
+  }
+
+  async exchangeGoogleCode(code: string): Promise<{ accessToken: string; refreshToken?: string; expiryDate: number }> {
+    const { data } = await axios.post('https://oauth2.googleapis.com/token', {
+      code,
+      client_id: this.config.get('GOOGLE_CLIENT_ID'),
+      client_secret: this.config.get('GOOGLE_CLIENT_SECRET'),
+      redirect_uri: this.config.get('GOOGLE_CALLBACK_URL'),
+      grant_type: 'authorization_code',
+    });
+    return {
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token,
+      expiryDate: Date.now() + (data.expires_in ?? 3600) * 1000,
+    };
+  }
+
+  async saveGscOAuthTokens(orgId: string, tokens: { accessToken: string; refreshToken?: string; expiryDate: number }) {
+    const existing = await this.prisma.apiIntegration.findFirst({
+      where: { organizationId: orgId, provider: 'GSC' },
+    });
+    if (existing) {
+      await this.prisma.apiIntegration.update({
+        where: { id: existing.id },
+        data: { credentials: tokens as object, status: 'connected', connectedAt: new Date() },
+      });
+    } else {
+      await this.prisma.apiIntegration.create({
+        data: { organizationId: orgId, provider: 'GSC', credentials: tokens as object, status: 'connected' },
+      });
+    }
   }
 
   async connectGsc(orgId: string, dto: Record<string, unknown>) {

@@ -6,12 +6,16 @@ import {
   Body,
   UseGuards,
   Req,
+  Res,
+  Query,
   HttpCode,
   HttpStatus,
   Headers,
   Ip,
   UnauthorizedException,
+  Logger,
 } from '@nestjs/common';
+import { Response } from 'express';
 import {
   ApiTags,
   ApiOperation,
@@ -101,6 +105,7 @@ export class AcceptConsentsDto {
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
+  private readonly logger = new Logger(AuthController.name);
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
@@ -212,6 +217,62 @@ export class AuthController {
       ip,
       userAgent,
     });
+  }
+
+  // ─── Google OAuth for GSC ────────────────────────────────────────────────────
+
+  @Get('google')
+  @ApiOperation({ summary: 'Initiate Google OAuth for Search Console access' })
+  async googleOAuth(
+    @Query('jwt') jwt: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    const frontendUrl = process.env.FRONTEND_URL ?? 'https://funbreakseo.com';
+    try {
+      const payload = await this.authService.decodeJwtPayload(jwt);
+      const orgId = (payload as { organizationId?: string }).organizationId ?? '';
+      if (!orgId) throw new Error('organizationId missing from token');
+      const state = Buffer.from(JSON.stringify({ orgId })).toString('base64url');
+      const clientId = process.env.GOOGLE_CLIENT_ID ?? '';
+      const callbackUrl = process.env.GOOGLE_CALLBACK_URL ?? '';
+      const scope = [
+        'profile',
+        'email',
+        'https://www.googleapis.com/auth/webmasters.readonly',
+      ].join(' ');
+      const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+      url.searchParams.set('client_id', clientId);
+      url.searchParams.set('redirect_uri', callbackUrl);
+      url.searchParams.set('response_type', 'code');
+      url.searchParams.set('scope', scope);
+      url.searchParams.set('access_type', 'offline');
+      url.searchParams.set('prompt', 'consent');
+      url.searchParams.set('state', state);
+      res.redirect(url.toString());
+    } catch (err) {
+      this.logger.warn('Google OAuth initiation failed', err);
+      res.redirect(`${frontendUrl}/tr/dashboard/account?tab=integrations&gsc=error`);
+    }
+  }
+
+  @Get('google/callback')
+  @ApiOperation({ summary: 'Google OAuth callback — exchanges code and saves GSC tokens' })
+  async googleCallback(
+    @Query('code') code: string,
+    @Query('state') state: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    const frontendUrl = process.env.FRONTEND_URL ?? 'https://funbreakseo.com';
+    try {
+      const { orgId } = JSON.parse(Buffer.from(state, 'base64url').toString('utf-8')) as { orgId: string };
+      const tokens = await this.authService.exchangeGoogleCode(code);
+      await this.authService.saveGscOAuthTokens(orgId, tokens);
+      this.logger.log(`GSC connected for org ${orgId}`);
+      res.redirect(`${frontendUrl}/tr/dashboard/account?tab=integrations&gsc=success`);
+    } catch (err) {
+      this.logger.warn('Google OAuth callback failed', err);
+      res.redirect(`${frontendUrl}/tr/dashboard/account?tab=integrations&gsc=error`);
+    }
   }
 }
 

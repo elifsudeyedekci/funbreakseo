@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
-import { User, Building2, Shield, Link2 } from 'lucide-react';
+import { User, Building2, Shield, Link2, CheckCircle2 } from 'lucide-react';
 import { accountApi } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
 
@@ -35,6 +35,7 @@ export default function AccountPage() {
   const { user, updateUser } = useAuthStore();
   const qc = useQueryClient();
   const [tab, setTab] = useState<'profile' | 'org' | 'security' | 'integrations'>('profile');
+  const [gscNotice, setGscNotice] = useState<'success' | 'error' | null>(null);
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<ProfileForm>({
     resolver: zodResolver(profileSchema),
@@ -60,6 +61,38 @@ export default function AccountPage() {
       accountApi.changePassword({ currentPassword: data.currentPassword, newPassword: data.newPassword }),
     onSuccess: () => resetPwd(),
   });
+
+  // Read ?gsc=success|error from URL after OAuth redirect
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const gsc = params.get('gsc');
+    if (gsc === 'success' || gsc === 'error') {
+      setTab('integrations');
+      setGscNotice(gsc as 'success' | 'error');
+      // Clean URL without reload
+      const clean = new URL(window.location.href);
+      clean.searchParams.delete('gsc');
+      window.history.replaceState({}, '', clean.toString());
+    }
+  }, []);
+
+  const { data: integrations, refetch: refetchIntegrations } = useQuery({
+    queryKey: ['account-integrations'],
+    queryFn: () => accountApi.integrations().then((r) => {
+      const raw = r.data?.data ?? r.data ?? [];
+      return Array.isArray(raw) ? raw : [];
+    }),
+    enabled: tab === 'integrations',
+  });
+
+  const gscConnected = (integrations as Array<{ provider: string; status: string }> | undefined)
+    ?.some((i) => i.provider === 'GSC' && i.status === 'connected') ?? false;
+
+  const handleGscConnect = () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : '';
+    const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.funbreakseo.com/api/v1';
+    window.location.href = `${apiBase}/auth/google?jwt=${token}`;
+  };
 
   const twoFaMutation = useMutation({
     mutationFn: () => (user?.twoFactorEnabled ? accountApi.disable2fa({}) : accountApi.enable2fa()),
@@ -256,25 +289,48 @@ export default function AccountPage() {
       )}
 
       {tab === 'integrations' && (
-        <div className="rounded-2xl border border-white/10 bg-white/2 p-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-white/10">
-                <svg viewBox="0 0 24 24" className="h-5 w-5 text-white" fill="none">
-                  <path
-                    d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c5.05-.5 9-4.76 9-9.95z"
-                    fill="currentColor"
-                  />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-white">{t('gscTitle')}</p>
-                <p className="text-xs text-white/40">{t('gscDesc')}</p>
-              </div>
+        <div className="space-y-4">
+          {gscNotice === 'success' && (
+            <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-400">
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+              Google Search Console başarıyla bağlandı. Artık &quot;Sıralanan Kelimeleri Getir&quot; butonu GSC verilerini kullanır.
             </div>
-            <button className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-500 transition-all">
-              {t('gscConnectBtn')}
-            </button>
+          )}
+          {gscNotice === 'error' && (
+            <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+              Google bağlantısı başarısız oldu. Lütfen tekrar deneyin.
+            </div>
+          )}
+          <div className="rounded-2xl border border-white/10 bg-white/2 p-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-white/10">
+                  <svg viewBox="0 0 24 24" className="h-5 w-5 text-white" fill="none">
+                    <path
+                      d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c5.05-.5 9-4.76 9-9.95z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-white">{t('gscTitle')}</p>
+                  <p className="text-xs text-white/40">{t('gscDesc')}</p>
+                </div>
+              </div>
+              {gscConnected ? (
+                <div className="flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                  <span className="text-xs font-semibold text-emerald-400">Bağlandı ✓</span>
+                </div>
+              ) : (
+                <button
+                  onClick={handleGscConnect}
+                  className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-500 transition-all"
+                >
+                  {t('gscConnectBtn')}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -13,6 +13,7 @@ import {
 } from '@prisma/client';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import axios from 'axios';
 
 export interface AddKeywordsDto {
   phrases: string[];
@@ -367,6 +368,24 @@ export class KeywordService {
       select: { domain: true, country: true, language: true },
     });
     if (!project) throw new NotFoundException('Project not found');
+
+    // Try GSC first if the organization has connected Google Search Console.
+    const gscIntegration = await this.prisma.apiIntegration.findFirst({
+      where: { organizationId, provider: 'GSC', status: 'connected' },
+    });
+    if (gscIntegration) {
+      try {
+        const gscKeywords = await this.fetchFromGsc(project.domain, gscIntegration);
+        if (gscKeywords.length > 0) {
+          this.logger.log(`GSC: ${gscKeywords.length} keywords for ${project.domain}`);
+          return gscKeywords;
+        }
+      } catch (err) {
+        this.logger.warn('GSC fetch failed, falling back to DataForSEO', err);
+      }
+    }
+
+    // Fallback: DataForSEO ranked_keywords/live
     const country = project.country ?? 'TR';
     const language = project.language ?? 'tr';
     const locationCode = this.dfs.resolveLocationCode(country);
@@ -375,14 +394,71 @@ export class KeywordService {
       .replace(/^www\./, '')
       .replace(/\/$/, '')
       .split('/')[0];
-    // Fetch up to 1000 — return EVERY keyword the domain actually ranks for.
     const ranked = await this.dfs.getRankedKeywordsDetailed(cleanDomain, 1000, locationCode, language);
-    // These are REAL Google rankings, not discovery suggestions — do NOT apply
-    // the aggressive relevance/script filter here (it was dropping legitimate
-    // ranked keywords). Only drop encoding-corrupted rows and require a position.
     return ranked
       .filter((k) => k.position != null && k.keyword && !this.isCorrupted(k.keyword))
       .sort((a, b) => (a.position ?? 999) - (b.position ?? 999));
+  }
+
+  private async refreshGscToken(refreshToken: string): Promise<{ access_token: string; expires_in: number }> {
+    const { data } = await axios.post('https://oauth2.googleapis.com/token', {
+      refresh_token: refreshToken,
+      client_id: process.env.GOOGLE_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET,
+      grant_type: 'refresh_token',
+    });
+    return data as { access_token: string; expires_in: number };
+  }
+
+  private async fetchFromGsc(
+    domain: string,
+    integration: { id: string; credentials: unknown },
+  ): Promise<Array<{ keyword: string; position: number; searchVolume: number; difficulty: number; cpc: number; url: null; clicks: number; impressions: number; ctr: number }>> {
+    const creds = integration.credentials as { accessToken?: string; refreshToken?: string; expiryDate?: number };
+    let token = creds.accessToken;
+
+    // Refresh if expired (5-min buffer)
+    if (!token || (creds.expiryDate && creds.expiryDate < Date.now() + 5 * 60 * 1000)) {
+      if (!creds.refreshToken) return [];
+      const refreshed = await this.refreshGscToken(creds.refreshToken);
+      token = refreshed.access_token;
+      await this.prisma.apiIntegration.update({
+        where: { id: integration.id },
+        data: {
+          credentials: {
+            ...creds,
+            accessToken: refreshed.access_token,
+            expiryDate: Date.now() + (refreshed.expires_in ?? 3600) * 1000,
+          } as object,
+        },
+      });
+    }
+
+    const cleanDomain = domain.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '');
+    const siteUrl = `sc-domain:${cleanDomain}`;
+    const endDate = new Date().toISOString().split('T')[0];
+    const startDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+    const { data } = await axios.post(
+      `https://searchconsole.googleapis.com/webmasters/v3/sites/${encodeURIComponent(siteUrl)}/searchAnalytics/query`,
+      { startDate, endDate, dimensions: ['query'], rowLimit: 1000 },
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+
+    return ((data as { rows?: unknown[] }).rows ?? []).map((row: unknown) => {
+      const r = row as { keys: string[]; position: number; clicks: number; impressions: number; ctr: number };
+      return {
+        keyword: r.keys[0],
+        position: Math.round(r.position),
+        searchVolume: 0,
+        difficulty: 0,
+        cpc: 0,
+        url: null,
+        clicks: Math.round(r.clicks),
+        impressions: Math.round(r.impressions),
+        ctr: parseFloat((r.ctr * 100).toFixed(2)),
+      };
+    });
   }
 
   /** Informational/non-commercial query patterns (Turkish) to exclude from Keşfet. */
