@@ -194,26 +194,82 @@ export default function ProjectDashboardPage() {
               );
             })}
           </div>
-          {scanProgress.status === 'completed' && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-              <div className="rounded-xl bg-white/3 border border-white/5 p-3 text-center">
-                <div className="text-lg font-bold text-white">{scanProgress.summary?.keywords ?? 0}</div>
-                <div className="text-[11px] text-white/40">Kelime keşfedildi</div>
+        </div>
+      )}
+
+      {/* Comprehensive scan result report — shown on completion (and persists as
+          long as overview data exists, so it doubles as the latest-scan report). */}
+      {(scanProgress?.status === 'completed' || (data && (data.pagesScanned ?? 0) > 0)) && (
+        <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/4 to-white/2 p-6 space-y-5">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+            <h2 className="text-lg font-bold text-white">Tarama Sonuç Raporu</h2>
+          </div>
+
+          {/* Top: health score visual + headline metrics */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+            {/* Site health gauge */}
+            <div className="rounded-2xl border border-white/10 bg-white/2 p-5 flex flex-col items-center justify-center">
+              <div className="relative h-24 w-24">
+                <svg viewBox="0 0 36 36" className="h-24 w-24 -rotate-90">
+                  <path className="text-white/10" stroke="currentColor" strokeWidth="3" fill="none"
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                  <path className={(data?.healthScore ?? 0) >= 70 ? 'text-emerald-400' : (data?.healthScore ?? 0) >= 40 ? 'text-orange-400' : 'text-red-400'}
+                    stroke="currentColor" strokeWidth="3" strokeLinecap="round" fill="none"
+                    strokeDasharray={`${data?.healthScore ?? 0}, 100`}
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-2xl font-bold text-white">{data?.healthScore ?? 0}</span>
+                </div>
               </div>
-              <div className="rounded-xl bg-white/3 border border-white/5 p-3 text-center">
-                <div className="text-lg font-bold text-white">{scanProgress.summary?.backlinks ?? data?.backlinkCount ?? 0}</div>
-                <div className="text-[11px] text-white/40">Backlink</div>
-              </div>
-              <div className="rounded-xl bg-white/3 border border-white/5 p-3 text-center">
-                <div className="text-lg font-bold text-white">{scanProgress.summary?.geoQueries ?? 0}</div>
-                <div className="text-[11px] text-white/40">GEO sorgusu</div>
-              </div>
-              <div className="rounded-xl bg-white/3 border border-white/5 p-3 text-center">
-                <div className="text-lg font-bold text-white">{scanProgress.summary?.competitors ?? 0}</div>
-                <div className="text-[11px] text-white/40">Rakip bulundu</div>
+              <p className="text-xs text-white/50 mt-2">Site Sağlık Skoru</p>
+            </div>
+
+            {/* Technical SEO */}
+            <div className="rounded-2xl border border-orange-500/20 bg-orange-500/5 p-5">
+              <div className="flex items-center gap-2 mb-3"><AlertCircle className="h-4 w-4 text-orange-400" /><span className="text-xs font-semibold text-white">Teknik SEO</span></div>
+              <div className="space-y-1.5 text-sm">
+                <div className="flex justify-between"><span className="text-white/50">Taranan sayfa</span><span className="font-bold text-white">{data?.pagesScanned ?? 0}</span></div>
+                <div className="flex justify-between"><span className="text-white/50">Bulunan sorun</span><span className="font-bold text-white">{data?.issuesFound ?? 0}</span></div>
               </div>
             </div>
-          )}
+
+            {/* Keywords */}
+            <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-5">
+              <div className="flex items-center gap-2 mb-3"><Search className="h-4 w-4 text-indigo-400" /><span className="text-xs font-semibold text-white">Anahtar Kelime</span></div>
+              <div className="space-y-1.5 text-sm">
+                <div className="flex justify-between"><span className="text-white/50">Sıralanan kelime</span><span className="font-bold text-white">{data?.rankedCount ?? scanProgress?.summary?.keywords ?? 0}</span></div>
+                <div className="flex justify-between"><span className="text-white/50">Ort. pozisyon</span><span className="font-bold text-white">{data?.avgPosition?.toFixed(1) ?? '—'}</span></div>
+                <div className="flex justify-between"><span className="text-white/50">İlk sayfada</span><span className="font-bold text-white">{data?.firstPageCount ?? 0}</span></div>
+              </div>
+            </div>
+
+            {/* GEO + Backlink + Competitors */}
+            <div className="rounded-2xl border border-purple-500/20 bg-purple-500/5 p-5">
+              <div className="flex items-center gap-2 mb-3"><Brain className="h-4 w-4 text-purple-400" /><span className="text-xs font-semibold text-white">GEO & Otorite</span></div>
+              <div className="space-y-1.5 text-sm">
+                <div className="flex justify-between"><span className="text-white/50">AI görünürlük</span><span className="font-bold text-white">{data?.geoVisibilityScore ?? 0}%</span></div>
+                <div className="flex justify-between"><span className="text-white/50">AI bahsedilme</span><span className="font-bold text-white">{data?.latestGeoSnapshot?.mentionCount ?? 0}</span></div>
+                <div className="flex justify-between"><span className="text-white/50">Backlink</span><span className="font-bold text-white">{data?.backlinkCount ?? scanProgress?.summary?.backlinks ?? 0}</span></div>
+                <div className="flex justify-between"><span className="text-white/50">Rakip</span><span className="font-bold text-white">{scanProgress?.summary?.competitors ?? 0}</span></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Pages vs issues quick bar */}
+          <div className="rounded-2xl border border-white/10 bg-white/2 p-5">
+            <h3 className="text-xs font-semibold text-white/60 mb-3">Sayfa / Sorun Dağılımı</h3>
+            <ResponsiveContainer width="100%" height={120}>
+              <BarChart data={[{ name: 'Taranan Sayfa', v: data?.pagesScanned ?? 0 }, { name: 'Bulunan Sorun', v: data?.issuesFound ?? 0 }, { name: 'Backlink', v: data?.backlinkCount ?? 0 }, { name: 'Sıralanan Kelime', v: data?.rankedCount ?? 0 }]} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis type="number" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} allowDecimals={false} />
+                <YAxis type="category" dataKey="name" width={110} tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 10 }} />
+                <Tooltip contentStyle={{ background: '#111118', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', fontSize: 12 }} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+                <Bar dataKey="v" fill="#6366f1" radius={[0, 4, 4, 0]} name="Adet" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       )}
 

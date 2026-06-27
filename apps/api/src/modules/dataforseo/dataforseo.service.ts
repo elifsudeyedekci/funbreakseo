@@ -331,9 +331,13 @@ export class DataForSeoService {
               domain_from?: string;
               rank?: number;
               domain_from_rank?: number;
+              page_from_rank?: number;
+              backlink_spam_score?: number;
               dofollow?: boolean;
               is_broken?: boolean;
               anchor?: string;
+              text_pre?: string;
+              text_post?: string;
             }>;
           }>;
         }>;
@@ -341,7 +345,12 @@ export class DataForSeoService {
         {
           target: cleanDomain,
           limit,
+          // mode "as_is" returns EVERY individual backlink. The default
+          // (one_per_domain) collapses to ~1 row per referring domain, which is
+          // why the list showed ~13 while summary reported 27.
+          mode: 'as_is',
           include_subdomains: true,
+          backlinks_status_type: 'live',
           broken_backlinks: false,
           broken_pages: false,
         },
@@ -352,10 +361,10 @@ export class DataForSeoService {
         url_from: item.url_from ?? '',
         url_to: item.url_to ?? '',
         domain_from: item.domain_from ?? '',
-        // DR of the linking source: domain_from_rank is the source domain's
-        // authority (0-1000). item.rank is the individual backlink rank and is
-        // frequently 0, so prefer domain_from_rank and treat 0 as "missing".
-        rank: item.domain_from_rank || item.rank || 0,
+        // DR of the linking source. Prefer the source domain's authority
+        // (domain_from_rank, 0-1000); fall back to page rank. Use a non-zero
+        // preference so a present value always wins over a missing/0 field.
+        rank: item.domain_from_rank || item.page_from_rank || item.rank || 0,
         is_dofollow: item.dofollow ?? true,
         anchor: item.anchor ?? '',
       }));
@@ -659,15 +668,31 @@ export class DataForSeoService {
         target: cleanDomain,
         location_code: 2792,
         language_code: 'tr',
+        // Rank real rivals first: domains sharing the most keywords with us.
+        // Without this the API returns an arbitrary order full of low/zero
+        // overlap (and thus irrelevant) domains.
+        order_by: ['intersections,desc'],
         limit,
       }]);
       const items = response.tasks?.[0]?.result?.[0]?.items ?? [];
-      return (items as any[]).map((item) => ({
-        domain: item.domain as string,
-        avgPosition: (item.avg_position as number) ?? null,
-        intersections: (item.intersections as number) ?? 0,
-        etv: (item.etv as number) ?? null,
-      }));
+      return (items as any[]).map((item) => {
+        // intersections = shared ranked keywords. Some payloads nest the count
+        // under metrics, so read defensively.
+        const intersections =
+          (item.intersections as number) ??
+          (item.full_domain_metrics?.organic?.count as number) ??
+          (item.metrics?.organic?.count as number) ??
+          0;
+        return {
+          domain: item.domain as string,
+          avgPosition: (item.avg_position as number) ?? null,
+          intersections,
+          etv:
+            (item.etv as number) ??
+            (item.full_domain_metrics?.organic?.etv as number) ??
+            null,
+        };
+      });
     } catch (err) {
       this.logger.warn('getCompetitorDomains failed', err);
       return [];

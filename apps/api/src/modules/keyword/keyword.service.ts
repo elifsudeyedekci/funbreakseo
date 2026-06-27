@@ -348,7 +348,12 @@ export class KeywordService {
       .replace(/\/$/, '')
       .split('/')[0];
     const ranked = await this.dfs.getRankedKeywordsDetailed(cleanDomain, 200);
-    return ranked.filter((k) => this.isRelevantKeyword(k.keyword.toLowerCase()));
+    // Only keywords the domain ACTUALLY ranks for (a known Google position).
+    // ranked_keywords always carries a position for genuine rankings; dropping
+    // null-position rows prevents "kelimeler we don't rank for" from appearing.
+    return ranked
+      .filter((k) => k.position != null)
+      .filter((k) => this.isRelevantKeyword(k.keyword.toLowerCase()));
   }
 
   /** Informational/non-commercial query patterns (Turkish) to exclude from Keşfet. */

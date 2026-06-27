@@ -17,7 +17,8 @@ export default function BacklinksPage() {
     enabled: !!projectId,
     queryFn: () =>
       backlinkApi.list(projectId!, { status: tab !== 'all' ? tab.toUpperCase() : undefined })
-        .then((r) => (Array.isArray(r.data) ? r.data : (r.data?.data ?? [])) as Array<{
+        // GET /backlinks now returns { summary, items }; also tolerate a bare array.
+        .then((r) => (Array.isArray(r.data) ? r.data : (r.data?.items ?? r.data?.data ?? [])) as Array<{
           id: string;
           sourceUrl: string;
           sourceDomain: string;

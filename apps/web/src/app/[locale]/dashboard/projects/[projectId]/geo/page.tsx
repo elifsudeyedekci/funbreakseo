@@ -4,8 +4,8 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { useParams } from 'next/navigation';
-import { Brain, TrendingUp, Quote, AlertTriangle, Plus, X, Play, Loader2, Trash2, Info, Search, CheckCircle2, MinusCircle } from 'lucide-react';
-import { geoApi, api } from '@/lib/api';
+import { Brain, TrendingUp, Quote, AlertTriangle, Plus, X, Play, Loader2, Trash2, Info, Search, CheckCircle2, MinusCircle, PenLine, Sparkles } from 'lucide-react';
+import { geoApi, api, contentApi } from '@/lib/api';
 import type { GeoVisibilityData, GeoPlatform } from '@funbreakseo/shared';
 
 interface GeoQueryDetail {
@@ -29,6 +29,15 @@ const PLATFORM_LABELS: Record<GeoPlatform, string> = {
   CLAUDE: 'Claude',
   GOOGLE_AI_OVERVIEW: 'AI Overview',
   GOOGLE_AI_MODE: 'AI Mode',
+};
+
+const PLATFORM_DESC: Record<GeoPlatform, string> = {
+  CHATGPT: 'ChatGPT: OpenAI’ın yapay zeka sohbet asistanı — kullanıcılar ürün/hizmet sorularını burada soruyor.',
+  GEMINI: 'Gemini: Google’ın yapay zeka asistanı.',
+  PERPLEXITY: 'Perplexity: Kaynak gösteren yapay zeka arama motoru.',
+  CLAUDE: 'Claude: Anthropic’in yapay zeka asistanı.',
+  GOOGLE_AI_OVERVIEW: 'AI Overview: Google arama sonuçlarının en üstünde çıkan yapay zeka özeti.',
+  GOOGLE_AI_MODE: 'AI Mode: Google’ın tamamen yapay zeka ile çalışan yeni arama modu — klasik mavi linkler yerine sohbet tarzı cevap verir.',
 };
 
 const PLATFORM_COLORS: Record<GeoPlatform, string> = {
@@ -89,6 +98,22 @@ export default function GeoPage() {
     },
   });
 
+  // One-click action: turn a GEO gap (recommendation or query where the brand is
+  // not shown) into an AI-generated content draft. This is the "müşteri sorunu
+  // görsün AMA çözümü tek tıkla başlatabilsin" requirement.
+  const [actionResult, setActionResult] = useState<{ topic: string; ok: boolean } | null>(null);
+  const generateContentMutation = useMutation({
+    mutationFn: (topic: string) =>
+      contentApi.generate(projectId, {
+        title: `${topic} — kapsamlı rehber`,
+        focusKeyword: topic,
+        type: 'BLOG',
+      }),
+    onSuccess: (_d, topic) => setActionResult({ topic, ok: true }),
+    onError: (_e, topic) => setActionResult({ topic, ok: false }),
+  });
+  const generatingTopic = generateContentMutation.isPending ? generateContentMutation.variables : null;
+
   const { data, isLoading } = useQuery({
     queryKey: ['geo', projectId],
     queryFn: () =>
@@ -146,6 +171,16 @@ export default function GeoPage() {
           </div>
         </div>
       </div>
+
+      {/* One-click action result banner */}
+      {actionResult && (
+        <div className={`rounded-xl border px-4 py-3 text-sm flex items-center gap-2 ${actionResult.ok ? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-400' : 'border-red-500/20 bg-red-500/5 text-red-400'}`}>
+          {actionResult.ok ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+          {actionResult.ok
+            ? `"${actionResult.topic}" konusunda içerik taslağı oluşturuldu — İçerik sayfasından düzenleyip yayınlayabilirsiniz.`
+            : `"${actionResult.topic}" için içerik oluşturulamadı. İçerik kredinizi kontrol edip tekrar deneyin.`}
+        </div>
+      )}
 
       {/* GEO Queries section */}
       <div className="rounded-2xl border border-white/10 bg-white/2 p-5">
@@ -281,7 +316,8 @@ export default function GeoPage() {
             return (
               <div
                 key={platform}
-                className={`rounded-xl border p-4 text-center ${PLATFORM_COLORS[platform]}`}
+                title={PLATFORM_DESC[platform]}
+                className={`rounded-xl border p-4 text-center cursor-help ${PLATFORM_COLORS[platform]}`}
               >
                 <p className="text-xs font-medium mb-3">{label}</p>
                 <div className="space-y-1">
@@ -339,6 +375,26 @@ export default function GeoPage() {
                     ))}
                   </div>
                 )}
+                {/* Action: brand not shown for this query → offer to write content */}
+                {!q.mentioned && (
+                  <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2">
+                    <Info className="h-3.5 w-3.5 text-amber-400 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-[11px] text-white/60">
+                        Bu aramada yapay zeka markanızı göstermiyor. <strong className="text-white/80">Ne yapmalı?</strong> Bu konuda
+                        kapsamlı, soruyu net yanıtlayan bir içerik yayınlamak AI cevaplarında görünme şansınızı artırır.
+                      </p>
+                      <button
+                        onClick={() => generateContentMutation.mutate(q.prompt)}
+                        disabled={generateContentMutation.isPending}
+                        className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-purple-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-purple-500 disabled:opacity-50 transition-all"
+                      >
+                        {generatingTopic === q.prompt ? <Loader2 className="h-3 w-3 animate-spin" /> : <PenLine className="h-3 w-3" />}
+                        İçerik Yaz
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -366,6 +422,15 @@ export default function GeoPage() {
                   <h3 className="text-sm font-semibold text-white">{rec.title}</h3>
                 </div>
                 <p className="text-xs text-white/60 leading-relaxed">{rec.description}</p>
+                {/* One-click action: generate content to act on this recommendation */}
+                <button
+                  onClick={() => generateContentMutation.mutate(rec.title)}
+                  disabled={generateContentMutation.isPending}
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-purple-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-purple-500 disabled:opacity-50 transition-all"
+                >
+                  {generatingTopic === rec.title ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                  Bunun için İçerik Yaz
+                </button>
               </div>
             ))}
           </div>

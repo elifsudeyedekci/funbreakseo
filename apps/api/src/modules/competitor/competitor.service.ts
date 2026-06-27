@@ -69,13 +69,19 @@ export class CompetitorService {
     // Get from DataForSEO (already location_code 2792 + language_code tr)
     const fromDfs = await this.dfs.getCompetitorDomains(domain, 25);
 
-    // Filter out generic platforms and the project's own domain
-    const relevant = fromDfs.filter(
+    // Filter out generic platforms, the project's own domain, AND domains with
+    // zero shared keywords (they are not real competitors — this was the
+    // "ortak kelime: 0 / alakasız siteler" complaint). If the API returns
+    // intersection counts for nobody, fall back to keeping the non-generic ones
+    // so the page isn't empty.
+    const nonGeneric = fromDfs.filter(
       (c) =>
         c.domain &&
         !this.isGenericDomain(c.domain) &&
         this.cleanDomain(c.domain) !== domain,
     );
+    const withOverlap = nonGeneric.filter((c) => (c.intersections ?? 0) > 0);
+    const relevant = withOverlap.length > 0 ? withOverlap : nonGeneric;
 
     this.logger.log(
       `Competitor discovery for ${domain}: ${fromDfs.length} raw → ${relevant.length} relevant (filtered ${fromDfs.length - relevant.length} generic/self)`,
@@ -163,7 +169,9 @@ export class CompetitorService {
     });
     if (!competitor) throw new NotFoundException('Competitor not found');
     // Detailed ranked keywords include the competitor's live Google position.
-    const ranked = await this.dfs.getRankedKeywordsDetailed(this.cleanDomain(competitor.domain), 60);
+    // Fetch a high limit so ALL of the competitor's ranking keywords show, not
+    // just a handful.
+    const ranked = await this.dfs.getRankedKeywordsDetailed(this.cleanDomain(competitor.domain), 300);
     return ranked
       .filter((k) => k.keyword)
       .map((k) => ({

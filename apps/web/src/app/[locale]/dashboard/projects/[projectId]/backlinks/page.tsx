@@ -66,7 +66,23 @@ export default function BacklinksPage() {
 
       {tab === 'profile' && (
         <div className="space-y-4">
-          <div className="flex justify-end">
+          {/* Educational note: what backlinks are & why they matter */}
+          <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 px-4 py-3 text-sm text-white/70 leading-relaxed">
+            <span className="font-semibold text-white">Backlink nedir?</span> Başka web sitelerinin sizin sitenize verdiği bağlantılardır.
+            Google için bir <span className="text-white">güven oyu</span> gibidir: ne kadar çok ve kaliteli (yüksek DR’li) site size link verirse,
+            sıralamanız o kadar yükselir. <span className="text-white">Nasıl artırılır?</span> Kaliteli içerik üretin, sektör sitelerinde yayın yapın (digital PR),
+            iş ortaklarınızdan ve dizinlerden bağlantı alın. Aşağıda sitenize gelen mevcut backlinkleri görüyorsunuz.
+          </div>
+          <div className="flex justify-between items-center gap-3 flex-wrap">
+            {/* Dofollow/Nofollow legend */}
+            <div className="flex items-center gap-3 text-xs text-white/40">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-emerald-400" /> Dofollow = SEO değeri aktarır
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-white/40" /> Nofollow = değer aktarmaz
+              </span>
+            </div>
             <button
               onClick={() => syncMutation.mutate()}
               disabled={syncMutation.isPending}
@@ -76,14 +92,18 @@ export default function BacklinksPage() {
               Backlinkleri Getir
             </button>
           </div>
-          {/* Persistent summary cards (from stored backlinks — survive reload) */}
+          {/* Single source-of-truth summary cards (DB-derived, consistent across
+              reloads). Spam score / domain rank come from the latest sync (not
+              persisted), shown as "—" until a sync runs. */}
           {summary && (backlinks?.length ?? 0) > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
               {[
                 { label: 'Toplam Backlink', value: summary.total.toLocaleString() },
                 { label: 'Referans Domain', value: summary.referringDomains.toLocaleString() },
                 { label: 'Dofollow', value: summary.dofollow.toLocaleString() },
-                { label: 'Ort. DR', value: summary.avgDR },
+                { label: 'Nofollow', value: ((summary.total ?? 0) - (summary.dofollow ?? 0)).toLocaleString() },
+                { label: 'Ortalama DR', value: summary.avgDR },
+                { label: 'Spam Skoru', value: syncMutation.data?.spamScore != null ? `${syncMutation.data.spamScore}/100` : '—' },
               ].map((c) => (
                 <div key={c.label} className="rounded-xl border border-white/10 bg-white/2 p-3 text-center">
                   <div className="text-2xl font-bold text-white">{c.value}</div>
@@ -92,7 +112,8 @@ export default function BacklinksPage() {
               ))}
             </div>
           )}
-          {/* Sync summary */}
+          {/* Sync status message (no duplicate count — the cards above are the
+              single source of truth, so the number never flips on reload). */}
           {syncMutation.data && (
             syncMutation.data.error === 'SUBSCRIPTION_REQUIRED' ? (
               <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-sm text-amber-400">
@@ -103,25 +124,9 @@ export default function BacklinksPage() {
                 Backlink verisi alınamadı: {syncMutation.data.error}
               </div>
             ) : (
-              <>
-                <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 text-sm text-emerald-400">
-                  Senkronizasyon tamamlandı: {syncMutation.data.synced} backlink kaydedildi
-                  {syncMutation.data.total ? ` (toplam ${syncMutation.data.total})` : ''}
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {[
-                    { label: 'Toplam Backlink', value: (syncMutation.data.total ?? 0).toLocaleString() },
-                    { label: 'Referring Domain', value: (syncMutation.data.referringDomains ?? 0).toLocaleString() },
-                    { label: 'Domain Rank', value: syncMutation.data.domainRank ?? '—' },
-                    { label: 'Spam Skoru', value: syncMutation.data.spamScore ?? 0 },
-                  ].map((c) => (
-                    <div key={c.label} className="rounded-xl border border-white/10 bg-white/2 p-3 text-center">
-                      <div className="text-2xl font-bold text-white">{c.value}</div>
-                      <div className="text-xs text-white/40 mt-0.5">{c.label}</div>
-                    </div>
-                  ))}
-                </div>
-              </>
+              <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 text-sm text-emerald-400">
+                Senkronizasyon tamamlandı — {(syncMutation.data.total ?? 0).toLocaleString()} backlink, {(syncMutation.data.referringDomains ?? 0).toLocaleString()} referans domain bulundu.
+              </div>
             )
           )}
           {isLoading ? (
@@ -146,11 +151,13 @@ export default function BacklinksPage() {
                       <td className="px-4 py-3 text-white/50 text-xs max-w-[220px] break-all">{bl.targetUrl || '—'}</td>
                       <td className="px-4 py-3 text-white/70 text-xs max-w-[280px] break-words whitespace-normal">{bl.anchorText || '—'}</td>
                       <td className="px-4 py-3">
-                        <span className={['text-xs px-2 py-0.5 rounded-full font-medium', bl.isDofollow ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/10 text-white/50'].join(' ')}>
+                        <span
+                          title={bl.isDofollow ? 'Dofollow: Bu bağlantı SEO değeri (link juice) aktarır ve sıralamanıza katkı sağlar.' : 'Nofollow: Bu bağlantı SEO değeri aktarmaz ancak trafik ve görünürlük sağlayabilir.'}
+                          className={['text-xs px-2 py-0.5 rounded-full font-medium cursor-help', bl.isDofollow ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/10 text-white/50'].join(' ')}>
                           {bl.isDofollow ? 'Dofollow' : 'Nofollow'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-indigo-400 font-bold">{bl.domainRating ?? '—'}</td>
+                      <td className="px-4 py-3 text-indigo-400 font-bold" title="DR (Domain Rating): Bağlantıyı veren sitenin otorite skoru (0-1000). Yüksek olması daha değerli bir backlink demektir.">{bl.domainRating || '—'}</td>
                       <td className="px-4 py-3">
                         <span className={['text-xs px-2 py-0.5 rounded-full font-medium', bl.status === 'ACTIVE' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'].join(' ')}>
                           {bl.status === 'ACTIVE' ? t('active') : t('lost')}
