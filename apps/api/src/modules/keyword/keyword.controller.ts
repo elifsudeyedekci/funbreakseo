@@ -22,14 +22,26 @@ import {
   IsEnum,
   IsHexColor,
   IsBoolean,
+  IsNumber,
+  ValidateNested,
   MinLength,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { TrackingDepth, User } from '@prisma/client';
 import { KeywordService } from './keyword.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 
 // ─── DTOs ────────────────────────────────────────────────────────────────────
+
+export class GscKeywordDataDto {
+  @IsString() phrase!: string;
+  @IsNumber() position!: number;
+  @IsNumber() clicks!: number;
+  @IsNumber() impressions!: number;
+  @IsNumber() ctr!: number;
+  @IsOptional() @IsString() url?: string;
+}
 
 export class AddKeywordsDto {
   @IsArray()
@@ -55,6 +67,12 @@ export class AddKeywordsDto {
   @IsOptional()
   @IsString()
   tagId?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => GscKeywordDataDto)
+  gscData?: GscKeywordDataDto[];
 }
 
 export class KeywordResearchDto {

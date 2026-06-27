@@ -174,11 +174,33 @@ export default function KeywordsPage() {
       const params = maxPos > 0 ? { maxPosition: maxPos } : undefined;
       const r = await keywordApi.ranked(projectId, params);
       const raw: any[] = Array.isArray(r.data) ? r.data : (r.data?.data ?? []);
-      const phrases = Array.from(new Set(raw.map((k: any) => k.keyword ?? k.phrase).filter(Boolean)));
-      if (phrases.length === 0) return { added: 0 };
+      if (raw.length === 0) return { added: 0 };
+
+      // Deduplicate by phrase, keep first occurrence (highest ranked)
+      const seen = new Set<string>();
+      const gscData: Array<{ phrase: string; position: number; clicks: number; impressions: number; ctr: number; url?: string }> = [];
+      for (const k of raw) {
+        const phrase = (k.keyword ?? k.phrase ?? '').trim();
+        if (!phrase || seen.has(phrase.toLowerCase())) continue;
+        seen.add(phrase.toLowerCase());
+        gscData.push({
+          phrase,
+          position: k.position ?? 0,
+          clicks: k.clicks ?? 0,
+          impressions: k.impressions ?? 0,
+          ctr: k.ctr ?? 0,
+          url: k.url ?? undefined,
+        });
+      }
+      if (gscData.length === 0) return { added: 0 };
+
       // skipLimit: GSC returns the user's own site data — plan limits shouldn't block it
-      await keywordApi.add(projectId, { phrases, skipLimit: true });
-      return { added: phrases.length };
+      await keywordApi.add(projectId, {
+        phrases: gscData.map((g) => g.phrase),
+        skipLimit: true,
+        gscData,
+      });
+      return { added: gscData.length };
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['keywords', projectId] });

@@ -15,11 +15,21 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import axios from 'axios';
 
+export interface GscKeywordData {
+  phrase: string;
+  position: number;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  url?: string;
+}
+
 export interface AddKeywordsDto {
   phrases: string[];
   location?: string;
   language?: string;
   skipLimit?: boolean;
+  gscData?: GscKeywordData[];
   trackingDepth?: TrackingDepth;
   tagId?: string;
 }
@@ -150,6 +160,33 @@ export class KeywordService {
       data: created,
       skipDuplicates: true,
     });
+
+    // If GSC data was supplied, write rank records so positions show immediately
+    // without waiting for the rank-tracking worker.
+    if (dto.gscData && dto.gscData.length > 0) {
+      const phraseSet = new Set(dto.gscData.map((g) => g.phrase.normalize('NFC').trim().toLowerCase()));
+      const existingKws = await this.prisma.keyword.findMany({
+        where: { projectId, phrase: { in: Array.from(phraseSet) } },
+        select: { id: true, phrase: true },
+      });
+      const phraseToId = new Map(existingKws.map((k) => [k.phrase.toLowerCase(), k.id]));
+      const gscMap = new Map(dto.gscData.map((g) => [g.phrase.normalize('NFC').trim().toLowerCase(), g]));
+      const rankRecords = [];
+      for (const [lc, kwId] of phraseToId) {
+        const g = gscMap.get(lc);
+        if (!g || !g.position) continue;
+        rankRecords.push({
+          keywordId: kwId,
+          position: Math.round(g.position),
+          url: g.url ?? null,
+          serpFeatures: { source: 'gsc', clicks: g.clicks, impressions: g.impressions, ctr: g.ctr },
+          checkedAt: new Date(),
+        });
+      }
+      if (rankRecords.length > 0) {
+        await this.prisma.keywordRank.createMany({ data: rankRecords, skipDuplicates: false });
+      }
+    }
 
     // Queue an initial rank check for the whole project. The rank-tracking
     // worker only understands 'check-all' (projectId) / 'check-single'
