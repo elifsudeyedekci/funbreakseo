@@ -38,6 +38,18 @@ export class GeoService {
   // -------------------------------------------------------------------------
   // 2. listGeoQueries
   // -------------------------------------------------------------------------
+  async triggerScan(projectId: string) {
+    const queries = await this.prisma.geoQuery.findMany({
+      where: { projectId },
+      select: { id: true },
+    })
+    for (const q of queries) {
+      await this.geoQueue.add('check', { geoQueryId: q.id, projectId })
+    }
+    return { queued: queries.length }
+  }
+
+  // -------------------------------------------------------------------------
   async listGeoQueries(projectId: string) {
     return this.prisma.geoQuery.findMany({
       where: { projectId },

@@ -108,6 +108,8 @@ export const keywordApi = {
   research: (projectId: string, d: Record<string, unknown>) => api.post('/keywords/research', d),
   summary: (projectId: string) => api.get(`/projects/${projectId}/keywords/summary`),
   refreshRank: (id: string) => api.post(`/keywords/${id}/refresh-rank`),
+  refreshMetrics: (projectId: string) => api.post(`/projects/${projectId}/keywords/refresh-metrics`),
+  suggestions: (projectId: string) => api.get(`/projects/${projectId}/keywords/suggestions`),
 };
 
 export const crawlerApi = {
@@ -132,6 +134,7 @@ export const contentApi = {
 export const geoApi = {
   addQuery: (projectId: string, d: Record<string, unknown>) => api.post(`/projects/${projectId}/geo/queries`, d),
   listQueries: (projectId: string) => api.get(`/projects/${projectId}/geo/queries`),
+  triggerScan: (projectId: string) => api.post(`/projects/${projectId}/geo/scan`),
   overview: (projectId: string) => api.get(`/projects/${projectId}/geo/overview`),
   competitors: (projectId: string) => api.get(`/projects/${projectId}/geo/competitors`),
   recommendations: (projectId: string) => api.get(`/projects/${projectId}/geo/recommendations`),
@@ -147,6 +150,7 @@ export const outreachApi = {
   generateEmails: (id: string) => api.post(`/campaigns/${id}/generate-emails`),
   start: (id: string) => api.post(`/campaigns/${id}/start`),
   backlinks: (projectId: string, params?: Record<string, unknown>) => api.get(`/projects/${projectId}/backlinks`, { params }),
+  syncBacklinks: (projectId: string) => api.post(`/projects/${projectId}/backlinks/sync`),
   marketListings: (params?: Record<string, unknown>) => api.get('/market/listings', { params }),
   orders: (projectId: string) => api.get(`/projects/${projectId}/backlink-orders`),
 };

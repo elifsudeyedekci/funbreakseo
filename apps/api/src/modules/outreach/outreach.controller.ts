@@ -64,6 +64,11 @@ export class OutreachController {
     return this.outreachService.getBacklinks(id)
   }
 
+  @Post('projects/:id/backlinks/sync')
+  syncBacklinks(@Param('id') id: string) {
+    return this.outreachService.syncBacklinks(id)
+  }
+
   @Get('projects/:id/backlink-orders')
   getBacklinkOrders(@Param('id') id: string) {
     return this.outreachService.getBacklinkOrders(id)

@@ -1,10 +1,10 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
-;
-import { useTranslations } from 'next-intl'
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { useParams } from 'next/navigation';
-import { Brain, TrendingUp, Quote, AlertTriangle } from 'lucide-react';
+import { Brain, TrendingUp, Quote, AlertTriangle, Plus, X, Play, Loader2 } from 'lucide-react';
 import { geoApi } from '@/lib/api';
 import type { GeoVisibilityData, GeoPlatform } from '@funbreakseo/shared';
 
@@ -34,6 +34,32 @@ interface GeoData {
 export default function GeoPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const t = useTranslations('geoPage');
+  const queryClient = useQueryClient();
+  const [showAddQuery, setShowAddQuery] = useState(false);
+  const [queryInput, setQueryInput] = useState('');
+
+  const { data: queriesData } = useQuery({
+    queryKey: ['geo-queries', projectId],
+    queryFn: () => geoApi.listQueries(projectId).then((r) => Array.isArray(r.data) ? r.data : (r.data?.data ?? [])),
+  });
+
+  const addQueryMutation = useMutation({
+    mutationFn: (prompt: string) => geoApi.addQuery(projectId, { prompt }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['geo-queries', projectId] });
+      setQueryInput('');
+      setShowAddQuery(false);
+    },
+  });
+
+  const scanMutation = useMutation({
+    mutationFn: () => geoApi.triggerScan(projectId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['geo', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['geo-queries', projectId] });
+    },
+  });
+
   const { data, isLoading } = useQuery({
     queryKey: ['geo', projectId],
     queryFn: () =>
@@ -63,6 +89,81 @@ export default function GeoPage() {
           <p className="text-white/50 text-sm">{t('subtitle')}</p>
         </div>
       </div>
+
+      {/* GEO Queries section */}
+      <div className="rounded-2xl border border-white/10 bg-white/2 p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-semibold text-white">AI Sorguları</h2>
+          <div className="flex gap-2">
+            <button
+              onClick={() => scanMutation.mutate()}
+              disabled={scanMutation.isPending || !queriesData?.length}
+              className="inline-flex items-center gap-2 rounded-xl border border-purple-500/30 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-400 hover:bg-purple-500/20 disabled:opacity-50 transition-all"
+            >
+              {scanMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
+              Tarama Başlat
+            </button>
+            <button
+              onClick={() => setShowAddQuery(true)}
+              className="inline-flex items-center gap-2 rounded-xl bg-purple-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-purple-500 transition-all"
+            >
+              <Plus className="h-3 w-3" />
+              Sorgu Ekle
+            </button>
+          </div>
+        </div>
+
+        {queriesData && queriesData.length > 0 ? (
+          <div className="space-y-2">
+            {(queriesData as Array<{ id: string; prompt: string; createdAt: string }>).map((q) => (
+              <div key={q.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/5 border border-white/5">
+                <span className="text-sm text-white/70">{q.prompt}</span>
+                <span className="text-xs text-white/30">{new Date(q.createdAt).toLocaleDateString('tr-TR')}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-white/30 text-center py-4">
+            Henüz sorgu eklenmedi. "Sorgu Ekle" butonuna basarak AI görünürlük testi için sorgular tanımlayın.
+          </p>
+        )}
+      </div>
+
+      {showAddQuery && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#111118] p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-semibold text-white">GEO Sorgusu Ekle</h2>
+              <button onClick={() => setShowAddQuery(false)} className="p-1 text-white/40 hover:text-white">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="text-sm text-white/50 mb-4">
+              Kullanıcıların AI platformlarında sorabileceği soruları girin. (ör: "seo aracı önerir misin?")
+            </p>
+            <textarea
+              rows={3}
+              value={queryInput}
+              onChange={(e) => setQueryInput(e.target.value)}
+              placeholder="Markanız için seo aracı önerin..."
+              className="w-full px-3 py-2 rounded-xl border border-white/10 bg-white/5 text-sm text-white placeholder-white/30 resize-none focus:border-purple-500/50 focus:outline-none mb-4"
+            />
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setShowAddQuery(false)} className="px-4 py-2 text-sm text-white/50 hover:text-white">
+                İptal
+              </button>
+              <button
+                onClick={() => addQueryMutation.mutate(queryInput.trim())}
+                disabled={!queryInput.trim() || addQueryMutation.isPending}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 text-sm font-semibold text-white hover:bg-purple-500 disabled:opacity-50"
+              >
+                {addQueryMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                Ekle
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Key metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

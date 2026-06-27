@@ -19,7 +19,7 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: 'geoPage' });
+  const t = await getTranslations({ locale, namespace: 'geoLandingPage' });
   return {
     title: `GEO - ${t('titleHighlight')} | FunBreak SEO`,
     description: t('subtitle'),
@@ -32,7 +32,7 @@ export default async function GeoPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: 'geoPage' });
+  const t = await getTranslations({ locale, namespace: 'geoLandingPage' });
 
   const howItems = t.raw('howItems') as Array<{ title: string; desc: string }>;
 

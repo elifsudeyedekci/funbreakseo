@@ -49,28 +49,25 @@ export default function CustomersPage() {
     queryFn: async () => {
       try {
         const r = await adminApi.get('/admin/customers', { params: { limit: 100 } });
-        const orgs = r.data?.data ?? [];
-        if (Array.isArray(orgs) && orgs.length > 0) {
-          return orgs.map((org: Record<string, unknown>) => ({
-            id: org.id,
-            fullName: (org.users as Array<{fullName?: string}>)?.[0]?.fullName ?? (org.name as string) ?? 'Bilinmiyor',
-            email: (org.users as Array<{email?: string}>)?.[0]?.email ?? '',
-            company: (org.name as string) ?? '',
-            plan: ((org.subscription as {plan?: {name?: string}})?.plan?.name) ?? 'FREE',
-            status: ((org.subscription as {status?: string})?.status) ?? 'ACTIVE',
-            createdAt: org.createdAt as string,
-            lastLoginAt: (org.users as Array<{lastLoginAt?: string}>)?.[0]?.lastLoginAt ?? null,
-            healthScore: (org.healthScore as number) ?? 50,
-            churnRisk: (org.churnRisk as string) ?? 'LOW',
-          }));
-        }
-        return MOCK_CUSTOMERS;
+        const orgs = Array.isArray(r.data) ? r.data : (r.data?.data ?? r.data?.items ?? []);
+        return orgs.map((org: Record<string, unknown>) => ({
+          id: org.id,
+          fullName: (org.users as Array<{fullName?: string}>)?.[0]?.fullName ?? (org.name as string) ?? 'Bilinmiyor',
+          email: (org.users as Array<{email?: string}>)?.[0]?.email ?? '',
+          company: (org.name as string) ?? '',
+          plan: ((org.subscription as {plan?: {name?: string}})?.plan?.name) ?? 'FREE',
+          status: ((org.subscription as {status?: string})?.status) ?? 'ACTIVE',
+          createdAt: org.createdAt as string,
+          lastLoginAt: (org.users as Array<{lastLoginAt?: string}>)?.[0]?.lastLoginAt ?? null,
+          healthScore: (org.healthScore as number) ?? 50,
+          churnRisk: (org.churnRisk as string) ?? 'LOW',
+        })) as Customer[];
       }
-      catch { return MOCK_CUSTOMERS; }
+      catch { return [] as Customer[]; }
     },
   });
 
-  const customers = (data ?? MOCK_CUSTOMERS) as Customer[];
+  const customers = (data ?? []) as Customer[];
   const highRisk = customers.filter((c) => c.churnRisk === 'HIGH').length;
 
   const columns: ColumnDef<Customer>[] = [

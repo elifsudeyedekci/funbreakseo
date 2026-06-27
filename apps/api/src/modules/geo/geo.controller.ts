@@ -40,6 +40,12 @@ export class GeoController {
     return this.geoService.addGeoQuery(id, body)
   }
 
+  // POST /projects/:id/geo/scan
+  @Post('projects/:id/geo/scan')
+  triggerScan(@Param('id') id: string, @CurrentUser() _user: User) {
+    return this.geoService.triggerScan(id)
+  }
+
   // GET /projects/:id/geo/queries
   @Get('projects/:id/geo/queries')
   listGeoQueries(@Param('id') id: string, @CurrentUser() _user: User) {

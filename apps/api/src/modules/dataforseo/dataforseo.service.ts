@@ -138,7 +138,7 @@ export class DataForSeoService {
 
     const response = await this.request<{
       tasks: Array<{
-        result?: KeywordResearchResult[];
+        result?: Array<Record<string, unknown>>;
       }>;
     }>('/keywords_data/google_ads/keywords_for_keywords/live', [
       {
@@ -148,7 +148,15 @@ export class DataForSeoService {
       },
     ]);
 
-    return response.tasks?.[0]?.result ?? [];
+    const raw = response.tasks?.[0]?.result ?? [];
+    return raw.map((item) => ({
+      keyword: item['keyword'] as string,
+      search_volume: (item['search_volume'] as number) ?? null,
+      keyword_difficulty: (item['keyword_difficulty'] as number) ?? null,
+      cpc: (item['cpc'] as number) ?? null,
+      intent: (item['keyword_intent'] as { label?: string } | null)?.label ?? null,
+      competition: (item['competition'] as number) ?? null,
+    }));
   }
 
   // ─── Backlinks ───────────────────────────────────────────────────────────────

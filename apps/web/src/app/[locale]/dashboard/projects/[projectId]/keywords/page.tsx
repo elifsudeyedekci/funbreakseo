@@ -12,7 +12,7 @@ import {
   getSortedRowModel,
   type SortingState,
 } from '@tanstack/react-table';
-import { Plus, TrendingUp, TrendingDown, Minus, Search, X, ChevronUp, ChevronDown, Download } from 'lucide-react';
+import { Plus, TrendingUp, TrendingDown, Minus, Search, X, ChevronUp, ChevronDown, Download, Trash2, RefreshCw } from 'lucide-react';
 import { keywordApi } from '@/lib/api';
 import { cn, exportToCSV } from '@/lib/utils';
 import type { KeywordIntent } from '@funbreakseo/shared';
@@ -126,6 +126,16 @@ export default function KeywordsPage() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => keywordApi.delete(projectId, id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['keywords', projectId] }),
+  });
+
+  const refreshMetricsMutation = useMutation({
+    mutationFn: () => keywordApi.refreshMetrics(projectId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['keywords', projectId] }),
+  });
+
   const keywords = data || [];
 
   const firstPageCount = keywords.filter((k) => k.position !== null && k.position <= 10).length;
@@ -198,6 +208,20 @@ export default function KeywordsPage() {
         );
       },
     }),
+    columnHelper.display({
+      id: 'actions',
+      header: '',
+      cell: (info) => (
+        <button
+          onClick={() => deleteMutation.mutate(info.row.original.id)}
+          disabled={deleteMutation.isPending}
+          className="p-1.5 rounded-lg text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+          title="Sil"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      ),
+    }),
   ];
 
   const table = useReactTable({
@@ -262,6 +286,17 @@ export default function KeywordsPage() {
           >
             ✦ Keşfet
           </button>
+          {keywords.length > 0 && (
+            <button
+              onClick={() => refreshMetricsMutation.mutate()}
+              disabled={refreshMetricsMutation.isPending}
+              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-white/70 hover:bg-white/10 transition-all disabled:opacity-50"
+              title="Metrikleri Yenile"
+            >
+              <RefreshCw className={cn('h-4 w-4', refreshMetricsMutation.isPending && 'animate-spin')} />
+              Metrikleri Yenile
+            </button>
+          )}
           {keywords.length > 0 && (
             <button
               onClick={() => exportToCSV(

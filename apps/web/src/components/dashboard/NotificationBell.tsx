@@ -43,7 +43,7 @@ export function NotificationBell() {
   async function loadNotifications() {
     try {
       const res = await notificationApi.list();
-      const items = res.data.data || [];
+      const items: Notification[] = Array.isArray(res.data) ? res.data : (res.data?.data ?? []);
       setNotifications(items);
       setUnread(items.filter((n: Notification) => !n.read).length);
     } catch {

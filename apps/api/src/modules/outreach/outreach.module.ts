@@ -4,9 +4,10 @@ import { OutreachController } from './outreach.controller'
 import { OutreachService } from './outreach.service'
 import { OutreachWorker } from './outreach.worker'
 import { PrismaService } from '../../prisma.service'
+import { DataForSeoModule } from '../dataforseo/dataforseo.module'
 
 @Module({
-  imports: [BullModule.registerQueue({ name: 'outreach' })],
+  imports: [BullModule.registerQueue({ name: 'outreach' }), DataForSeoModule],
   controllers: [OutreachController],
   providers: [OutreachService, OutreachWorker, PrismaService],
   exports: [OutreachService],

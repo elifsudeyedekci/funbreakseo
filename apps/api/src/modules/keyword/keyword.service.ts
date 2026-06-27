@@ -95,7 +95,7 @@ export class KeywordService {
         dto.location ?? 'Turkey',
       );
       for (const r of research) {
-        volumeMap[r.keyword] = {
+        volumeMap[(r.keyword ?? '').toLowerCase()] = {
           volume: r.search_volume ?? 0,
           difficulty: r.keyword_difficulty ?? 0,
           cpc: r.cpc ?? 0,
@@ -107,7 +107,7 @@ export class KeywordService {
     }
 
     const created: Prisma.KeywordCreateManyInput[] = dto.phrases.map((phrase) => {
-      const vol = volumeMap[phrase];
+      const vol = volumeMap[phrase.toLowerCase()];
       return {
         projectId,
         phrase,
@@ -167,6 +167,104 @@ export class KeywordService {
       orderBy: { checkedAt: 'desc' },
       take: 90,
     });
+  }
+
+  // ─── Refresh metrics for all keywords in a project ──────────────────────────
+
+  async refreshAllKeywordMetrics(projectId: string, organizationId: string) {
+    await this.assertProjectAccess(projectId, organizationId);
+
+    const keywords = await this.prisma.keyword.findMany({
+      where: { projectId },
+      select: { id: true, phrase: true, location: true },
+    });
+
+    if (keywords.length === 0) return { updated: 0 };
+
+    const batches: typeof keywords[] = [];
+    for (let i = 0; i < keywords.length; i += 50) {
+      batches.push(keywords.slice(i, i + 50));
+    }
+
+    let updated = 0;
+    for (const batch of batches) {
+      try {
+        const phrases = batch.map((k) => k.phrase);
+        const location = batch[0].location ?? 'Turkey';
+        const research = await this.dfs.keywordResearch(phrases, location);
+
+        const volumeMap: Record<string, typeof research[0]> = {};
+        for (const r of research) {
+          volumeMap[(r.keyword ?? '').toLowerCase()] = r;
+        }
+
+        for (const kw of batch) {
+          const vol = volumeMap[kw.phrase.toLowerCase()];
+          if (!vol) continue;
+          await this.prisma.keyword.update({
+            where: { id: kw.id },
+            data: {
+              searchVolume: vol.search_volume ?? undefined,
+              difficulty: vol.keyword_difficulty ?? undefined,
+              cpc: vol.cpc ?? undefined,
+              intent: this.mapIntent(vol.intent ?? undefined),
+            },
+          });
+          updated++;
+        }
+      } catch (err) {
+        this.logger.warn('Batch metric refresh failed', err);
+      }
+    }
+
+    return { updated };
+  }
+
+  // ─── Suggest keywords for domain ─────────────────────────────────────────────
+
+  async suggestKeywordsForDomain(projectId: string, organizationId: string) {
+    await this.assertProjectAccess(projectId, organizationId);
+
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      select: { domain: true, name: true },
+    });
+
+    if (!project) throw new Error('Project not found');
+
+    const brandName = project.name ?? project.domain.replace(/^https?:\/\//, '').split('.')[0];
+    const seedKeywords = [brandName, `${brandName} nedir`, `${brandName} fiyat`, `${brandName} kullanımı`];
+
+    try {
+      const research = await this.dfs.keywordResearch(seedKeywords, 'Turkey');
+      const related = await this.dfs.getRelatedKeywords(brandName);
+
+      const combined = [
+        ...research.map((r) => ({
+          keyword: r.keyword,
+          search_volume: r.search_volume,
+          keyword_difficulty: r.keyword_difficulty,
+          cpc: r.cpc,
+          intent: r.intent,
+        })),
+        ...related.map((r) => ({
+          keyword: r.keyword,
+          search_volume: r.search_volume,
+          keyword_difficulty: r.keyword_difficulty,
+          cpc: r.cpc,
+          intent: null,
+        })),
+      ];
+
+      const unique = Array.from(
+        new Map(combined.map((k) => [k.keyword, k])).values(),
+      ).slice(0, 50);
+
+      return unique;
+    } catch (err) {
+      this.logger.warn('Keyword suggestion fetch failed', err);
+      return [];
+    }
   }
 
   // ─── Keyword research via DataForSEO ─────────────────────────────────────────

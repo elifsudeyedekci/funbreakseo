@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, Logger } from '@nestjs/common'
 import { InjectQueue } from '@nestjs/bullmq'
 import { Queue } from 'bullmq'
 import { PrismaService } from '../../prisma.service'
+import { DataForSeoService } from '../dataforseo/dataforseo.service'
 
 interface CreateCampaignDto {
   name: string
@@ -12,9 +13,12 @@ interface CreateCampaignDto {
 
 @Injectable()
 export class OutreachService {
+  private readonly logger = new Logger(OutreachService.name)
+
   constructor(
     private readonly prisma: PrismaService,
     @InjectQueue('outreach') private readonly queue: Queue,
+    private readonly dfs: DataForSeoService,
   ) {}
 
   async createCampaign(
@@ -131,6 +135,59 @@ export class OutreachService {
       orderBy: { firstSeen: 'desc' },
       take: 100,
     })
+  }
+
+  async syncBacklinks(projectId: string) {
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      select: { domain: true },
+    })
+    if (!project) return { synced: 0 }
+
+    const domain = project.domain.replace(/^https?:\/\//, '').split('/')[0]
+
+    try {
+      const profile = await this.dfs.getBacklinks(domain)
+      const now = new Date()
+      let synced = 0
+
+      for (const item of profile.sample) {
+        try {
+          const existing = await this.prisma.backlink.findFirst({
+            where: { projectId, sourceUrl: item.url_from },
+          })
+          if (existing) {
+            await this.prisma.backlink.update({
+              where: { id: existing.id },
+              data: { lastSeen: now, status: 'ACTIVE', isDofollow: item.is_dofollow, anchorText: item.anchor ?? null },
+            })
+          } else {
+            await this.prisma.backlink.create({
+              data: {
+                projectId,
+                sourceDomain: item.domain_from,
+                sourceUrl: item.url_from,
+                targetUrl: item.url_to,
+                anchorText: item.anchor ?? null,
+                domainRating: item.rank ?? null,
+                isDofollow: item.is_dofollow,
+                firstSeen: now,
+                lastSeen: now,
+                status: 'ACTIVE',
+              },
+            })
+          }
+          synced++
+        } catch (err) {
+          this.logger.warn(`Failed to sync backlink ${item.url_from}`, err)
+        }
+      }
+
+      return { synced, total: profile.backlinks_num, referringDomains: profile.referring_domains }
+    } catch (err) {
+      this.logger.error('DataForSEO backlinks sync failed', err)
+      return { synced: 0, error: 'DataForSEO fetch failed' }
+    }
   }
 
   async getBacklinkOrders(projectId: string) {

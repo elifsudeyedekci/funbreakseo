@@ -165,6 +165,24 @@ export class KeywordController {
     return this.keywordService.refreshRank(id, user.organizationId!);
   }
 
+  @Post('projects/:projectId/keywords/refresh-metrics')
+  @ApiOperation({ summary: 'Refresh DataForSEO metrics for all keywords in project' })
+  async refreshMetrics(
+    @CurrentUser() user: User,
+    @Param('projectId') projectId: string,
+  ) {
+    return this.keywordService.refreshAllKeywordMetrics(projectId, user.organizationId!);
+  }
+
+  @Get('projects/:projectId/keywords/suggestions')
+  @ApiOperation({ summary: 'Get AI-powered keyword suggestions for project domain' })
+  async getSuggestions(
+    @CurrentUser() user: User,
+    @Param('projectId') projectId: string,
+  ) {
+    return this.keywordService.suggestKeywordsForDomain(projectId, user.organizationId!);
+  }
+
   // ─── Keyword Tags ─────────────────────────────────────────────────────────────
 
   @Get('projects/:projectId/keyword-tags')

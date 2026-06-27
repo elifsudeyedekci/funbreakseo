@@ -14,13 +14,13 @@ const STAT_CARDS: Array<{ key: string; label: string; icon: React.ElementType; c
 export default function AdminDashboardPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['admin-dashboard'],
-    queryFn: () => admin.dashboard().then((r) => r.data?.data ?? {}),
+    queryFn: () => admin.dashboard().then((r) => r.data?.data ?? r.data ?? {}),
     refetchInterval: 60_000,
   });
 
   const { data: health } = useQuery({
     queryKey: ['admin-health'],
-    queryFn: () => admin.systemHealth().then((r) => r.data?.data ?? null),
+    queryFn: () => admin.systemHealth().then((r) => r.data?.data ?? r.data ?? null),
     refetchInterval: 30_000,
   });
 
