@@ -211,8 +211,13 @@ export class KeywordController {
   async rankedKeywords(
     @CurrentUser() user: User,
     @Param('projectId') projectId: string,
+    @Query('maxPosition') maxPosition?: string,
+    @Query('minClicks') minClicks?: string,
   ) {
-    return this.keywordService.getRankedKeywordsForProject(projectId, user.organizationId!);
+    return this.keywordService.getRankedKeywordsForProject(projectId, user.organizationId!, {
+      maxPosition: maxPosition ? parseInt(maxPosition, 10) : undefined,
+      minClicks: minClicks ? parseInt(minClicks, 10) : undefined,
+    });
   }
 
   // ─── Keyword Tags ─────────────────────────────────────────────────────────────

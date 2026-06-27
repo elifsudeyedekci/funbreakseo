@@ -129,7 +129,8 @@ export const keywordApi = {
   refreshRanks: (projectId: string) => api.post(`/projects/${projectId}/keywords/refresh-ranks`),
   suggestions: (projectId: string) => api.get(`/projects/${projectId}/keywords/suggestions`),
   discover: (projectId: string) => api.get(`/projects/${projectId}/keywords/discover`),
-  ranked: (projectId: string) => api.get(`/projects/${projectId}/keywords/ranked`),
+  ranked: (projectId: string, params?: { maxPosition?: number; minClicks?: number }) =>
+    api.get(`/projects/${projectId}/keywords/ranked`, { params }),
 };
 
 export const crawlerApi = {

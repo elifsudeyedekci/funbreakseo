@@ -356,13 +356,19 @@ export class KeywordService {
   }
 
   /** Ranked keywords the project domain currently appears for on Google (with positions). */
-  async getRankedKeywordsForProject(projectId: string, organizationId: string) {
+  async getRankedKeywordsForProject(
+    projectId: string,
+    organizationId: string,
+    filters: { maxPosition?: number; minClicks?: number } = {},
+  ) {
     await this.assertProjectAccess(projectId, organizationId);
     const project = await this.prisma.project.findUnique({
       where: { id: projectId },
       select: { domain: true, country: true, language: true },
     });
     if (!project) throw new NotFoundException('Project not found');
+
+    const { maxPosition, minClicks } = filters;
 
     // Try GSC first if the organization has connected Google Search Console.
     const gscIntegration = await this.prisma.apiIntegration.findFirst({
@@ -371,9 +377,14 @@ export class KeywordService {
     if (gscIntegration) {
       try {
         const gscKeywords = await this.fetchFromGsc(project.domain, gscIntegration);
-        if (gscKeywords.length > 0) {
-          this.logger.log(`GSC: ${gscKeywords.length} keywords for ${project.domain}`);
-          return gscKeywords;
+        const filtered = gscKeywords.filter((k) => {
+          if (maxPosition !== undefined && k.position > maxPosition) return false;
+          if (minClicks !== undefined && k.clicks < minClicks) return false;
+          return true;
+        });
+        if (filtered.length > 0) {
+          this.logger.log(`GSC: ${filtered.length}/${gscKeywords.length} keywords after filter for ${project.domain}`);
+          return filtered;
         }
       } catch (err) {
         this.logger.warn('GSC fetch failed, falling back to DataForSEO', err);
@@ -391,7 +402,11 @@ export class KeywordService {
       .split('/')[0];
     const ranked = await this.dfs.getRankedKeywordsDetailed(cleanDomain, 1000, locationCode, language);
     return ranked
-      .filter((k) => k.position != null && k.keyword && !this.isCorrupted(k.keyword))
+      .filter((k) => {
+        if (!k.position || !k.keyword || this.isCorrupted(k.keyword)) return false;
+        if (maxPosition !== undefined && k.position > maxPosition) return false;
+        return true;
+      })
       .sort((a, b) => (a.position ?? 999) - (b.position ?? 999));
   }
 
