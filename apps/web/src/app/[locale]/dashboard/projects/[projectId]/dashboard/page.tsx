@@ -3,11 +3,11 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend,
 } from 'recharts';
-import { TrendingUp, TrendingDown, Search, Brain, AlertCircle, Clock, Zap, CheckCircle2, Globe, Link2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Search, Brain, AlertCircle, Clock, Zap, CheckCircle2, Globe, Link2, X, Download, ArrowRight, FileBarChart } from 'lucide-react';
 import { projectApi, keywordApi } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 
@@ -83,15 +83,46 @@ interface ScanProgress {
   summary?: Record<string, number>;
 }
 
+/** Build a standalone, printable HTML scan report and download it. */
+function downloadReport(name: string, d: OverviewData | undefined, summary?: Record<string, number>) {
+  const row = (label: string, value: string | number) =>
+    `<tr><td style="padding:8px 12px;color:#555">${label}</td><td style="padding:8px 12px;font-weight:700;text-align:right">${value}</td></tr>`;
+  const html = `<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>Tarama Raporu</title>
+<style>body{font-family:system-ui,Arial,sans-serif;max-width:760px;margin:40px auto;color:#111;padding:0 20px}
+h1{font-size:22px}h2{font-size:15px;margin-top:28px;border-bottom:2px solid #eee;padding-bottom:6px}
+table{width:100%;border-collapse:collapse;margin-top:8px}tr:nth-child(even){background:#fafafa}
+.score{font-size:40px;font-weight:800;color:${(d?.healthScore ?? 0) >= 70 ? '#16a34a' : (d?.healthScore ?? 0) >= 40 ? '#ea580c' : '#dc2626'}}
+.muted{color:#888;font-size:12px}</style></head><body>
+<h1>FunBreakSEO — Tarama Raporu</h1>
+<p class="muted">${name} · ${new Date().toLocaleString('tr-TR')}</p>
+<h2>Site Sağlığı</h2><p class="score">${d?.healthScore ?? 0}<span style="font-size:16px;color:#999">/100</span></p>
+<h2>Teknik SEO</h2><table>${row('Taranan sayfa', d?.pagesScanned ?? 0)}${row('Bulunan sorun', d?.issuesFound ?? 0)}</table>
+<h2>Anahtar Kelime</h2><table>${row('Sıralanan kelime', d?.rankedCount ?? summary?.keywords ?? 0)}${row('Ortalama pozisyon', d?.avgPosition?.toFixed(1) ?? '—')}${row('İlk sayfada (1-10)', d?.firstPageCount ?? 0)}${row('İlk 3', d?.top3Count ?? 0)}</table>
+<h2>GEO / AI Görünürlük</h2><table>${row('AI görünürlük skoru', `${d?.geoVisibilityScore ?? 0}%`)}${row('AI bahsedilme', d?.latestGeoSnapshot?.mentionCount ?? 0)}${row('Kaynak gösterilme', d?.latestGeoSnapshot?.citationCount ?? 0)}</table>
+<h2>Otorite</h2><table>${row('Backlink', d?.backlinkCount ?? summary?.backlinks ?? 0)}${row('Rakip', summary?.competitors ?? 0)}</table>
+<p class="muted" style="margin-top:30px">Bu rapor FunBreakSEO tarafından otomatik üretilmiştir.</p>
+</body></html>`;
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `tarama-raporu-${name}-${new Date().toISOString().slice(0, 10)}.html`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function ProjectDashboardPage() {
   const { projectId } = useParams<{ projectId: string }>();
+  const locale = useLocale();
   const t = useTranslations('projectDashboard');
   const [scanning, setScanning] = useState(false);
+  const [scanModalOpen, setScanModalOpen] = useState(false);
 
   const fullScanMutation = useMutation({
     mutationFn: () => projectApi.fullScan(projectId).then((r) => r.data),
-    onSuccess: () => setScanning(true),
+    onSuccess: () => { setScanning(true); setScanModalOpen(true); },
   });
+  const base = `/${locale}/dashboard/projects/${projectId}`;
 
   const { data: scanProgress } = useQuery<ScanProgress>({
     queryKey: ['full-scan-status', projectId],
@@ -146,20 +177,40 @@ export default function ProjectDashboardPage() {
           <h3 className="text-sm font-semibold text-white">Tam Tarama</h3>
           <p className="text-xs text-white/40 mt-0.5">Teknik SEO + Anahtar Kelime + Backlink + GEO + Rakip — tek seferde hepsini çalıştır</p>
         </div>
-        <button
-          onClick={() => fullScanMutation.mutate()}
-          disabled={fullScanMutation.isPending || scanProgress?.status === 'running'}
-          className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 transition-all"
-        >
-          {fullScanMutation.isPending || scanProgress?.status === 'running' ? (
-            <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Taranıyor…</>
-          ) : (
-            <><Zap className="h-4 w-4" /> Tam Tarama Başlat</>
+        <div className="flex items-center gap-2">
+          {(data && (data.pagesScanned ?? 0) > 0) && (
+            <button
+              onClick={() => setScanModalOpen(true)}
+              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white/70 hover:bg-white/10 transition-all"
+            >
+              <FileBarChart className="h-4 w-4" /> Son Raporu Gör
+            </button>
           )}
-        </button>
+          <button
+            onClick={() => fullScanMutation.mutate()}
+            disabled={fullScanMutation.isPending || scanProgress?.status === 'running'}
+            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 transition-all"
+          >
+            {fullScanMutation.isPending || scanProgress?.status === 'running' ? (
+              <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Taranıyor…</>
+            ) : (
+              <><Zap className="h-4 w-4" /> Tam Tarama Başlat</>
+            )}
+          </button>
+        </div>
       </div>
 
-      {/* Live scan progress + completion summary */}
+      {/* Full Scan modal: live progress + final report (wide in-page panel) */}
+      {scanModalOpen && (
+      <div className="fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto">
+        <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={() => setScanModalOpen(false)} />
+        <div className="relative w-full max-w-5xl my-8 rounded-2xl border border-white/10 bg-[#0f0f17] p-6 space-y-5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-white flex items-center gap-2"><FileBarChart className="h-5 w-5 text-indigo-400" /> Tam Tarama Raporu</h2>
+            <button onClick={() => setScanModalOpen(false)} className="p-1 rounded-lg text-white/50 hover:text-white hover:bg-white/10"><X className="h-5 w-5" /></button>
+          </div>
+
+      {/* Live scan progress */}
       {scanProgress && scanProgress.status !== 'idle' && (
         <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-4 space-y-3">
           <div className="flex items-center justify-between">
@@ -270,7 +321,51 @@ export default function ProjectDashboardPage() {
               </BarChart>
             </ResponsiveContainer>
           </div>
+
+          {/* Action boxes — turn findings into next steps */}
+          <div>
+            <h3 className="text-sm font-semibold text-white mb-3">Önerilen Aksiyonlar</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {(data?.backlinkCount ?? 0) < 10 && (
+                <a href={`${base}/backlinks`} className="flex items-center justify-between rounded-xl border border-sky-500/20 bg-sky-500/5 p-4 hover:bg-sky-500/10 transition-colors">
+                  <div><p className="text-sm font-semibold text-white">Otoriteniz düşük — Backlink alın</p><p className="text-xs text-white/50 mt-0.5">Sadece {data?.backlinkCount ?? 0} backlink. Backlink Market&apos;ten kaliteli bağlantı edinin.</p></div>
+                  <ArrowRight className="h-4 w-4 text-sky-400 flex-shrink-0" />
+                </a>
+              )}
+              {(data?.issuesFound ?? 0) > 0 && (
+                <a href={`${base}/crawl`} className="flex items-center justify-between rounded-xl border border-orange-500/20 bg-orange-500/5 p-4 hover:bg-orange-500/10 transition-colors">
+                  <div><p className="text-sm font-semibold text-white">{data?.issuesFound} teknik SEO sorunu — Düzeltin</p><p className="text-xs text-white/50 mt-0.5">Site sağlığınızı yükseltmek için sorunları giderin.</p></div>
+                  <ArrowRight className="h-4 w-4 text-orange-400 flex-shrink-0" />
+                </a>
+              )}
+              {(data?.geoVisibilityScore ?? 0) < 50 && (
+                <a href={`${base}/content`} className="flex items-center justify-between rounded-xl border border-purple-500/20 bg-purple-500/5 p-4 hover:bg-purple-500/10 transition-colors">
+                  <div><p className="text-sm font-semibold text-white">AI görünürlüğü zayıf — İçerik yazın</p><p className="text-xs text-white/50 mt-0.5">AI aramalarda görünmek için kapsamlı, soru-yanıt içerik üretin.</p></div>
+                  <ArrowRight className="h-4 w-4 text-purple-400 flex-shrink-0" />
+                </a>
+              )}
+              {(data?.rankedCount ?? 0) < 10 && (
+                <a href={`${base}/keywords`} className="flex items-center justify-between rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-4 hover:bg-indigo-500/10 transition-colors">
+                  <div><p className="text-sm font-semibold text-white">Az kelimede sıralanıyorsunuz — Kelime ekleyin</p><p className="text-xs text-white/50 mt-0.5">Hedef anahtar kelimeleri ekleyip takibe alın.</p></div>
+                  <ArrowRight className="h-4 w-4 text-indigo-400 flex-shrink-0" />
+                </a>
+              )}
+            </div>
+          </div>
+
+          {/* Download report */}
+          <div className="flex justify-end">
+            <button
+              onClick={() => downloadReport(base.split('/').pop() || 'proje', data, scanProgress?.summary)}
+              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+            >
+              <Download className="h-4 w-4" /> Raporu İndir (HTML)
+            </button>
+          </div>
         </div>
+      )}
+        </div>
+      </div>
       )}
 
       {/* Stats */}
