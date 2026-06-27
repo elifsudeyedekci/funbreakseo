@@ -46,6 +46,10 @@ export class GeoService {
   // 2. listGeoQueries
   // -------------------------------------------------------------------------
   async triggerScan(projectId: string) {
+    // Reset accumulating aggregates before a fresh scan so mention/citation and
+    // competitor counts reflect ONLY this scan (they were piling up otherwise).
+    await this.prisma.geoCompetitor.deleteMany({ where: { projectId } })
+
     let queries = await this.prisma.geoQuery.findMany({
       where: { projectId },
       select: { id: true, prompt: true },

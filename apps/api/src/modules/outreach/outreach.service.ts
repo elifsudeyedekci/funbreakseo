@@ -178,48 +178,47 @@ export class OutreachService {
 
       const now = new Date()
       let synced = 0
-      const returnedBacklinks: Array<{
-        id: string; sourceDomain: string; sourceUrl: string; targetUrl: string;
-        anchorText: string | null; domainRating: number | null; isDofollow: boolean;
-        firstSeen: Date; lastSeen: Date; status: string;
-      }> = []
 
+      // Replace-all: clear this project's backlinks then insert the fresh set.
+      // The previous findFirst+update path left stale rows and could mask the
+      // true count; a clean replace guarantees the DB mirrors DataForSEO exactly.
+      await this.prisma.backlink.deleteMany({ where: { projectId } })
+
+      // De-dupe by sourceUrl within the response (sourceUrl is effectively unique).
+      const seen = new Set<string>()
       for (const item of profile.sample) {
-        if (!item.url_from) continue
+        if (!item.url_from || seen.has(item.url_from)) continue
+        seen.add(item.url_from)
+        let sourceDomain = item.domain_from
+        if (!sourceDomain) {
+          try { sourceDomain = new URL(item.url_from).hostname } catch { sourceDomain = item.url_from }
+        }
         try {
-          const existing = await this.prisma.backlink.findFirst({
-            where: { projectId, sourceUrl: item.url_from },
+          await this.prisma.backlink.create({
+            data: {
+              projectId,
+              sourceDomain,
+              sourceUrl: item.url_from,
+              targetUrl: item.url_to || `https://${domain}`,
+              anchorText: item.anchor ?? null,
+              // DR = source domain authority (domain_from_rank), already resolved
+              // in getBacklinkList into item.rank.
+              domainRating: item.rank ?? null,
+              isDofollow: item.is_dofollow,
+              firstSeen: now,
+              lastSeen: now,
+              status: 'ACTIVE',
+            },
           })
-          let saved: any
-          if (existing) {
-            saved = await this.prisma.backlink.update({
-              where: { id: existing.id },
-              data: { lastSeen: now, status: 'ACTIVE', isDofollow: item.is_dofollow, anchorText: item.anchor ?? null },
-            })
-          } else {
-            saved = await this.prisma.backlink.create({
-              data: {
-                projectId,
-                sourceDomain: item.domain_from || new URL(item.url_from).hostname,
-                sourceUrl: item.url_from,
-                targetUrl: item.url_to || `https://${domain}`,
-                anchorText: item.anchor ?? null,
-                domainRating: item.rank ?? null,
-                isDofollow: item.is_dofollow,
-                firstSeen: now,
-                lastSeen: now,
-                status: 'ACTIVE',
-              },
-            })
-          }
-          if (saved) returnedBacklinks.push(saved)
           synced++
         } catch (err) {
           this.logger.warn(`Failed to sync backlink ${item.url_from}`, err)
         }
       }
 
-      this.logger.log(`Persisted ${synced} backlinks for ${domain}`)
+      const dbCount = await this.prisma.backlink.count({ where: { projectId } })
+      this.logger.log(`Persisted ${synced} backlinks for ${domain} (DB count now: ${dbCount}, summary total: ${profile.backlinks_num})`)
+      const returnedBacklinks = await this.prisma.backlink.findMany({ where: { projectId }, orderBy: { domainRating: 'desc' } })
       return {
         synced,
         total: profile.backlinks_num,

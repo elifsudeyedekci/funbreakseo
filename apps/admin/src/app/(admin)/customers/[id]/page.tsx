@@ -16,6 +16,18 @@ import { formatDistanceToNow, format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { User, Building2, Mail, Phone, MapPin, Receipt, Heart, Eye, Download, FileText, TrendingDown } from 'lucide-react';
 
+/**
+ * Safe date formatter — empty/invalid dates (e.g. ZERO_SUBSCRIPTION defaults
+ * with '' periods) previously threw "Invalid time value" inside date-fns,
+ * crashing the whole customer detail page. Returns '—' instead.
+ */
+function fmtDate(value: unknown, pattern = 'dd MMM yyyy'): string {
+  if (!value) return '—';
+  const d = new Date(value as string);
+  if (isNaN(d.getTime())) return '—';
+  return format(d, pattern, { locale: tr });
+}
+
 const MOCK_CUSTOMER = {
   id: 'cust-1', fullName: 'Ahmet Yılmaz', email: 'ahmet@example.com', phone: '+90 532 000 0001',
   company: 'Tech A.Ş.', taxNumber: '1234567890', address: 'Atatürk Cad. No:1', city: 'İstanbul', country: 'TR',
@@ -136,7 +148,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
     { header: 'Sözleşme', accessorKey: 'type', cell: ({ row }) => (
       <div><p className="font-medium text-sm">{row.original.type}</p><p className="text-xs text-[var(--text-muted)]">v{row.original.version}</p></div>
     )},
-    { header: 'Tarih', accessorKey: 'acceptedAt', cell: ({ getValue }) => format(new Date(getValue() as string), 'dd MMM yyyy HH:mm', { locale: tr }) },
+    { header: 'Tarih', accessorKey: 'acceptedAt', cell: ({ getValue }) => fmtDate(getValue(), 'dd MMM yyyy HH:mm') },
     { header: 'IP', accessorKey: 'ipAddress', cell: ({ getValue }) => <span className="font-mono text-xs">{getValue() as string}</span> },
     { header: 'Cihaz', accessorKey: 'device', cell: ({ getValue }) => <span className="text-xs text-[var(--text-muted)] max-w-[100px] truncate block">{getValue() as string}</span> },
     { header: '', id: 'actions', cell: ({ row }) => (
@@ -150,7 +162,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
   const auditCols: ColumnDef<AuditRow>[] = [
     { header: 'Aksiyon', accessorKey: 'action', cell: ({ getValue }) => <code className="text-xs bg-[var(--bg-elevated)] px-1.5 py-0.5 rounded">{getValue() as string}</code> },
     { header: 'Yapan', accessorKey: 'actorEmail', cell: ({ getValue }) => <span className="text-xs">{getValue() as string}</span> },
-    { header: 'Tarih', accessorKey: 'createdAt', cell: ({ getValue }) => format(new Date(getValue() as string), 'dd MMM yyyy HH:mm', { locale: tr }) },
+    { header: 'Tarih', accessorKey: 'createdAt', cell: ({ getValue }) => fmtDate(getValue(), 'dd MMM yyyy HH:mm') },
     { header: 'Detay', accessorKey: 'meta', cell: ({ getValue }) => {
       const m = getValue() as Record<string, unknown> | undefined;
       return m ? <span className="text-xs text-[var(--text-muted)] truncate max-w-[160px] block">{JSON.stringify(m)}</span> : null;
@@ -212,7 +224,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
             <Card>
               <CardHeader><CardTitle className="text-sm">Özet</CardTitle></CardHeader>
               <CardContent className="space-y-2 text-sm">
-                <div className="flex justify-between"><span className="text-[var(--text-muted)]">Kayıt Tarihi</span><span>{format(new Date(c.createdAt), 'dd MMM yyyy', { locale: tr })}</span></div>
+                <div className="flex justify-between"><span className="text-[var(--text-muted)]">Kayıt Tarihi</span><span>{fmtDate(c.createdAt)}</span></div>
                 <div className="flex justify-between"><span className="text-[var(--text-muted)]">Sağlık Skoru</span>
                   <span className={c.healthScore >= 70 ? 'text-emerald-400 font-bold' : c.healthScore >= 40 ? 'text-yellow-400 font-bold' : 'text-red-400 font-bold'}>{c.healthScore}/100</span></div>
                 <div className="flex justify-between"><span className="text-[var(--text-muted)]">Churn Riski</span>
@@ -232,8 +244,8 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div className="flex flex-col gap-1"><span className="text-[var(--text-muted)]">Plan</span><span className="font-semibold">{sub.planName}</span></div>
                     <div className="flex flex-col gap-1"><span className="text-[var(--text-muted)]">Durum</span><Badge variant={sub.status === 'ACTIVE' ? 'success' : 'warning'}>{sub.status}</Badge></div>
-                    <div className="flex flex-col gap-1"><span className="text-[var(--text-muted)]">Dönem Başlangıcı</span><span>{format(new Date(sub.currentPeriodStart), 'dd MMM yyyy', { locale: tr })}</span></div>
-                    <div className="flex flex-col gap-1"><span className="text-[var(--text-muted)]">Dönem Bitişi</span><span>{format(new Date(sub.currentPeriodEnd), 'dd MMM yyyy', { locale: tr })}</span></div>
+                    <div className="flex flex-col gap-1"><span className="text-[var(--text-muted)]">Dönem Başlangıcı</span><span>{fmtDate(sub.currentPeriodStart)}</span></div>
+                    <div className="flex flex-col gap-1"><span className="text-[var(--text-muted)]">Dönem Bitişi</span><span>{fmtDate(sub.currentPeriodEnd)}</span></div>
                     <div className="flex flex-col gap-1"><span className="text-[var(--text-muted)]">Ücret</span><span className="font-semibold">${sub.price}/{sub.interval}</span></div>
                     <div className="flex flex-col gap-1"><span className="text-[var(--text-muted)]">Dönem Sonunda İptal</span><Badge variant={sub.cancelAtPeriodEnd ? 'warning' : 'success'}>{sub.cancelAtPeriodEnd ? 'Evet' : 'Hayır'}</Badge></div>
                   </div>
@@ -252,7 +264,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                   <div key={inv.id} className="flex items-center justify-between py-2 border-b border-[var(--border-subtle)] last:border-0">
                     <div className="flex flex-col">
                       <span className="text-sm font-medium">{inv.number}</span>
-                      <span className="text-xs text-[var(--text-muted)]">{format(new Date(inv.createdAt), 'dd MMM yyyy', { locale: tr })}</span>
+                      <span className="text-xs text-[var(--text-muted)]">{fmtDate(inv.createdAt)}</span>
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="text-sm font-semibold">${inv.amount} {inv.currency}</span>

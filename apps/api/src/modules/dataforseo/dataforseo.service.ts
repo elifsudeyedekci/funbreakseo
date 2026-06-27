@@ -412,20 +412,21 @@ export class DataForSeoService {
       }>('/backlinks/backlinks/live', [
         {
           target: cleanDomain,
-          limit,
-          // mode "as_is" returns EVERY individual backlink. The default
-          // (one_per_domain) collapses to ~1 row per referring domain, which is
-          // why the list showed ~13 while summary reported 27.
+          // Match the verified curl exactly: { target, mode:'as_is', limit } → 27.
+          // mode "as_is" returns EVERY individual backlink (default one_per_domain
+          // collapsed it to ~13). Extra filters (backlinks_status_type:'live',
+          // broken flags) were dropping rows back to 13 — removed.
           mode: 'as_is',
-          include_subdomains: true,
-          backlinks_status_type: 'live',
-          broken_backlinks: false,
-          broken_pages: false,
+          limit,
         },
       ]);
 
-      const items = response.tasks?.[0]?.result?.[0]?.items ?? [];
-      return items.map((item) => ({
+      const task = response.tasks?.[0] as any;
+      const items = (task?.result?.[0]?.items ?? []) as Array<Record<string, any>>;
+      this.logger.log(
+        `getBacklinkList ${cleanDomain}: total_count=${task?.result?.[0]?.total_count ?? '?'} items=${items.length}`,
+      );
+      return items.map((item: Record<string, any>) => ({
         url_from: item.url_from ?? '',
         url_to: item.url_to ?? '',
         domain_from: item.domain_from ?? '',

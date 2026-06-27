@@ -345,6 +345,10 @@ export class GeoWorker extends WorkerHost {
     // 4. Create GeoResult records
     // ------------------------------------------------------------------
     const now = new Date()
+    // Replace, don't accumulate: each scan of a query must reflect ONLY its
+    // latest result. Without this, mention/citation counts kept growing every
+    // scan (6 → 30). Delete this query's previous results first.
+    await this.prisma.geoResult.deleteMany({ where: { geoQueryId } })
     for (const pr of platformResults) {
       await this.prisma.geoResult.create({
         data: {

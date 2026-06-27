@@ -62,13 +62,7 @@ export default function ContentPage() {
     queryFn: () => contentApi.get(openId!).then((r) => r.data?.data ?? r.data),
     enabled: !!openId,
   });
-  const publishMutation = useMutation({
-    mutationFn: (id: string) => contentApi.publish(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['content', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['content-detail', openId] });
-    },
-  });
+  const [copied, setCopied] = useState(false);
 
   const items = (data || []).filter((c) => filterStatus === 'ALL' || c.status === filterStatus);
 
@@ -312,17 +306,27 @@ export default function ContentPage() {
                   dangerouslySetInnerHTML={{ __html: mdToHtml(detail.bodyMarkdown ?? '') }}
                 />
 
-                {/* Actions */}
-                <div className="flex justify-end gap-3 pt-2">
-                  {detail.status !== 'PUBLISHED' && (
-                    <button
-                      onClick={() => publishMutation.mutate(detail.id)}
-                      disabled={publishMutation.isPending}
-                      className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
-                    >
-                      {publishMutation.isPending ? 'Yayınlanıyor…' : 'Yayınla'}
-                    </button>
-                  )}
+                {/* Actions: the system can't auto-publish to the customer's own
+                    site, so we offer download + copy. They place it themselves. */}
+                <div className="flex flex-wrap justify-end gap-3 pt-2">
+                  <button
+                    onClick={() => { if (detail?.bodyMarkdown) navigator.clipboard?.writeText(detail.bodyMarkdown); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+                    className="rounded-xl border border-white/10 px-4 py-2 text-sm text-white/70 hover:bg-white/5"
+                  >
+                    {copied ? '✓ Kopyalandı' : 'Metni Kopyala'}
+                  </button>
+                  <button
+                    onClick={() => downloadFile(`${(detail.slug || detail.title || 'icerik')}.md`, detail.bodyMarkdown ?? '', 'text/markdown')}
+                    className="rounded-xl border border-white/10 px-4 py-2 text-sm text-white/70 hover:bg-white/5"
+                  >
+                    Markdown İndir
+                  </button>
+                  <button
+                    onClick={() => downloadFile(`${(detail.slug || detail.title || 'icerik')}.html`, mdToHtml(detail.bodyMarkdown ?? ''), 'text/html')}
+                    className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+                  >
+                    HTML İndir
+                  </button>
                   <button onClick={() => setOpenId(null)} className="rounded-xl border border-white/10 px-4 py-2 text-sm text-white/60 hover:bg-white/5">Kapat</button>
                 </div>
               </div>
@@ -334,6 +338,18 @@ export default function ContentPage() {
       )}
     </div>
   );
+}
+
+/** Trigger a client-side file download. */
+function downloadFile(filename: string, content: string, mime: string) {
+  const safeName = filename.toLowerCase().replace(/[^a-z0-9.\-]+/g, '-');
+  const blob = new Blob([content], { type: `${mime};charset=utf-8` });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = safeName;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 /** Minimal, safe Markdown → HTML for the read-only article preview. */

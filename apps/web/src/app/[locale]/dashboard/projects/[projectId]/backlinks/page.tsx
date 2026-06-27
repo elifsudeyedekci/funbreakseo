@@ -16,6 +16,7 @@ export default function BacklinksPage() {
   const [tab, setTab] = useState<Tab>('profile');
 
   const queryClient = useQueryClient();
+  const [blFilter, setBlFilter] = useState<'all' | 'dofollow' | 'nofollow'>('all');
 
   const { data: backlinkData, isLoading } = useQuery({
     queryKey: ['backlinks', projectId],
@@ -129,6 +130,24 @@ export default function BacklinksPage() {
               </div>
             )
           )}
+          {/* Category filter — show all by default, drill into dofollow/nofollow */}
+          {(backlinks?.length ?? 0) > 0 && (
+            <div className="flex items-center gap-2">
+              {([
+                { id: 'all', label: `Tümü (${backlinks?.length ?? 0})` },
+                { id: 'dofollow', label: `Dofollow (${(backlinks ?? []).filter((b) => b.isDofollow).length})` },
+                { id: 'nofollow', label: `Nofollow (${(backlinks ?? []).filter((b) => !b.isDofollow).length})` },
+              ] as const).map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => setBlFilter(f.id)}
+                  className={['px-3 py-1.5 rounded-lg text-xs font-medium transition-colors', blFilter === f.id ? 'bg-indigo-600 text-white' : 'bg-white/5 text-white/50 hover:text-white'].join(' ')}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          )}
           {isLoading ? (
             <div className="space-y-3">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="rounded-xl border border-white/10 h-16 animate-pulse" />)}</div>
           ) : (
@@ -145,7 +164,7 @@ export default function BacklinksPage() {
                   {(!backlinks || backlinks.length === 0) && (
                     <tr><td colSpan={6} className="px-4 py-12 text-center text-sm text-white/30">{t('noBacklinks')}</td></tr>
                   )}
-                  {(backlinks || []).map((bl) => (
+                  {(backlinks || []).filter((bl) => blFilter === 'all' || (blFilter === 'dofollow' ? bl.isDofollow : !bl.isDofollow)).map((bl) => (
                     <tr key={bl.id} className="border-b border-white/5 hover:bg-white/2 align-top">
                       <td className="px-4 py-3 text-white font-medium whitespace-nowrap">{bl.sourceDomain}</td>
                       <td className="px-4 py-3 text-white/50 text-xs max-w-[220px] break-all">{bl.targetUrl || '—'}</td>

@@ -167,6 +167,14 @@ export default function GeoPage() {
                 <span className="text-xs font-semibold text-indigo-300">Kaynak Gösterilme</span>
                 <p className="text-[11px] text-white/50 mt-0.5">Yapay zeka cevabının altında sitenizi kaynak olarak link veriyor — en değerlisi budur.</p>
               </div>
+              <div className="rounded-lg bg-white/5 px-3 py-2">
+                <span className="text-xs font-semibold text-rose-300">AI Mode</span>
+                <p className="text-[11px] text-white/50 mt-0.5">Google&apos;ın tamamen yapay zeka ile çalışan yeni arama modu — klasik mavi linkler yerine sohbet tarzı cevap verir.</p>
+              </div>
+              <div className="rounded-lg bg-white/5 px-3 py-2">
+                <span className="text-xs font-semibold text-indigo-300">AI Overview</span>
+                <p className="text-[11px] text-white/50 mt-0.5">Google arama sonuçlarının en üstünde çıkan yapay zeka özeti kutusu.</p>
+              </div>
             </div>
           </div>
         </div>
