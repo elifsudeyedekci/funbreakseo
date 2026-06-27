@@ -394,7 +394,8 @@ export class KeywordService {
       try {
         // fetchFromGsc already strips position<=0 and impressions<=0
         const gscKeywords = await this.fetchFromGsc(project.domain, orgGsc);
-        const filtered = maxPosition !== undefined
+        // maxPosition=0 means no filter; maxPosition>0 means position <= N (position<1 already stripped)
+        const filtered = (maxPosition !== undefined && maxPosition > 0)
           ? gscKeywords.filter((k) => k.position <= maxPosition)
           : gscKeywords;
         process.stdout.write(

@@ -169,8 +169,9 @@ export default function KeywordsPage() {
   const fetchRankedMutation = useMutation({
     mutationFn: async () => {
       setRankedStatus(null);
-      const maxPos = parseInt(gscMaxPosition, 10);
-      const params = maxPos > 0 && maxPos < 1000 ? { maxPosition: maxPos } : undefined;
+      const maxPos = parseInt(gscMaxPosition, 10) || 0;
+      // 0 = tümü (filtre yok), >0 = sadece o pozisyona kadar
+      const params = maxPos > 0 ? { maxPosition: maxPos } : undefined;
       const r = await keywordApi.ranked(projectId, params);
       const raw: any[] = Array.isArray(r.data) ? r.data : (r.data?.data ?? []);
       const phrases = Array.from(new Set(raw.map((k: any) => k.keyword ?? k.phrase).filter(Boolean)));
@@ -385,16 +386,19 @@ export default function KeywordsPage() {
           </button>
           <div className="flex flex-col items-end gap-1.5">
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5">
-                <label className="text-xs text-white/40 whitespace-nowrap">Max pozisyon</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={1000}
-                  value={gscMaxPosition}
-                  onChange={(e) => setGscMaxPosition(e.target.value)}
-                  className="w-16 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white text-center focus:outline-none focus:border-indigo-500"
-                />
+              <div className="flex flex-col items-start gap-0.5">
+                <div className="flex items-center gap-1.5">
+                  <label className="text-xs text-white/40 whitespace-nowrap">Max pozisyon</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={1000}
+                    value={gscMaxPosition}
+                    onChange={(e) => setGscMaxPosition(e.target.value)}
+                    className="w-16 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white text-center focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+                <span className="text-[10px] text-white/25">0 = tümü, 1–100 = o aralık</span>
               </div>
               <button
                 onClick={() => fetchRankedMutation.mutate()}
@@ -405,7 +409,11 @@ export default function KeywordsPage() {
                 {fetchRankedMutation.isPending ? 'Getiriliyor…' : 'Sıralanan Kelimeleri Getir'}
               </button>
             </div>
-            <p className="text-xs text-white/30">Google&apos;da ilk {gscMaxPosition} sırada olduğunuz kelimeler eklenir (GSC verisi)</p>
+            <p className="text-xs text-white/30">
+              {parseInt(gscMaxPosition, 10) > 0
+                ? `Google'da 1–${gscMaxPosition}. sıradaki kelimeler eklenir (GSC verisi)`
+                : 'Tüm sıralamalardan kelimeler eklenir (GSC verisi)'}
+            </p>
             {rankedStatus && (
               <span className={cn('text-xs', rankedStatus.startsWith('Hata') ? 'text-red-400' : 'text-emerald-400')}>
                 {rankedStatus}
