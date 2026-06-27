@@ -659,16 +659,27 @@ export class AuthService {
   }
 
   async saveGscOAuthTokens(orgId: string, tokens: { accessToken: string; refreshToken?: string; expiryDate: number }) {
-    // Store directly on Organization for fast access during keyword fetching.
-    // Cast to any until `prisma generate` is run on the server after migration.
-    await (this.prisma.organization as any).update({
-      where: { id: orgId },
-      data: {
-        gscAccessToken: tokens.accessToken,
-        ...(tokens.refreshToken && { gscRefreshToken: tokens.refreshToken }),
-        gscTokenExpiry: new Date(tokens.expiryDate),
-      },
-    });
+    // Use $executeRaw so the write goes through even if `prisma generate` hasn't
+    // been re-run after the migration (Prisma ORM silently drops unknown fields).
+    const expiry = new Date(tokens.expiryDate);
+    if (tokens.refreshToken) {
+      await this.prisma.$executeRaw`
+        UPDATE organizations
+        SET "gscAccessToken" = ${tokens.accessToken},
+            "gscRefreshToken" = ${tokens.refreshToken},
+            "gscTokenExpiry"  = ${expiry},
+            "updatedAt"       = NOW()
+        WHERE id = ${orgId}
+      `;
+    } else {
+      await this.prisma.$executeRaw`
+        UPDATE organizations
+        SET "gscAccessToken" = ${tokens.accessToken},
+            "gscTokenExpiry"  = ${expiry},
+            "updatedAt"       = NOW()
+        WHERE id = ${orgId}
+      `;
+    }
     // Also maintain ApiIntegration for integrations-page status display
     const existing = await this.prisma.apiIntegration.findFirst({
       where: { organizationId: orgId, provider: 'GSC' },
@@ -686,11 +697,14 @@ export class AuthService {
   }
 
   async disconnectGsc(orgId: string) {
-    // Clear tokens from Organization
-    await (this.prisma.organization as any).update({
-      where: { id: orgId },
-      data: { gscAccessToken: null, gscRefreshToken: null, gscTokenExpiry: null },
-    });
+    await this.prisma.$executeRaw`
+      UPDATE organizations
+      SET "gscAccessToken"  = NULL,
+          "gscRefreshToken" = NULL,
+          "gscTokenExpiry"  = NULL,
+          "updatedAt"       = NOW()
+      WHERE id = ${orgId}
+    `;
     // Mark ApiIntegration as disconnected
     await this.prisma.apiIntegration.updateMany({
       where: { organizationId: orgId, provider: 'GSC' },

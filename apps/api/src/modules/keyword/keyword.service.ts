@@ -370,13 +370,14 @@ export class KeywordService {
 
     const { maxPosition } = filters;
 
-    // Try GSC via Organization-level token columns (faster than ApiIntegration join).
-    // Cast to any because Prisma client types won't include the new columns until
-    // `prisma generate` is run on the server after the migration.
-    const orgGsc = await (this.prisma.organization as any).findUnique({
-      where: { id: organizationId },
-      select: { id: true, gscAccessToken: true, gscRefreshToken: true, gscTokenExpiry: true },
-    }) as { id: string; gscAccessToken: string | null; gscRefreshToken: string | null; gscTokenExpiry: Date | null } | null;
+    // Use $queryRaw so reads work even before `prisma generate` regenerates the client.
+    const rows = await this.prisma.$queryRaw<Array<{
+      id: string; gscAccessToken: string | null; gscRefreshToken: string | null; gscTokenExpiry: Date | null;
+    }>>`
+      SELECT id, "gscAccessToken", "gscRefreshToken", "gscTokenExpiry"
+      FROM organizations WHERE id = ${organizationId} LIMIT 1
+    `;
+    const orgGsc = rows[0] ?? null;
     if (orgGsc?.gscAccessToken) {
       try {
         // fetchFromGsc already strips position<=0 and impressions<=0
@@ -436,10 +437,11 @@ export class KeywordService {
       const refreshed = await this.refreshGscToken(org.gscRefreshToken);
       token = refreshed.access_token;
       const newExpiry = new Date(Date.now() + (refreshed.expires_in ?? 3600) * 1000);
-      await (this.prisma.organization as any).update({
-        where: { id: org.id },
-        data: { gscAccessToken: token, gscTokenExpiry: newExpiry },
-      });
+      await this.prisma.$executeRaw`
+        UPDATE organizations
+        SET "gscAccessToken" = ${token}, "gscTokenExpiry" = ${newExpiry}, "updatedAt" = NOW()
+        WHERE id = ${org.id}
+      `;
     }
 
     const cleanDomain = domain.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '');
