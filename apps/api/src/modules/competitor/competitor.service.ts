@@ -151,9 +151,12 @@ export class CompetitorService {
     //    how real sector rivals surface (vs competitors_domain returning random
     //    high-authority sites).
     const domainCount = new Map<string, number>();
+    let serpOk = 0;
+    let serpFail = 0;
     for (const kw of seeds) {
       try {
         const serp = await this.dfs.searchSerp(kw, country, language, 20);
+        serpOk++;
         const seenInThis = new Set<string>();
         for (const item of serp) {
           if (item.type !== 'organic' || !item.domain) continue;
@@ -162,15 +165,23 @@ export class CompetitorService {
           seenInThis.add(d);
           domainCount.set(d, (domainCount.get(d) ?? 0) + 1);
         }
-      } catch (err) { this.logger.warn(`findCompetitors SERP failed for "${kw}"`, err); }
+      } catch (err) {
+        serpFail++;
+        this.logger.warn(`findCompetitors SERP failed for "${kw}"`, err);
+      }
     }
 
-    const discovered = [...domainCount.entries()]
-      .filter(([, count]) => count >= 2)   // min 2 ortak kelime — tekli çakışmalar alakasız
-      .sort((a, b) => b[1] - a[1])
+    process.stdout.write(
+      `[Competitors] ${domain}: seeds=${seeds.length} serp_ok=${serpOk} serp_fail=${serpFail} unique_domains=${domainCount.size}\n`,
+    );
+
+    // Adaptive threshold: lower to 1 if strict filter yields < 10 results
+    const strictList = [...domainCount.entries()].filter(([, c]) => c >= 2).sort((a, b) => b[1] - a[1]);
+    const discovered = (strictList.length >= 10 ? strictList : [...domainCount.entries()].sort((a, b) => b[1] - a[1]))
       .slice(0, 25);
-    this.logger.log(
-      `Competitor discovery (SERP) ${domain}: ${seeds.length} seed kw → ${domainCount.size} domains → ${discovered.length} competitors (top: ${discovered.slice(0, 5).map(([d, c]) => `${d}:${c}`).join(', ')})`,
+
+    process.stdout.write(
+      `[Competitors] discovered=${discovered.length} (threshold=${strictList.length >= 10 ? 2 : 1}) top=${discovered.slice(0, 5).map(([d, c]) => `${d}:${c}`).join(', ')}\n`,
     );
 
     // 3. Replace old AUTO competitors with the fresh SERP-based set.
@@ -211,9 +222,12 @@ export class CompetitorService {
       where: { projectId },
       orderBy: { commonKeywords: 'desc' },
     });
-    return dbCompetitors
-      .filter((c) => !this.isGenericDomain(c.domain) && this.cleanDomain(c.domain) !== domain && (c.isAuto ? c.commonKeywords >= 2 : true))
+    const results = dbCompetitors
+      .filter((c) => !this.isGenericDomain(c.domain) && this.cleanDomain(c.domain) !== domain)
       .map((c) => ({ ...c, etv: null }));
+    // If fewer than 10 after strict filter, relax commonKeywords requirement
+    const strict = results.filter((c) => !c.isAuto || c.commonKeywords >= 2);
+    return strict.length >= 10 ? strict : results;
   }
 
   /**

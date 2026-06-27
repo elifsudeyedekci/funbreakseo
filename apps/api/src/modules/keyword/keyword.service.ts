@@ -376,20 +376,19 @@ export class KeywordService {
     });
     if (gscIntegration) {
       try {
+        // fetchFromGsc already strips position<=0 and impressions<=0
         const gscKeywords = await this.fetchFromGsc(project.domain, gscIntegration);
         const filtered = gscKeywords.filter((k) => {
-          // Base: must have actually appeared in search results
-          if (k.position <= 0 || k.impressions <= 0) return false;
-          // User-defined filters
           if (maxPosition !== undefined && k.position > maxPosition) return false;
           if (minClicks !== undefined && k.clicks < minClicks) return false;
           if (minImpressions !== undefined && k.impressions < minImpressions) return false;
           return true;
         });
-        if (filtered.length > 0) {
-          this.logger.log(`GSC: ${filtered.length}/${gscKeywords.length} keywords after filter for ${project.domain}`);
-          return filtered;
-        }
+        process.stdout.write(
+          `[GSC ranked] valid=${gscKeywords.length} after_user_filter=${filtered.length} (maxPos=${maxPosition ?? '-'} minClk=${minClicks ?? '-'} minImp=${minImpressions ?? '-'})\n`,
+        );
+        // Return even if 0 — do NOT fall through to DataForSEO when GSC is connected
+        return filtered;
       } catch (err) {
         this.logger.warn('GSC fetch failed, falling back to DataForSEO', err);
       }
@@ -459,20 +458,36 @@ export class KeywordService {
       { headers: { Authorization: `Bearer ${token}` } },
     );
 
-    return ((data as { rows?: unknown[] }).rows ?? []).map((row: unknown) => {
+    const rawRows = (data as { rows?: unknown[] }).rows ?? [];
+    process.stdout.write(`[GSC fetchFromGsc] domain=${cleanDomain} total_rows=${rawRows.length}\n`);
+
+    const results: Array<{ keyword: string; position: number; searchVolume: number; difficulty: number; cpc: number; url: null; clicks: number; impressions: number; ctr: number }> = [];
+    let skippedZeroPos = 0;
+    let skippedZeroImp = 0;
+
+    for (const row of rawRows) {
       const r = row as { keys: string[]; position: number; clicks: number; impressions: number; ctr: number };
-      return {
+      const position = r.position;       // keep as float for comparison
+      const impressions = r.impressions; // keep as float for comparison
+      if (position <= 0) { skippedZeroPos++; continue; }
+      if (impressions <= 0) { skippedZeroImp++; continue; }
+      results.push({
         keyword: r.keys[0],
-        position: Math.round(r.position),
+        position: Math.round(position),
         searchVolume: 0,
         difficulty: 0,
         cpc: 0,
         url: null,
         clicks: Math.round(r.clicks),
-        impressions: Math.round(r.impressions),
+        impressions: Math.round(impressions),
         ctr: parseFloat((r.ctr * 100).toFixed(2)),
-      };
-    });
+      });
+    }
+
+    process.stdout.write(
+      `[GSC fetchFromGsc] after base filter: kept=${results.length} skipped_pos0=${skippedZeroPos} skipped_imp0=${skippedZeroImp}\n`,
+    );
+    return results;
   }
 
   /** Informational/non-commercial query patterns (Turkish) to exclude from Keşfet. */
