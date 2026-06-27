@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { type ColumnDef } from '@tanstack/react-table';
-import { adminApi } from '@/lib/api';
+import { adminApi, admin } from '@/lib/api';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
 import { DataTable } from '@/components/DataTable';
 import { Badge } from '@/components/ui/Badge';
@@ -45,10 +45,20 @@ const CouponSchema = z.object({
 
 type CouponForm = z.infer<typeof CouponSchema>;
 
+const PlanSchema = z.object({
+  name: z.string().min(2, 'En az 2 karakter'),
+  monthlyPrice: z.coerce.number().min(0),
+  yearlyPrice: z.coerce.number().min(0),
+  currency: z.string().default('TRY'),
+  isActive: z.coerce.boolean().default(true),
+});
+type PlanForm = z.infer<typeof PlanSchema>;
+
 export default function PlansPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [couponModal, setCouponModal] = useState(false);
+  const [editPlan, setEditPlan] = useState<Plan | null>(null);
 
   const { data: plans, isLoading: plansLoading } = useQuery({
     queryKey: ['admin-plans'],
@@ -58,6 +68,16 @@ export default function PlansPage() {
   const { data: coupons, isLoading: couponsLoading } = useQuery({
     queryKey: ['admin-coupons'],
     queryFn: async () => { try { const r = await adminApi.get('/admin/coupons'); return r.data?.data ?? MOCK_COUPONS; } catch { return MOCK_COUPONS; } },
+  });
+
+  const updatePlanMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: PlanForm }) => admin.updatePlan(id, data as Record<string, unknown>),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-plans'] }); toast('Plan güncellendi', 'success'); setEditPlan(null); resetPlan(); },
+    onError: () => toast('İşlem başarısız', 'error'),
+  });
+
+  const { register: registerPlan, handleSubmit: handlePlanSubmit, formState: { errors: planErrors }, reset: resetPlan } = useForm<PlanForm>({
+    resolver: zodResolver(PlanSchema),
   });
 
   const createCouponMutation = useMutation({
@@ -87,7 +107,14 @@ export default function PlansPage() {
       </span>
     )},
     { header: '', id: 'actions', cell: ({ row }) => (
-      <Button size="xs" variant="ghost" icon={<Edit3 className="w-3 h-3" />}>Düzenle</Button>
+      <Button size="xs" variant="ghost" icon={<Edit3 className="w-3 h-3" />}
+        onClick={(e) => {
+          e.stopPropagation();
+          setEditPlan(row.original);
+          resetPlan({ name: row.original.name, monthlyPrice: row.original.monthlyPrice, yearlyPrice: row.original.yearlyPrice, currency: row.original.currency, isActive: row.original.isActive });
+        }}>
+        Düzenle
+      </Button>
     )},
   ];
 
@@ -175,6 +202,26 @@ export default function PlansPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      <Modal open={!!editPlan} onClose={() => { setEditPlan(null); resetPlan(); }} title="Plan Düzenle" size="sm"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => { setEditPlan(null); resetPlan(); }}>Vazgeç</Button>
+            <Button variant="primary" loading={updatePlanMutation.isPending}
+              onClick={handlePlanSubmit((d) => editPlan && updatePlanMutation.mutate({ id: editPlan.id, data: d }))}>
+              Kaydet
+            </Button>
+          </>
+        }
+      >
+        <form className="space-y-3">
+          <Input label="Plan Adı" placeholder="STARTER" {...registerPlan('name')} error={planErrors.name?.message} />
+          <Input label="Aylık Fiyat (₺)" type="number" {...registerPlan('monthlyPrice')} error={planErrors.monthlyPrice?.message} />
+          <Input label="Yıllık Fiyat (₺)" type="number" {...registerPlan('yearlyPrice')} error={planErrors.yearlyPrice?.message} />
+          <Select label="Para Birimi" options={[{ value: 'TRY', label: 'TRY (₺)' }, { value: 'USD', label: 'USD ($)' }]} {...registerPlan('currency')} />
+          <Select label="Durum" options={[{ value: 'true', label: 'Aktif' }, { value: 'false', label: 'Pasif' }]} {...registerPlan('isActive')} />
+        </form>
+      </Modal>
 
       <Modal open={couponModal} onClose={() => { setCouponModal(false); resetCoupon(); }} title="Kupon Oluştur" size="sm"
         footer={

@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { crawlerApi, projectApi } from '@/lib/api';
+import { crawlerApi } from '@/lib/api';
+import { useSelectedProject } from '@/lib/useSelectedProject';
 
 const ISSUE_CATEGORIES = [
   { key: 'title', label: 'Title Tags' },
@@ -27,11 +28,7 @@ export default function CrawlPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const qc = useQueryClient();
 
-  const { data: projects } = useQuery({
-    queryKey: ['projects'],
-    queryFn: () => projectApi.list().then(r => (Array.isArray(r.data) ? r.data : (r.data?.data ?? [])) as { id: string }[]),
-  });
-  const projectId = projects?.[0]?.id;
+  const { projectId } = useSelectedProject();
 
   const { data: history, isLoading } = useQuery({
     queryKey: ['crawl-history', projectId],

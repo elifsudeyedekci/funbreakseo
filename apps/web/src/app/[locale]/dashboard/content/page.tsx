@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations, useLocale } from 'next-intl';
-import { contentApi, projectApi } from '@/lib/api';
+import { contentApi } from '@/lib/api';
+import { useSelectedProject } from '@/lib/useSelectedProject';
 
 type TabType = 'list' | 'calendar';
 
@@ -115,11 +116,7 @@ export default function ContentPage() {
   const [genKeyword, setGenKeyword] = useState('');
   const qc = useQueryClient();
 
-  const { data: projects } = useQuery({
-    queryKey: ['projects'],
-    queryFn: () => projectApi.list().then(r => (Array.isArray(r.data) ? r.data : (r.data?.data ?? [])) as { id: string }[]),
-  });
-  const projectId = projects?.[0]?.id;
+  const { projectId } = useSelectedProject();
 
   const { data: content, isLoading } = useQuery({
     queryKey: ['content', projectId],

@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
-import { outreachApi, projectApi } from '@/lib/api';
+import { outreachApi } from '@/lib/api';
+import { useSelectedProject } from '@/lib/useSelectedProject';
 
 const campaignStatusStyles: Record<string, string> = {
   ACTIVE: 'bg-green-400/10 text-green-400',
@@ -18,11 +19,7 @@ export default function OutreachPage() {
   const [name, setName] = useState('');
   const qc = useQueryClient();
 
-  const { data: projects } = useQuery({
-    queryKey: ['projects'],
-    queryFn: () => projectApi.list().then(r => (Array.isArray(r.data) ? r.data : (r.data?.data ?? [])) as { id: string }[]),
-  });
-  const projectId = projects?.[0]?.id;
+  const { projectId } = useSelectedProject();
 
   const { data: campaigns, isLoading } = useQuery({
     queryKey: ['outreach', projectId],

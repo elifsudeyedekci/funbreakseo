@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { keywordApi, projectApi } from '@/lib/api';
+import { keywordApi } from '@/lib/api';
+import { useSelectedProject } from '@/lib/useSelectedProject';
 
 const difficultyColor = (d: number) =>
   d < 30 ? 'text-green-400' : d < 60 ? 'text-yellow-400' : 'text-red-400';
@@ -37,11 +38,7 @@ export default function KeywordsPage() {
   const [selectedKws, setSelectedKws] = useState<Set<string>>(new Set());
   const qc = useQueryClient();
 
-  const { data: projects } = useQuery({
-    queryKey: ['projects'],
-    queryFn: () => projectApi.list().then(r => (Array.isArray(r.data) ? r.data : (r.data?.data ?? [])) as { id: string }[]),
-  });
-  const projectId = projects?.[0]?.id;
+  const { projectId } = useSelectedProject();
 
   const { data: keywords, isLoading: kwLoading } = useQuery({
     queryKey: ['keywords', projectId],

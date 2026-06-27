@@ -4,16 +4,8 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { ChevronDown, Plus, Globe } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import { projectApi } from '@/lib/api';
+import { useSelectedProject } from '@/lib/useSelectedProject';
 import { cn } from '@/lib/utils';
-
-interface Project {
-  id: string;
-  domain: string;
-  healthScore?: number;
-  status: string;
-}
 
 export function ProjectSelector({ currentProjectId }: { currentProjectId?: string }) {
   const locale = useLocale();
@@ -22,16 +14,13 @@ export function ProjectSelector({ currentProjectId }: { currentProjectId?: strin
   const t = useTranslations('dashNav');
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const { projects, setProjectId, projectId: persistedId } = useSelectedProject();
 
   const localePath = (path: string) => locale === 'tr' ? path : `/${locale}${path}`;
 
-  const { data } = useQuery({
-    queryKey: ['projects'],
-    queryFn: () => projectApi.list().then((r) => (Array.isArray(r.data) ? r.data : (r.data?.data ?? [])) as Project[]),
-  });
-
-  const projects = data || [];
-  const current = projects.find((p) => p.id === currentProjectId);
+  // URL projectId wins; otherwise fall back to persisted selection
+  const activeId = currentProjectId || persistedId;
+  const current = projects.find((p) => p.id === activeId);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -44,12 +33,10 @@ export function ProjectSelector({ currentProjectId }: { currentProjectId?: strin
   }, []);
 
   function switchProject(id: string) {
-    // Replace projectId in current path
+    setProjectId(id);
     if (currentProjectId) {
       const newPath = pathname.replace(currentProjectId, id);
       router.push(newPath);
-    } else {
-      router.push(localePath(`/dashboard/projects/${id}/dashboard`));
     }
     setOpen(false);
   }
@@ -64,6 +51,7 @@ export function ProjectSelector({ currentProjectId }: { currentProjectId?: strin
         <span className="truncate text-xs font-medium">
           {current?.domain || t('selectProject')}
         </span>
+
         <ChevronDown className="h-3.5 w-3.5 text-white/40 flex-shrink-0 ml-auto" />
       </button>
 
@@ -76,7 +64,7 @@ export function ProjectSelector({ currentProjectId }: { currentProjectId?: strin
                 onClick={() => switchProject(project.id)}
                 className={cn(
                   'w-full flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-white/10',
-                  project.id === currentProjectId ? 'text-indigo-300 bg-indigo-500/10' : 'text-white/70'
+                  project.id === activeId ? 'text-indigo-300 bg-indigo-500/10' : 'text-white/70'
                 )}
               >
                 <div className="h-6 w-6 rounded bg-gradient-to-br from-indigo-500/30 to-purple-500/30 flex items-center justify-center text-xs font-bold text-indigo-400 flex-shrink-0">
@@ -88,7 +76,7 @@ export function ProjectSelector({ currentProjectId }: { currentProjectId?: strin
                     <p className="text-[10px] text-white/30">{t('health')}: {project.healthScore}</p>
                   )}
                 </div>
-                {project.id === currentProjectId && (
+                {project.id === activeId && (
                   <svg className="ml-auto h-3.5 w-3.5 text-indigo-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>

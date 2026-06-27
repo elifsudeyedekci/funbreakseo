@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { Download, Plus, FileText } from 'lucide-react';
-import { reportsApi, projectApi } from '@/lib/api';
+import { reportsApi } from '@/lib/api';
+import { useSelectedProject } from '@/lib/useSelectedProject';
 
 interface Report {
   id: string;
@@ -34,16 +35,22 @@ export default function ReportsPage() {
     FAILED: t('statusFailed'),
   };
 
-  const { data: projects } = useQuery({
-    queryKey: ['projects'],
-    queryFn: () => projectApi.list().then(r => (Array.isArray(r.data) ? r.data : (r.data?.data ?? [])) as { id: string }[]),
-  });
-  const projectId = projects?.[0]?.id;
+  const { projectId } = useSelectedProject();
 
   const { data: reports, isLoading, refetch } = useQuery<Report[]>({
     queryKey: ['reports', projectId],
     enabled: !!projectId,
-    queryFn: () => reportsApi.list(projectId!).then(r => Array.isArray(r.data) ? r.data : (r.data?.data ?? [])),
+    queryFn: () => reportsApi.list(projectId!).then(r => {
+      const raw: any[] = Array.isArray(r.data) ? r.data : (r.data?.data ?? []);
+      return raw.map((rec: any) => ({
+        id: rec.id,
+        name: rec.data?.project?.name ? `${rec.data.project.name} — ${rec.format}` : `Rapor (${rec.format ?? 'JSON'})`,
+        type: rec.format ?? 'JSON',
+        status: 'READY' as Report['status'],
+        fileUrl: null,
+        createdAt: rec.createdAt,
+      }));
+    }),
   });
 
   const create = useMutation({
@@ -137,11 +144,18 @@ export default function ReportsPage() {
                 <span className={`px-2 py-0.5 rounded text-xs font-medium ${statusStyles[r.status] ?? 'bg-zinc-500/10 text-zinc-400'}`}>
                   {statusLabel[r.status] ?? r.status}
                 </span>
-                {r.status === 'READY' && r.fileUrl && (
-                  <a href={r.fileUrl} target="_blank" rel="noopener noreferrer"
+                {r.status === 'READY' && (
+                  <button
+                    onClick={() => reportsApi.get(projectId!, r.id).then(res => {
+                      const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url; a.download = `${r.name}.json`; a.click();
+                      URL.revokeObjectURL(url);
+                    })}
                     className="flex items-center gap-1 px-3 py-1.5 bg-[var(--bg-surface)] text-[var(--text-secondary)] rounded-lg text-xs hover:text-[var(--text-primary)] transition-colors">
                     <Download className="w-3 h-3" /> {t('downloadBtn')}
-                  </a>
+                  </button>
                 )}
               </div>
             </div>

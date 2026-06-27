@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { geoApi, projectApi } from '@/lib/api';
+import { geoApi } from '@/lib/api';
+import { useSelectedProject } from '@/lib/useSelectedProject';
 
 const PLATFORMS = [
   { key: 'chatgpt', label: 'ChatGPT', icon: '🤖' },
@@ -39,11 +40,7 @@ export default function GeoPage() {
   const [query, setQuery] = useState('');
   const qc = useQueryClient();
 
-  const { data: projects } = useQuery({
-    queryKey: ['projects'],
-    queryFn: () => projectApi.list().then(r => (Array.isArray(r.data) ? r.data : (r.data?.data ?? [])) as { id: string }[]),
-  });
-  const projectId = projects?.[0]?.id;
+  const { projectId } = useSelectedProject();
 
   const { data: overview, isLoading } = useQuery({
     queryKey: ['geo-overview', projectId],
@@ -125,7 +122,7 @@ export default function GeoPage() {
               <div key={p.key} className="h-44 rounded-xl animate-pulse" style={{ background: 'var(--bg-surface)' }} />
             ))
           : PLATFORMS.map((p) => {
-              const platform = overview?.platforms?.[p.key] ?? {};
+              const platform = (overview?.platforms?.[p.key] ?? {}) as { visibilityScore?: number; mentionCount?: number; citationCount?: number };
               const score = platform.visibilityScore ?? 0;
               return (
                 <div

@@ -1,9 +1,9 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
-import Link from 'next/link';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocale, useTranslations } from 'next-intl';
-import { CreditCard, Download, AlertCircle } from 'lucide-react';
+import { CreditCard, Download, AlertCircle, X } from 'lucide-react';
 import { billingApi } from '@/lib/api';
 import { PLAN_PRICES_TRY, DEFAULT_PLAN_LIMITS } from '@funbreakseo/shared';
 import { formatDate } from '@/lib/utils';
@@ -29,10 +29,24 @@ function UsageBar({ label, used, limit, unlimited }: { label: string; used: numb
   );
 }
 
+const AVAILABLE_PLANS = [
+  { key: 'starter', label: 'Starter' },
+  { key: 'growth', label: 'Growth' },
+  { key: 'pro', label: 'Pro' },
+  { key: 'enterprise', label: 'Enterprise' },
+] as const;
+
 export default function BillingPage() {
   const locale = useLocale();
   const t = useTranslations('billingPage');
-  const localePath = (path: string) => locale === 'tr' ? path : `/${locale}${path}`;
+  const qc = useQueryClient();
+
+  const [cancelModal, setCancelModal] = useState(false);
+  const [planModal, setPlanModal] = useState(false);
+  const [topupModal, setTopupModal] = useState(false);
+  const [topupAmount, setTopupAmount] = useState('');
+  const [selectedPlan, setSelectedPlan] = useState<string>('growth');
+  const [selectedCycle, setSelectedCycle] = useState<'MONTHLY' | 'YEARLY'>('MONTHLY');
 
   const STATUS_LABELS: Record<SubscriptionStatus, { label: string; color: string }> = {
     TRIALING: { label: t('statusTrialing'), color: 'bg-blue-500/20 text-blue-400' },
@@ -58,6 +72,21 @@ export default function BillingPage() {
         wallet: wallet.data?.data ?? wallet.data,
       };
     },
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: () => billingApi.cancel(),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['billing'] }); setCancelModal(false); },
+  });
+
+  const changePlanMutation = useMutation({
+    mutationFn: () => billingApi.changePlan({ planKey: selectedPlan, billingCycle: selectedCycle }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['billing'] }); setPlanModal(false); },
+  });
+
+  const topupMutation = useMutation({
+    mutationFn: () => billingApi.walletTopup(Number(topupAmount)),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['billing'] }); setTopupModal(false); setTopupAmount(''); },
   });
 
   const subscription = data?.subscription as {
@@ -135,13 +164,16 @@ export default function BillingPage() {
             )}
 
             <div className="flex gap-3">
-              <Link
-                href={localePath('/fiyatlandirma')}
+              <button
+                onClick={() => { setSelectedPlan(planKey); setSelectedCycle(subscription?.billingCycle ?? 'MONTHLY'); setPlanModal(true); }}
                 className="flex-1 text-center rounded-xl border border-white/20 py-2 text-xs font-medium text-white/60 hover:bg-white/10 transition-colors"
               >
                 {t('changePlan')}
-              </Link>
-              <button className="flex-1 rounded-xl border border-red-500/20 py-2 text-xs font-medium text-red-400 hover:bg-red-500/10 transition-colors">
+              </button>
+              <button
+                onClick={() => setCancelModal(true)}
+                className="flex-1 rounded-xl border border-red-500/20 py-2 text-xs font-medium text-red-400 hover:bg-red-500/10 transition-colors"
+              >
                 {t('cancelSub')}
               </button>
             </div>
@@ -168,7 +200,10 @@ export default function BillingPage() {
               ₺{((data?.wallet as { balance?: number })?.balance || 0).toLocaleString()}
             </div>
             <p className="text-xs text-white/40 mb-4">{t('balance')}</p>
-            <button className="w-full rounded-xl border border-indigo-500/30 py-2 text-xs font-medium text-indigo-400 hover:bg-indigo-500/10 transition-colors">
+            <button
+              onClick={() => setTopupModal(true)}
+              className="w-full rounded-xl border border-indigo-500/30 py-2 text-xs font-medium text-indigo-400 hover:bg-indigo-500/10 transition-colors"
+            >
               {t('addBalance')}
             </button>
           </div>
@@ -201,6 +236,172 @@ export default function BillingPage() {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Cancel confirmation modal */}
+      {cancelModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setCancelModal(false)} />
+          <div className="relative w-full max-w-sm rounded-2xl border border-white/10 bg-[#111118] p-6 shadow-2xl">
+            <button onClick={() => setCancelModal(false)} className="absolute top-4 right-4 text-white/40 hover:text-white">
+              <X className="h-4 w-4" />
+            </button>
+            <h2 className="text-lg font-semibold text-white mb-2">Aboneliği İptal Et</h2>
+            <p className="text-sm text-white/60 mb-6 leading-relaxed">
+              Aboneliğinizi iptal etmek istediğinizden emin misiniz? Mevcut dönem sonuna kadar kullanmaya devam edebilirsiniz.
+            </p>
+            {cancelMutation.isError && (
+              <p className="text-xs text-red-400 mb-3">İşlem başarısız, lütfen tekrar deneyin.</p>
+            )}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setCancelModal(false)}
+                className="flex-1 rounded-xl border border-white/20 py-2.5 text-sm text-white/60 hover:bg-white/10 transition-colors"
+              >
+                Vazgeç
+              </button>
+              <button
+                onClick={() => cancelMutation.mutate()}
+                disabled={cancelMutation.isPending}
+                className="flex-1 rounded-xl bg-red-600 py-2.5 text-sm font-semibold text-white hover:bg-red-500 disabled:opacity-50 transition-colors"
+              >
+                {cancelMutation.isPending ? 'İptal ediliyor...' : 'Evet, İptal Et'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Plan change modal */}
+      {planModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setPlanModal(false)} />
+          <div className="relative w-full max-w-lg rounded-2xl border border-white/10 bg-[#111118] p-6 shadow-2xl">
+            <button onClick={() => setPlanModal(false)} className="absolute top-4 right-4 text-white/40 hover:text-white">
+              <X className="h-4 w-4" />
+            </button>
+            <h2 className="text-lg font-semibold text-white mb-4">Plan Değiştir</h2>
+
+            <div className="flex gap-2 mb-5 p-1 bg-white/5 rounded-xl w-fit">
+              {(['MONTHLY', 'YEARLY'] as const).map((cycle) => (
+                <button
+                  key={cycle}
+                  onClick={() => setSelectedCycle(cycle)}
+                  className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    selectedCycle === cycle ? 'bg-indigo-600 text-white' : 'text-white/50 hover:text-white'
+                  }`}
+                >
+                  {cycle === 'MONTHLY' ? 'Aylık' : 'Yıllık (2 ay bedava)'}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mb-5">
+              {AVAILABLE_PLANS.map((plan) => {
+                const planPrices = PLAN_PRICES_TRY[plan.key as keyof typeof PLAN_PRICES_TRY];
+                const price = selectedCycle === 'YEARLY' ? planPrices?.yearly : planPrices?.monthly;
+                const isSelected = selectedPlan === plan.key;
+                return (
+                  <button
+                    key={plan.key}
+                    onClick={() => setSelectedPlan(plan.key)}
+                    className={`p-4 rounded-xl border text-left transition-all ${
+                      isSelected
+                        ? 'border-indigo-500 bg-indigo-500/10'
+                        : 'border-white/10 bg-white/2 hover:border-white/20'
+                    }`}
+                  >
+                    <p className={`text-sm font-bold mb-1 ${isSelected ? 'text-indigo-300' : 'text-white'}`}>{plan.label}</p>
+                    <p className="text-xs text-white/40">
+                      {(!planPrices || (planPrices.monthly === 0 && planPrices.yearly === 0))
+                        ? 'Özel fiyat'
+                        : `₺${price?.toLocaleString()}/${selectedCycle === 'YEARLY' ? 'yıl' : 'ay'}`}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+
+            {changePlanMutation.isError && (
+              <p className="text-xs text-red-400 mb-3">İşlem başarısız, lütfen tekrar deneyin.</p>
+            )}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setPlanModal(false)}
+                className="flex-1 rounded-xl border border-white/20 py-2.5 text-sm text-white/60 hover:bg-white/10 transition-colors"
+              >
+                Vazgeç
+              </button>
+              <button
+                onClick={() => changePlanMutation.mutate()}
+                disabled={changePlanMutation.isPending || selectedPlan === planKey}
+                className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 transition-colors"
+              >
+                {changePlanMutation.isPending ? 'Değiştiriliyor...' : 'Planı Değiştir'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Wallet topup modal */}
+      {topupModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setTopupModal(false)} />
+          <div className="relative w-full max-w-sm rounded-2xl border border-white/10 bg-[#111118] p-6 shadow-2xl">
+            <button onClick={() => setTopupModal(false)} className="absolute top-4 right-4 text-white/40 hover:text-white">
+              <X className="h-4 w-4" />
+            </button>
+            <h2 className="text-lg font-semibold text-white mb-4">Bakiye Yükle</h2>
+
+            <div className="flex gap-2 mb-4">
+              {[100, 250, 500, 1000].map((amt) => (
+                <button
+                  key={amt}
+                  onClick={() => setTopupAmount(String(amt))}
+                  className={`flex-1 rounded-lg border py-2 text-xs font-medium transition-all ${
+                    topupAmount === String(amt)
+                      ? 'border-indigo-500 bg-indigo-500/10 text-indigo-300'
+                      : 'border-white/10 text-white/50 hover:border-white/20 hover:text-white'
+                  }`}
+                >
+                  ₺{amt}
+                </button>
+              ))}
+            </div>
+
+            <div className="mb-5">
+              <label className="text-xs text-white/50 mb-1.5 block">Özel miktar (₺)</label>
+              <input
+                type="number"
+                min="10"
+                value={topupAmount}
+                onChange={(e) => setTopupAmount(e.target.value)}
+                placeholder="Miktar girin"
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/30 focus:border-indigo-500 focus:outline-none"
+              />
+            </div>
+
+            {topupMutation.isError && (
+              <p className="text-xs text-red-400 mb-3">İşlem başarısız, lütfen tekrar deneyin.</p>
+            )}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setTopupModal(false)}
+                className="flex-1 rounded-xl border border-white/20 py-2.5 text-sm text-white/60 hover:bg-white/10 transition-colors"
+              >
+                Vazgeç
+              </button>
+              <button
+                onClick={() => topupMutation.mutate()}
+                disabled={topupMutation.isPending || !topupAmount || Number(topupAmount) < 10}
+                className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 transition-colors"
+              >
+                {topupMutation.isPending ? 'Yükleniyor...' : `₺${topupAmount || 0} Yükle`}
+              </button>
+            </div>
           </div>
         </div>
       )}
