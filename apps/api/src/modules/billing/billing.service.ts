@@ -13,6 +13,7 @@ import { CurrencyService } from './currency.service';
 import { BillingCycle, InvoiceStatus, WalletTxType } from '@prisma/client';
 import * as nodemailer from 'nodemailer';
 import * as crypto from 'crypto';
+import { DEFAULT_PLAN_LIMITS } from '@funbreakseo/shared';
 
 export interface BillingProfileDto {
   invoiceType: 'INDIVIDUAL' | 'CORPORATE';
@@ -151,18 +152,68 @@ export class BillingService {
 
   // ─── Change Plan ─────────────────────────────────────────────────────────────
 
-  async changePlan(orgId: string, planId: string) {
+  async changePlan(orgId: string, planId: string, billingCycle?: string) {
     const plan = await this.prisma.plan.findUnique({ where: { id: planId } });
     if (!plan) throw new NotFoundException('Plan not found');
 
-    const sub = await this.prisma.subscription.findUnique({
-      where: { organizationId: orgId },
-    });
-    if (!sub) throw new NotFoundException('No active subscription');
+    const cycle = (billingCycle === 'YEARLY' ? 'YEARLY' : 'MONTHLY') as BillingCycle;
+    const now = new Date();
+    const periodEnd = cycle === 'YEARLY'
+      ? new Date(now.getTime() + 365 * 86_400_000)
+      : new Date(now.getTime() + 30 * 86_400_000);
 
-    const updated = await this.prisma.subscription.update({
+    // ── Wallet deduction ──────────────────────────────────────────────────────
+    const planPrice = cycle === 'YEARLY'
+      ? parseFloat(plan.yearlyPrice.toString())
+      : parseFloat(plan.monthlyPrice.toString());
+
+    if (planPrice > 0) {
+      const orgRows = await this.prisma.$queryRaw<Array<{ walletBalance: string }>>`
+        SELECT "walletBalance" FROM organizations WHERE id = ${orgId} LIMIT 1
+      `;
+      const walletBalance = parseFloat(orgRows[0]?.walletBalance ?? '0');
+      if (walletBalance > 0) {
+        const deduct = Math.min(walletBalance, planPrice);
+        const newBalance = walletBalance - deduct;
+        await this.prisma.$executeRaw`
+          UPDATE organizations
+          SET "walletBalance" = ${newBalance}, "updatedAt" = NOW()
+          WHERE id = ${orgId}
+        `;
+        await this.prisma.walletTransaction.create({
+          data: {
+            organizationId: orgId,
+            type: 'SPEND',
+            amount: deduct,
+            balanceAfter: newBalance,
+            refType: 'plan_change',
+            refId: planId,
+            description: `Plan değişikliği: ${plan.slug} (${cycle}) — ₺${deduct.toFixed(2)} cüzdandan düşüldü`,
+          },
+        });
+        this.logger.log(`Wallet deducted ₺${deduct} for org ${orgId} plan change to ${plan.slug}`);
+      }
+    }
+
+    // ── Upsert subscription (works whether or not one already exists) ─────────
+    const updated = await this.prisma.subscription.upsert({
       where: { organizationId: orgId },
-      data: { planId },
+      create: {
+        organizationId: orgId,
+        planId,
+        billingCycle: cycle,
+        status: 'ACTIVE',
+        currentPeriodStart: now,
+        currentPeriodEnd: periodEnd,
+      },
+      update: {
+        planId,
+        billingCycle: cycle,
+        status: 'ACTIVE',
+        cancelAtPeriodEnd: false,
+        currentPeriodStart: now,
+        currentPeriodEnd: periodEnd,
+      },
     });
 
     await this.provisionSubscription(orgId, planId);
@@ -336,7 +387,10 @@ export class BillingService {
       include: { plan: true },
     });
 
-    const limits = (sub?.plan?.limits as Record<string, number> | null) ?? {};
+    // Always derive limits from canonical DEFAULT_PLAN_LIMITS by plan slug
+    // so display and enforcement always agree regardless of DB plan.limits JSON
+    const planSlug = (sub?.plan?.slug ?? 'starter') as keyof typeof DEFAULT_PLAN_LIMITS;
+    const planLimits = DEFAULT_PLAN_LIMITS[planSlug] ?? DEFAULT_PLAN_LIMITS.starter;
 
     const [keywords, crawls, aiBlogs, geoQueries] = await Promise.all([
       this.prisma.keyword.count({
@@ -363,19 +417,24 @@ export class BillingService {
     ]);
 
     return {
-      keywords: { used: keywords, limit: limits.keywords ?? 50 },
-      crawls: { used: crawls, limit: limits.monthlyCrawls ?? 5 },
-      aiBlogs: { used: aiBlogs, limit: limits.aiBlogsPerProject ?? 5 },
-      geoQueries: { used: geoQueries, limit: limits.geoQueries ?? 25 },
+      keywords:   { used: keywords,   limit: planLimits.keywords },
+      crawls:     { used: crawls,     limit: planLimits.monthlyCrawls },
+      aiBlogs:    { used: aiBlogs,    limit: planLimits.aiBlogsPerProject },
+      geoQueries: { used: geoQueries, limit: planLimits.geoQueries },
     };
   }
 
   async getWallet(orgId: string) {
-    const wallet = await this.prisma.wallet.findFirst({
+    const orgRows = await this.prisma.$queryRaw<Array<{ walletBalance: string }>>`
+      SELECT "walletBalance" FROM organizations WHERE id = ${orgId} LIMIT 1
+    `;
+    const balance = parseFloat(orgRows[0]?.walletBalance ?? '0');
+    const transactions = await this.prisma.walletTransaction.findMany({
       where: { organizationId: orgId },
-      include: { transactions: { orderBy: { createdAt: 'desc' }, take: 10 } },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
     });
-    return wallet ?? { balance: 0, transactions: [] };
+    return { balance, transactions };
   }
 
   // ─── VakıfBank Webhook ───────────────────────────────────────────────────────

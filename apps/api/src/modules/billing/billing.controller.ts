@@ -198,7 +198,7 @@ export class BillingController {
   async changePlan(@CurrentUser() user: User, @Body() dto: ChangePlanDto) {
     const planId = dto.planId ?? await this.billingService.resolvePlanId(dto.planKey);
     if (!planId) throw new BadRequestException('planId or planKey required');
-    return this.billingService.changePlan(user.organizationId!, planId);
+    return this.billingService.changePlan(user.organizationId!, planId, dto.billingCycle);
   }
 
   @Post('billing/cancel')

@@ -13,6 +13,7 @@ import {
 } from '@prisma/client';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import { DEFAULT_PLAN_LIMITS } from '@funbreakseo/shared';
 import axios from 'axios';
 
 export interface GscKeywordData {
@@ -100,8 +101,9 @@ export class KeywordService {
     });
 
     if (!dto.skipLimit) {
-      const limits = org.subscription?.plan?.limits as Record<string, number> | null;
-      const keywordLimit = limits?.['keywords_tracked'] ?? 500;
+      const planSlug = (org.subscription?.plan?.slug ?? 'starter') as keyof typeof DEFAULT_PLAN_LIMITS;
+      const planLimits = DEFAULT_PLAN_LIMITS[planSlug] ?? DEFAULT_PLAN_LIMITS.starter;
+      const keywordLimit = planLimits.keywords;
       const existingCount = await this.prisma.keyword.count({ where: { projectId } });
       if (existingCount + dto.phrases.length > keywordLimit) {
         throw new BadRequestException(
