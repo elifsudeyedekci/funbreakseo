@@ -47,7 +47,7 @@ export default function OutreachReviewPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['admin-outreach-review'],
     queryFn: async () => {
-      try { const r = await adminApi.get('/admin/outreach/review'); return r.data?.data ?? MOCK_REPLIES; }
+      try { const r = await adminApi.get('/admin/outreach-review'); return r.data?.data ?? MOCK_REPLIES; }
       catch { return MOCK_REPLIES; }
     },
   });

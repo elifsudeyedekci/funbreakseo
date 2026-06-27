@@ -41,7 +41,8 @@
     "login": "Connexion",
     "register": "Essai gratuit",
     "dashboard": "Tableau de bord",
-    "geo": "Qu'est-ce que le GEO ?"
+    "geo": "Qu'est-ce que le GEO ?",
+    "seo": "Qu'est-ce que le SEO ?"
   },
   "hero": {
     "badge": "Plateforme SEO + GEO",
