@@ -16,6 +16,7 @@ interface Content {
   contentType: string;
   status: ContentStatus;
   seoScore: number;
+  geoScore: number;
   wordCount: number;
   createdAt: string;
 }
@@ -146,6 +147,12 @@ export default function ContentPage() {
                         {item.seoScore}
                       </div>
                       <div className="text-[10px] text-white/30">SEO</div>
+                    </div>
+                  )}
+                  {item.geoScore > 0 && (
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-purple-400">{item.geoScore}</div>
+                      <div className="text-[10px] text-white/30">GEO</div>
                     </div>
                   )}
                   <span className={cn('text-xs px-2.5 py-1 rounded-full font-medium', STATUS_CONFIG[item.status].color)}>

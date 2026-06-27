@@ -407,6 +407,15 @@ export class GeoWorker extends WorkerHost {
     const totalSourcesSeen = allProjectResults.length
     const shareOfVoice = totalSourcesSeen > 0 ? totalCitations / totalSourcesSeen : 0
 
+    // Persist the project's GEO visibility = mentioned / (queries × platforms),
+    // the SAME basis the GEO page and dashboard use — so the projects LIST
+    // (which reads project.geoVisibilityScore) matches everywhere.
+    const visibilityPercent = totalSourcesSeen > 0 ? Math.round((totalMentions / totalSourcesSeen) * 100) : 0
+    await this.prisma.project.update({
+      where: { id: projectId },
+      data: { geoVisibilityScore: visibilityPercent },
+    }).catch(() => {})
+
     await this.prisma.geoVisibilitySnapshot.upsert({
       where: { projectId_date: { projectId, date: today } },
       create: {

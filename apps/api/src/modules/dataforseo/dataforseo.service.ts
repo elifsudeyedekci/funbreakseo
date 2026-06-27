@@ -187,7 +187,6 @@ export class DataForSeoService {
         location_code: locationCode,
         language_code: languageCode,
         depth,
-        se_domain: 'google.com.tr',
         device: 'desktop',
         os: 'windows',
       },

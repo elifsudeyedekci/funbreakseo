@@ -156,7 +156,8 @@ export default function CompetitorsPage() {
               <thead>
                 <tr className="border-b border-white/10">
                   <th className="text-left px-4 py-3 text-xs font-medium text-white/40">Kelime</th>
-                  <th className="px-4 py-3 text-xs font-medium text-white/40 text-center">Google Sırası</th>
+                  <th className="px-4 py-3 text-xs font-medium text-white/40 text-center">Rakip Sırası</th>
+                  <th className="px-4 py-3 text-xs font-medium text-white/40 text-center">Benim Sıram</th>
                   <th className="px-4 py-3 text-xs font-medium text-white/40 text-center">Hacim</th>
                   <th className="px-4 py-3 text-xs font-medium text-white/40 text-center">Zorluk</th>
                   <th className="px-4 py-3 text-xs font-medium text-white/40 text-right">Aksiyon</th>
@@ -164,16 +165,21 @@ export default function CompetitorsPage() {
               </thead>
               <tbody>
                 {loadingKeywords && (
-                  <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-white/30">Yükleniyor...</td></tr>
+                  <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-white/30">Yükleniyor...</td></tr>
                 )}
-                {!loadingKeywords && (competitorKeywords as Array<{ keyword: string; position: number | null; searchVolume: number; difficulty: number }> ?? []).map((row, i) => {
+                {!loadingKeywords && (competitorKeywords as Array<{ keyword: string; position: number | null; myPosition?: number | null; shared?: boolean; searchVolume: number; difficulty: number }> ?? []).map((row, i) => {
                   const added = addedKeywords.has(row.keyword);
                   return (
-                    <tr key={i} className="border-b border-white/5 hover:bg-white/2">
-                      <td className="px-4 py-3 text-white">{row.keyword}</td>
+                    <tr key={i} className={['border-b border-white/5 hover:bg-white/2', row.shared ? 'bg-emerald-500/5' : ''].join(' ')}>
+                      <td className="px-4 py-3 text-white">{row.keyword}{row.shared && <span className="ml-2 text-[10px] text-emerald-400">ortak</span>}</td>
                       <td className="px-4 py-3 text-center">
                         {row.position != null
                           ? <span className="inline-block rounded-md bg-indigo-500/15 px-2 py-0.5 text-xs font-semibold text-indigo-300">#{row.position}</span>
+                          : <span className="text-white/30">—</span>}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {row.myPosition != null
+                          ? <span className="inline-block rounded-md bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-300">#{row.myPosition}</span>
                           : <span className="text-white/30">—</span>}
                       </td>
                       <td className="px-4 py-3 text-center text-white/60">{row.searchVolume?.toLocaleString() ?? '—'}</td>
@@ -191,7 +197,7 @@ export default function CompetitorsPage() {
                   );
                 })}
                 {!loadingKeywords && (competitorKeywords as unknown[] ?? []).length === 0 && (
-                  <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-white/30">Kelime bulunamadı</td></tr>
+                  <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-white/30">Kelime bulunamadı</td></tr>
                 )}
               </tbody>
             </table>

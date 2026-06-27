@@ -399,13 +399,14 @@ export default function GeoPage() {
                     );
                   })}
                 </div>
-                {/* Action: brand not shown for this query → offer to write content */}
-                {!q.mentioned && (
+                {/* Action: brand missing on some/all platforms for this query →
+                    offer to write content (covers "yok" platform gaps). */}
+                {platforms.some(([pl]) => { const p = q.platforms.find((x) => x.platform === pl); return !(p && p.mentioned); }) && (
                   <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2">
                     <Info className="h-3.5 w-3.5 text-amber-400 mt-0.5 flex-shrink-0" />
                     <div className="flex-1">
                       <p className="text-[11px] text-white/60">
-                        Bu aramada yapay zeka markanızı göstermiyor. <strong className="text-white/80">Ne yapmalı?</strong> Bu konuda
+                        Bazı AI platformlarında bu aramada markanız görünmüyor. <strong className="text-white/80">Ne yapmalı?</strong> Bu konuda
                         kapsamlı, soruyu net yanıtlayan bir içerik yayınlamak AI cevaplarında görünme şansınızı artırır.
                       </p>
                       <button

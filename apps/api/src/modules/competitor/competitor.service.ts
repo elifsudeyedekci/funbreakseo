@@ -74,97 +74,94 @@ export class CompetitorService {
   async findCompetitors(projectId: string, organizationId: string) {
     const project = await this.getProject(projectId, organizationId);
     const domain = this.cleanDomain(project.domain);
-    const locationCode = this.dfs.resolveLocationCode(project.country ?? 'TR');
+    const country = project.country ?? 'TR';
+    const locationCode = this.dfs.resolveLocationCode(country);
     const language = project.language ?? 'tr';
 
-    // Get from DataForSEO using the PROJECT's country/language (multi-country SaaS)
-    const fromDfs = await this.dfs.getCompetitorDomains(domain, 25, locationCode, language);
-
-    // Filter out generic platforms, the project's own domain, AND domains with
-    // zero shared keywords (they are not real competitors — this was the
-    // "ortak kelime: 0 / alakasız siteler" complaint). If the API returns
-    // intersection counts for nobody, fall back to keeping the non-generic ones
-    // so the page isn't empty.
-    const nonGeneric = fromDfs.filter(
-      (c) =>
-        c.domain &&
-        !this.isGenericDomain(c.domain) &&
-        this.cleanDomain(c.domain) !== domain,
-    );
-    // Real competitors share MANY keywords. Generic big sites (lawyer/insurance
-    // directories etc.) share only 1–2 and pollute the list. Keep those whose
-    // shared-keyword count is meaningful relative to the strongest competitor.
-    const sortedByOverlap = [...nonGeneric].sort((a, b) => (b.intersections ?? 0) - (a.intersections ?? 0));
-    const topOverlap = sortedByOverlap[0]?.intersections ?? 0;
-    const minOverlap = Math.max(3, Math.round(topOverlap * 0.15));
-    const withOverlap = sortedByOverlap.filter((c) => (c.intersections ?? 0) >= minOverlap);
-    // Fallbacks so the list isn't empty for very small/new sites.
-    const relevant = (withOverlap.length > 0
-      ? withOverlap
-      : sortedByOverlap.filter((c) => (c.intersections ?? 0) > 0)
-    ).slice(0, 15);
-    this.logger.log(
-      `Competitor filter ${domain}: ${nonGeneric.length} nonGeneric, topOverlap=${topOverlap}, minOverlap=${minOverlap} → ${relevant.length} kept`,
-    );
-
-    this.logger.log(
-      `Competitor discovery for ${domain}: ${fromDfs.length} raw → ${relevant.length} relevant (filtered ${fromDfs.length - relevant.length} generic/self)`,
-    );
-
-    // Purge previously-stored auto competitors that are now known to be generic/self,
-    // so old polluted records (e.g. youtube.com) disappear after a re-scan.
+    // 1. Seed keywords = the project's OWN well-ranking keywords (pos 1-20),
+    //    falling back to the tracked keywords table.
+    let projectRanked: Array<{ keyword: string; position: number | null }> = [];
     try {
-      const stale = await this.prisma.competitor.findMany({
-        where: { projectId, isAuto: true },
-        select: { id: true, domain: true },
-      });
-      const staleIds = stale
-        .filter((c) => this.isGenericDomain(c.domain) || this.cleanDomain(c.domain) === domain)
-        .map((c) => c.id);
-      if (staleIds.length > 0) {
-        await this.prisma.competitor.deleteMany({ where: { id: { in: staleIds } } });
-        this.logger.log(`Purged ${staleIds.length} stale generic competitor records`);
-      }
-    } catch (err) {
-      this.logger.warn('Failed to purge stale competitors', err);
+      projectRanked = await this.dfs.getRankedKeywordsDetailed(domain, 200, locationCode, language);
+    } catch (err) { this.logger.warn('findCompetitors: project ranked fetch failed', err); }
+
+    let seeds = projectRanked
+      .filter((r) => r.position != null && r.position <= 20)
+      .map((r) => r.keyword);
+    if (seeds.length === 0) {
+      const tracked = await this.prisma.keyword.findMany({ where: { projectId }, select: { phrase: true } });
+      seeds = tracked.map((t) => t.phrase).filter(Boolean);
+    }
+    seeds = Array.from(new Set(seeds.map((s) => s.toLowerCase().trim()))).slice(0, 12);
+
+    // 2. For each seed keyword, read the SERP and collect the OTHER domains that
+    //    rank for it. Frequency across seeds = number of shared keywords. This is
+    //    how real sector rivals surface (vs competitors_domain returning random
+    //    high-authority sites).
+    const domainCount = new Map<string, number>();
+    for (const kw of seeds) {
+      try {
+        const serp = await this.dfs.searchSerp(kw, country, language, 20);
+        const seenInThis = new Set<string>();
+        for (const item of serp) {
+          if (item.type !== 'organic' || !item.domain) continue;
+          const d = this.cleanDomain(item.domain);
+          if (!d || d === domain || this.isGenericDomain(d) || seenInThis.has(d)) continue;
+          seenInThis.add(d);
+          domainCount.set(d, (domainCount.get(d) ?? 0) + 1);
+        }
+      } catch (err) { this.logger.warn(`findCompetitors SERP failed for "${kw}"`, err); }
     }
 
-    // Upsert relevant competitors into DB
-    for (const c of relevant) {
+    const discovered = [...domainCount.entries()]
+      .filter(([, count]) => count > 0)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 15);
+    this.logger.log(
+      `Competitor discovery (SERP) ${domain}: ${seeds.length} seed kw → ${domainCount.size} domains → ${discovered.length} competitors (top: ${discovered.slice(0, 5).map(([d, c]) => `${d}:${c}`).join(', ')})`,
+    );
+
+    // 3. Replace old AUTO competitors with the fresh SERP-based set.
+    try { await this.prisma.competitor.deleteMany({ where: { projectId, isAuto: true } }); }
+    catch (err) { this.logger.warn('purge auto competitors failed', err); }
+
+    for (const [d, count] of discovered) {
       try {
         await this.prisma.competitor.upsert({
-          where: { projectId_domain: { projectId, domain: c.domain } },
-          update: {
-            avgPosition: c.avgPosition ?? undefined,
-            commonKeywords: c.intersections ?? 0,
-            isAuto: true,
-          },
-          create: {
-            projectId,
-            domain: c.domain,
-            avgPosition: c.avgPosition ?? undefined,
-            commonKeywords: c.intersections ?? 0,
-            isAuto: true,
-          },
+          where: { projectId_domain: { projectId, domain: d } },
+          update: { commonKeywords: count, isAuto: true },
+          create: { projectId, domain: d, commonKeywords: count, isAuto: true },
         });
-      } catch (err) {
-        this.logger.warn(`Failed to upsert competitor ${c.domain}`, err);
-      }
+      } catch (err) { this.logger.warn(`upsert competitor ${d} failed`, err); }
     }
 
-    // Return merged list (DB + fresh DFS data), excluding any generic leftovers
+    // 4. Recompute MANUAL competitors' common-keyword counts too (so they don't
+    //    show 0). Prefer the SERP frequency; else compare their ranked keywords.
+    const projectMap = new Map<string, number | null>();
+    for (const k of (await this.prisma.keyword.findMany({ where: { projectId }, select: { phrase: true } }))) {
+      if (k.phrase) projectMap.set(k.phrase.toLowerCase().trim(), null);
+    }
+    for (const r of projectRanked) projectMap.set(r.keyword.toLowerCase().trim(), r.position);
+    const manual = await this.prisma.competitor.findMany({ where: { projectId, isAuto: false } });
+    for (const m of manual) {
+      const md = this.cleanDomain(m.domain);
+      let count = domainCount.get(md) ?? 0;
+      if (count === 0) {
+        try {
+          const compRanked = await this.dfs.getRankedKeywordsDetailed(md, 1000, locationCode, language);
+          count = compRanked.filter((c) => projectMap.has(c.keyword.toLowerCase().trim())).length;
+        } catch (err) { this.logger.warn(`manual competitor ${md} recompute failed`, err); }
+      }
+      await this.prisma.competitor.updateMany({ where: { id: m.id }, data: { commonKeywords: count } }).catch(() => {});
+    }
+
     const dbCompetitors = await this.prisma.competitor.findMany({
       where: { projectId },
       orderBy: { commonKeywords: 'desc' },
     });
-
-    const dfsMap = new Map(relevant.map((c) => [c.domain, c]));
     return dbCompetitors
       .filter((c) => !this.isGenericDomain(c.domain) && this.cleanDomain(c.domain) !== domain)
-      .map((c) => ({
-        ...c,
-        etv: dfsMap.get(c.domain)?.etv ?? null,
-      }));
+      .map((c) => ({ ...c, etv: null }));
   }
 
   /**
