@@ -460,7 +460,7 @@ export class ProjectService {
       client_id: clientId,
       redirect_uri: redirectUri,
       response_type: 'code',
-      scope: 'https://www.googleapis.com/auth/webmasters.readonly',
+      scope: 'https://www.googleapis.com/auth/webmasters.readonly https://www.googleapis.com/auth/analytics.readonly',
       access_type: 'offline',
       prompt: 'consent',
       state: `${id}:${organizationId}`,

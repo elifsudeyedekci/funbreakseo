@@ -28,6 +28,6 @@ export default function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|rss.xml|manifest.json|sw.js|icons).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|apple-touch-icon.png|sitemap.xml|robots.txt|rss.xml|manifest.json|sw.js|icons).*)',
   ],
 };

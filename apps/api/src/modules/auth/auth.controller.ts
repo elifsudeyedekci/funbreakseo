@@ -254,7 +254,11 @@ export class AuthController {
     url.searchParams.set('client_id', clientId);
     url.searchParams.set('redirect_uri', callbackUrl);
     url.searchParams.set('response_type', 'code');
-    url.searchParams.set('scope', 'profile email https://www.googleapis.com/auth/webmasters.readonly');
+    // GSC + GA4 (Analytics) okuma izni birlikte istenir — tek bağlantıyla iki entegrasyon
+    url.searchParams.set(
+      'scope',
+      'profile email https://www.googleapis.com/auth/webmasters.readonly https://www.googleapis.com/auth/analytics.readonly',
+    );
     url.searchParams.set('access_type', 'offline');
     url.searchParams.set('prompt', 'consent');
     url.searchParams.set('include_granted_scopes', 'false');

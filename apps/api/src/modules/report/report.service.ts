@@ -298,7 +298,7 @@ export class ReportService {
     return { success: true };
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_8AM)
+  @Cron('0 17 * * *', { timeZone: 'Europe/Istanbul' })
   async sendScheduledReports() {
     const now = new Date();
     const scheduledReports = await this.prisma.scheduledReport.findMany({

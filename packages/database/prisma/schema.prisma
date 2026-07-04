@@ -743,6 +743,7 @@ model Project {
   healthScore           Int                 @default(0)
   geoVisibilityScore    Int                 @default(0)
   gscConnected          Boolean             @default(false)
+  ga4PropertyId         String?
   createdByUserId       String
   createdBy             User                @relation(fields: [createdByUserId], references: [id])
   keywords              Keyword[]

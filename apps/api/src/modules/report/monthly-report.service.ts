@@ -23,11 +23,25 @@ interface GscTotals {
   position: number;
 }
 
+interface Ga4Totals {
+  users: number;
+  sessions: number;
+  pageViews: number;
+  bounceRate: number;
+  avgSessionDurationSec: number;
+}
+
 export interface MonthlyReportData {
   project: { id: string; name: string; domain: string; organization: string };
   period: { start: string; end: string; label: string };
   prevPeriod: { start: string; end: string };
   gscConnected: boolean;
+  analytics: {
+    connected: boolean;
+    current: Ga4Totals;
+    previous: Ga4Totals;
+    channels: Array<{ channel: string; sessions: number; users: number }>;
+  };
   organic: {
     current: GscTotals;
     previous: GscTotals;
@@ -133,6 +147,80 @@ export class MonthlyReportService {
     }
   }
 
+  // ── GA4 erişimi (aynı Google token'ı — analytics.readonly scope'u ile) ──────
+
+  /** Projenin GA4 property'sini bul: kayıtlıysa onu kullan, değilse hesaptan eşleştir ve kaydet */
+  private async resolveGa4PropertyId(projectId: string, domain: string, token: string): Promise<string | null> {
+    try {
+      const rows = await this.prisma.$queryRaw<Array<{ ga4PropertyId: string | null }>>`
+        SELECT "ga4PropertyId" FROM projects WHERE id = ${projectId} LIMIT 1
+      `;
+      if (rows[0]?.ga4PropertyId) return rows[0].ga4PropertyId;
+
+      // Hesaptaki property'leri listele ve domain'e eşleştirmeye çalış
+      const { data } = await axios.get<{
+        accountSummaries?: Array<{
+          propertySummaries?: Array<{ property: string; displayName: string }>;
+        }>;
+      }>('https://analyticsadmin.googleapis.com/v1beta/accountSummaries?pageSize=200', {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 15_000,
+      });
+
+      const properties = (data.accountSummaries ?? []).flatMap((a) => a.propertySummaries ?? []);
+      if (properties.length === 0) return null;
+
+      const cleanDomain = domain.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
+      const domainRoot = cleanDomain.split('.')[0].toLowerCase();
+      const match =
+        properties.find((p) => p.displayName.toLowerCase().includes(cleanDomain.toLowerCase())) ??
+        properties.find((p) => p.displayName.toLowerCase().includes(domainRoot)) ??
+        (properties.length === 1 ? properties[0] : null);
+
+      if (!match) return null;
+      const propertyId = match.property.replace('properties/', '');
+      await this.prisma.$executeRaw`
+        UPDATE projects SET "ga4PropertyId" = ${propertyId}, "updatedAt" = NOW() WHERE id = ${projectId}
+      `;
+      this.logger.log(`GA4 property eşleşti: ${domain} → ${propertyId} (${match.displayName})`);
+      return propertyId;
+    } catch (e) {
+      this.logger.warn(`GA4 property bulunamadı (${domain}): ${(e as Error).message}`);
+      return null;
+    }
+  }
+
+  private async queryGa4(
+    propertyId: string,
+    token: string,
+    body: Record<string, unknown>,
+  ): Promise<Array<{ dimensionValues?: Array<{ value: string }>; metricValues?: Array<{ value: string }> }>> {
+    try {
+      const { data } = await axios.post<{
+        rows?: Array<{ dimensionValues?: Array<{ value: string }>; metricValues?: Array<{ value: string }> }>;
+      }>(`https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`, body, {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 20_000,
+      });
+      return data.rows ?? [];
+    } catch (e) {
+      this.logger.warn(`GA4 sorgusu başarısız (${propertyId}): ${(e as Error).message}`);
+      return [];
+    }
+  }
+
+  private ga4Totals(rows: Array<{ metricValues?: Array<{ value: string }> }>): Ga4Totals {
+    const m = rows[0]?.metricValues ?? [];
+    const n = (i: number) => parseFloat(m[i]?.value ?? '0') || 0;
+    return {
+      users: n(0),
+      sessions: n(1),
+      pageViews: n(2),
+      bounceRate: n(3) * 100, // GA4 bounceRate 0-1 arası döner
+      avgSessionDurationSec: n(4),
+    };
+  }
+
   private sumRows(rows: GscRow[]): GscTotals {
     const clicks = rows.reduce((s, r) => s + r.clicks, 0);
     const impressions = rows.reduce((s, r) => s + r.impressions, 0);
@@ -209,6 +297,54 @@ export class MonthlyReportService {
       topPages = pageRows.map((r) => ({ page: r.keys[0], clicks: r.clicks, impressions: r.impressions }));
       devices = deviceRows.map((r) => ({ device: r.keys[0], clicks: r.clicks, impressions: r.impressions }));
       countries = countryRows.map((r) => ({ country: r.keys[0], clicks: r.clicks, impressions: r.impressions }));
+    }
+
+    // ── GA4 (Google Analytics) ──
+    const zeroGa4: Ga4Totals = { users: 0, sessions: 0, pageViews: 0, bounceRate: 0, avgSessionDurationSec: 0 };
+    let ga4Connected = false;
+    let ga4Current = zeroGa4;
+    let ga4Previous = zeroGa4;
+    let ga4Channels: MonthlyReportData['analytics']['channels'] = [];
+
+    if (token) {
+      const propertyId = await this.resolveGa4PropertyId(project.id, project.domain, token);
+      if (propertyId) {
+        const metrics = [
+          { name: 'totalUsers' },
+          { name: 'sessions' },
+          { name: 'screenPageViews' },
+          { name: 'bounceRate' },
+          { name: 'averageSessionDuration' },
+        ];
+        const [curRows, prevRows, channelRows] = await Promise.all([
+          this.queryGa4(propertyId, token, {
+            dateRanges: [{ startDate: d(periodStart), endDate: d(periodEnd) }],
+            metrics,
+          }),
+          this.queryGa4(propertyId, token, {
+            dateRanges: [{ startDate: d(prevStart), endDate: d(prevEnd) }],
+            metrics,
+          }),
+          this.queryGa4(propertyId, token, {
+            dateRanges: [{ startDate: d(periodStart), endDate: d(periodEnd) }],
+            dimensions: [{ name: 'sessionDefaultChannelGroup' }],
+            metrics: [{ name: 'sessions' }, { name: 'totalUsers' }],
+            orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+            limit: 10,
+          }),
+        ]);
+
+        if (curRows.length > 0 || prevRows.length > 0) {
+          ga4Connected = true;
+          ga4Current = this.ga4Totals(curRows);
+          ga4Previous = this.ga4Totals(prevRows);
+          ga4Channels = channelRows.map((r) => ({
+            channel: r.dimensionValues?.[0]?.value ?? '?',
+            sessions: parseFloat(r.metricValues?.[0]?.value ?? '0') || 0,
+            users: parseFloat(r.metricValues?.[1]?.value ?? '0') || 0,
+          }));
+        }
+      }
     }
 
     // ── Takip edilen kelimeler ──
@@ -327,6 +463,12 @@ export class MonthlyReportService {
       period: { start: d(periodStart), end: d(periodEnd), label: periodLabel },
       prevPeriod: { start: d(prevStart), end: d(prevEnd) },
       gscConnected,
+      analytics: {
+        connected: ga4Connected,
+        current: ga4Current,
+        previous: ga4Previous,
+        channels: ga4Channels,
+      },
       organic: {
         current: currentTotals,
         previous: previousTotals,
@@ -554,6 +696,35 @@ export class MonthlyReportService {
 <div class="page">
   <div class="pagehead"><span class="brand">FunBreak SEO</span><span class="meta">${escapeHtml(r.project.domain)} · ${r.period.label}</span></div>
 
+  ${
+    r.analytics.connected
+      ? `<div class="section">
+    <h2>Genel Trafik (Google Analytics)</h2>
+    <p class="sub">GA4 verileri — önceki ayla karşılaştırmalı</p>
+    <div class="kpis">
+      <div class="kpi"><div class="label">Kullanıcı</div><div class="value">${fmt(r.analytics.current.users)}</div><div class="delta">${delta(r.analytics.current.users, r.analytics.previous.users)}</div></div>
+      <div class="kpi"><div class="label">Oturum</div><div class="value">${fmt(r.analytics.current.sessions)}</div><div class="delta">${delta(r.analytics.current.sessions, r.analytics.previous.sessions)}</div></div>
+      <div class="kpi"><div class="label">Görüntüleme</div><div class="value">${fmt(r.analytics.current.pageViews)}</div><div class="delta">${delta(r.analytics.current.pageViews, r.analytics.previous.pageViews)}</div></div>
+      <div class="kpi"><div class="label">Hemen Çıkma</div><div class="value">${pct(r.analytics.current.bounceRate)}</div><div class="delta">${
+        r.analytics.previous.bounceRate > 0 && r.analytics.current.bounceRate < r.analytics.previous.bounceRate
+          ? '<span class="up">▲ İyileşti</span>'
+          : r.analytics.previous.bounceRate > 0 && r.analytics.current.bounceRate > r.analytics.previous.bounceRate
+            ? '<span class="down">▼ Yükseldi</span>'
+            : '<span class="flat">—</span>'
+      }</div></div>
+      <div class="kpi"><div class="label">Ort. Oturum</div><div class="value">${Math.floor(r.analytics.current.avgSessionDurationSec / 60)}:${String(Math.round(r.analytics.current.avgSessionDurationSec % 60)).padStart(2, '0')}</div><div class="delta">${delta(r.analytics.current.avgSessionDurationSec, r.analytics.previous.avgSessionDurationSec)}</div></div>
+    </div>
+    ${
+      r.analytics.channels.length > 0
+        ? `<table><thead><tr><th>Trafik Kaynağı</th><th style="text-align:right">Oturum</th><th style="text-align:right">Kullanıcı</th></tr></thead><tbody>
+      ${r.analytics.channels.map((ch) => `<tr><td>${escapeHtml(ch.channel)}</td><td class="num">${fmt(ch.sessions)}</td><td class="num">${fmt(ch.users)}</td></tr>`).join('')}
+    </tbody></table>`
+        : ''
+    }
+  </div>`
+      : ''
+  }
+
   <div class="section">
     <h2>Organik Trafik Özeti</h2>
     <p class="sub">Google Search Console verileri — önceki ayla karşılaştırmalı</p>
@@ -751,9 +922,9 @@ export class MonthlyReportService {
     </div>`;
   }
 
-  // ── Cron: her gün 09:30 — günlük kelime raporu ──────────────────────────────
+  // ── Cron: her gün 17:00 (TR saati) — günlük kelime raporu ───────────────────
 
-  @Cron('30 9 * * *')
+  @Cron('0 17 * * *', { timeZone: 'Europe/Istanbul' })
   async sendDailyKeywordReports(): Promise<void> {
     const projects = await this.prisma.project.findMany({
       where: {
@@ -797,9 +968,9 @@ export class MonthlyReportService {
     this.logger.log(`Günlük kelime raporları işlendi: ${projects.length} proje`);
   }
 
-  // ── Cron: her ayın 1'i 07:30 — aylık PDF rapor maili ────────────────────────
+  // ── Cron: her ayın 1'i 17:00 (TR saati) — aylık PDF rapor maili ─────────────
 
-  @Cron('30 7 1 * *')
+  @Cron('0 17 1 * *', { timeZone: 'Europe/Istanbul' })
   async sendMonthlyReports(): Promise<void> {
     const projects = await this.prisma.project.findMany({
       where: {
