@@ -29,6 +29,14 @@ pnpm --filter @funbreakseo/database generate
 echo "[4/6] Running database migrations..."
 pnpm --filter @funbreakseo/database migrate:deploy
 
+# 4b. Opsiyonel seed: `bash deploy.sh --seed` ile çalışır.
+# Blog içerikleri, planlar, SEO kuralları vb. upsert edilir.
+# DİKKAT: Admin panelden düzenlenen blog yazılarının üzerine seed içeriği yazılır.
+if [[ "${1:-}" == "--seed" ]]; then
+  echo "[4b] Seeding database (content upsert)..."
+  pnpm --filter @funbreakseo/database seed
+fi
+
 # 5. Tüm uygulamaları build et
 echo "[5/6] Building all apps (api, web, admin)..."
 pnpm build

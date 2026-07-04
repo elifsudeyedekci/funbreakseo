@@ -192,3 +192,58 @@ body {
 .pillar-content::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 140px; background: linear-gradient(to bottom, transparent, var(--bg-base)); pointer-events: none; transition: opacity 0.3s; }
 .pillar-content.expanded { max-height: none; }
 .pillar-content.expanded::after { opacity: 0; }
+
+/* ═══════════════════════════════════════════════════════════════
+   MOBİL PERFORMANS (< 1024px)
+   Donma/yavaşlığın kökleri: (1) body'de 7 katmanlı gradient +
+   background-attachment:fixed → her scroll karesinde tam repaint,
+   (2) 80-170px blur'lu dev dekoratif küreler + sonsuz animasyonlar,
+   (3) tam ekran sabit noise katmanı, (4) yaygın backdrop-filter.
+   Mobilde bunları kapatıyoruz — görsel fark minimum, akıcılık maksimum.
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 1023px) {
+  body {
+    /* fixed attachment mobilde scroll jank'inin 1 numaralı sebebi */
+    background-attachment: scroll;
+    /* Katman sayısını 7'den 2'ye indir — çizgi dokusunu ve ağır radial'ları at */
+    background-image:
+      radial-gradient(ellipse 90% 50% at 50% -5%, rgba(79, 70, 229, 0.35) 0%, transparent 65%),
+      radial-gradient(ellipse 90% 50% at 50% 105%, rgba(79, 70, 229, 0.22) 0%, transparent 65%);
+  }
+
+  /* Tam ekran sabit noise katmanı — mobilde kompozisyon maliyeti, görsel katkısı yok */
+  .noise-overlay { display: none; }
+
+  /* Dev blur'lu dekoratif küreler (blur-[80px]..blur-[170px]) — mobil GPU'da en pahalı katmanlar */
+  [class*='blur-['] { display: none !important; }
+
+  /* Sonsuz animasyonlar — sürekli compositing, pil + FPS düşmanı */
+  .animate-float,
+  .animate-float-b,
+  .animate-float-delayed,
+  .animate-pulse-glow { animation: none !important; }
+
+  /* backdrop-filter mobilde çok pahalı — overlay'lerde düz koyu zemin yeterli */
+  [class*='backdrop-blur'] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  .glass {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: rgba(9, 9, 11, 0.96);
+  }
+
+  /* Ekran dışı bölümleri render etme — uzun landing sayfasında büyük kazanç */
+  main > section { content-visibility: auto; contain-intrinsic-size: auto 700px; }
+}
+
+/* Kullanıcı animasyon istemiyorsa hepsini kapat (erişilebilirlik + performans) */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  html { scroll-behavior: auto; }
+}

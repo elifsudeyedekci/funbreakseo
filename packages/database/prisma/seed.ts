@@ -1,5 +1,6 @@
 ﻿import { PrismaClient } from '@prisma/client';
 import * as crypto from 'crypto';
+import { FULL_BLOG_CONTENT, mdToHtml } from './seed-data';
 
 const prisma = new PrismaClient();
 
@@ -2374,10 +2375,42 @@ Organik trafik artırmak; doğru teknik altyapı, kullanıcı odaklı içerik ve
   ];
 
   for (const post of blogPosts) {
+    // Genişletilmiş tam içerik varsa (seed-data), onu esas al
+    const full = FULL_BLOG_CONTENT[post.slug];
+    const merged = full
+      ? {
+          ...post,
+          title: full.title,
+          excerpt: full.excerpt,
+          metaTitle: full.metaTitle,
+          metaDescription: full.metaDescription,
+          readingMinutes: full.readingMinutes,
+          faqSection: full.faqSection,
+          bodyMarkdown: full.bodyMarkdown,
+          bodyHtml: mdToHtml(full.bodyMarkdown),
+        }
+      : post;
+    const m = merged as typeof post & {
+      excerpt?: string;
+      faqSection?: Array<{ question: string; answer: string }>;
+      readingMinutes?: number;
+      metaTitle?: string;
+      metaDescription?: string;
+    };
     await prisma.blogPost.upsert({
-      where: { slug: post.slug },
-      update: { bodyMarkdown: post.bodyMarkdown, bodyHtml: post.bodyHtml, updatedAt: new Date() },
-      create: post,
+      where: { slug: m.slug },
+      update: {
+        title: m.title,
+        excerpt: m.excerpt,
+        metaTitle: m.metaTitle,
+        metaDescription: m.metaDescription,
+        readingMinutes: m.readingMinutes ?? 6,
+        faqSection: m.faqSection ?? undefined,
+        bodyMarkdown: m.bodyMarkdown,
+        bodyHtml: m.bodyHtml,
+        updatedAt: new Date(),
+      },
+      create: m,
     });
   }
   console.log(`Turkish blog posts created: ${blogPosts.length}`);
@@ -2718,10 +2751,39 @@ Organik trafik artırmak; doğru teknik altyapı, kullanıcı odaklı içerik ve
   ];
 
   for (const post of intlBlogPosts) {
+    // Dile özel tam içerik seed-data'da — stub'ların üzerine yazar
+    const full = FULL_BLOG_CONTENT[post.slug];
+    const merged = full
+      ? {
+          ...post,
+          title: full.title,
+          excerpt: full.excerpt,
+          metaTitle: full.metaTitle,
+          metaDescription: full.metaDescription,
+          readingMinutes: full.readingMinutes,
+          faqSection: full.faqSection,
+          bodyMarkdown: full.bodyMarkdown,
+          bodyHtml: mdToHtml(full.bodyMarkdown),
+        }
+      : post;
+    const mi = merged as typeof post & {
+      faqSection?: Array<{ question: string; answer: string }>;
+      readingMinutes?: number;
+    };
     await prisma.blogPost.upsert({
-      where: { slug: post.slug },
-      update: { bodyMarkdown: post.bodyMarkdown, bodyHtml: post.bodyHtml, updatedAt: new Date() },
-      create: post,
+      where: { slug: mi.slug },
+      update: {
+        title: mi.title,
+        excerpt: mi.excerpt,
+        metaTitle: mi.metaTitle,
+        metaDescription: mi.metaDescription,
+        readingMinutes: mi.readingMinutes ?? 6,
+        faqSection: mi.faqSection ?? undefined,
+        bodyMarkdown: mi.bodyMarkdown,
+        bodyHtml: mi.bodyHtml,
+        updatedAt: new Date(),
+      },
+      create: mi,
     });
   }
   console.log(`International blog posts created: ${intlBlogPosts.length}`);

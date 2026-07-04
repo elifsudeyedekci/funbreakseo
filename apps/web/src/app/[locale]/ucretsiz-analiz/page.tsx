@@ -45,7 +45,7 @@ export default function FreeAuditPage() {
     setResult(null);
     try {
       const res = await publicApi.freeAudit(target.trim().replace(/^https?:\/\//, ''));
-      setResult(res.data.data);
+      setResult(res.data?.data ?? res.data);
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } } };
       setError(e?.response?.data?.message || t('errorGeneric'));

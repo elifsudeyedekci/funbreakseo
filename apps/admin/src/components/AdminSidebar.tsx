@@ -1,11 +1,12 @@
 'use client';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Users, CreditCard, BarChart3, FileText,
   Headphones, Settings, Globe, Bot, Heart, LogOut,
   Zap, TrendingUp, ShieldCheck, Megaphone, Activity,
-  Receipt, UserCog, CheckSquare, PenTool
+  Receipt, UserCog, CheckSquare, PenTool, Menu, X
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAdminAuthStore } from '../store/auth.store';
@@ -62,12 +63,29 @@ function NavItem({ href, label, icon: Icon }: NavItem) {
 
 export function AdminSidebar() {
   const { user, clearAuth } = useAdminAuthStore();
+  const pathname = usePathname();
+  const [mobileOpen, setMobileOpen] = useState(false);
   const initials = user?.fullName
     ? user.fullName.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)
     : 'A';
 
+  // Sayfa değişince mobil menüyü kapat
+  useEffect(() => { setMobileOpen(false); }, [pathname]);
+
   return (
-    <aside className="admin-sidebar">
+    <>
+      {/* Mobil hamburger — masaüstünde gizli */}
+      <button
+        type="button"
+        className="admin-mobile-toggle"
+        aria-label={mobileOpen ? 'Menüyü kapat' : 'Menüyü aç'}
+        onClick={() => setMobileOpen((v) => !v)}
+      >
+        {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+      </button>
+      {mobileOpen && <div className="admin-mobile-overlay" onClick={() => setMobileOpen(false)} />}
+
+    <aside className={cn('admin-sidebar', mobileOpen && 'mobile-open')}>
       {/* Logo */}
       <div style={{ display:'flex', alignItems:'center', gap:12, padding:'16px 16px', borderBottom:'1px solid rgba(255,255,255,0.07)', flexShrink:0 }}>
         <div style={{ width:32, height:32, borderRadius:8, background:'linear-gradient(135deg, #6366f1, #a855f7)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:'0 4px 16px rgba(99,102,241,0.4)' }}>
@@ -116,5 +134,6 @@ export function AdminSidebar() {
         </div>
       </div>
     </aside>
+    </>
   );
 }

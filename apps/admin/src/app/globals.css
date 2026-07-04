@@ -605,3 +605,56 @@ input, textarea, select { font-family: inherit; }
   animation: shimmer 1.4s ease-in-out infinite;
   border-radius: 6px;
 }
+
+/* ─── Mobil (admin) ────────────────────────────────────────────────────── */
+.admin-mobile-toggle { display: none; }
+.admin-mobile-overlay { display: none; }
+
+@media (max-width: 1023px) {
+  .admin-sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 60;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    /* Mobilde backdrop-filter pahalı — düz koyu zemin */
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: #0b0b10;
+    box-shadow: 8px 0 40px rgba(0, 0, 0, 0.6);
+  }
+  .admin-sidebar.mobile-open { transform: translateX(0); }
+
+  .admin-mobile-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 70;
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(9, 9, 11, 0.92);
+    color: #fff;
+    cursor: pointer;
+  }
+
+  .admin-mobile-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: rgba(0, 0, 0, 0.6);
+  }
+
+  /* İçerik hamburger butonunun altında kalmasın */
+  .admin-content { padding-top: 56px; }
+
+  /* Tablolar mobilde yatay kaydırılabilir */
+  .section-card { overflow-x: auto; }
+  table { min-width: 640px; }
+}
