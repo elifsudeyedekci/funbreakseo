@@ -83,6 +83,35 @@ export class ContentWorker extends WorkerHost {
         sitePageTitles = pages.map((p) => p.title).filter((x): x is string => !!x)
       } catch { /* crawl data optional */ }
 
+      // Canlı site bağlamı: ana sayfayı çekip işin ne olduğunu modele anlat
+      // (tarama yapılmamış projelerde de markaya özel içerik üretilsin)
+      let siteContext = ''
+      if (projectDomain) {
+        try {
+          const res = await axios.get(`https://${projectDomain}`, {
+            timeout: 8000,
+            maxRedirects: 5,
+            headers: { 'User-Agent': 'Mozilla/5.0 (compatible; FunBreakSEO-Content/1.0)' },
+            responseType: 'text',
+            transformResponse: [(d) => d],
+            validateStatus: (s) => s < 400,
+          })
+          const rawHtml = typeof res.data === 'string' ? res.data : ''
+          const metaDesc =
+            rawHtml.match(/<meta[^>]+name=["']description["'][^>]*content=["']([^"']*)["']/i)?.[1] ?? ''
+          const bodyText = rawHtml
+            .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+            .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, 1200)
+          if (metaDesc || bodyText) {
+            siteContext = `\nSITE CONTEXT (fetched live from ${projectDomain} — use this to understand the business, its services and audience; tailor the article to THIS business):\n${metaDesc ? `- Site description: ${metaDesc}\n` : ''}- Homepage excerpt: ${bodyText}\n`
+          }
+        } catch { /* site erişilemezse bağlamsız devam */ }
+      }
+
       // ── Step 1: SERP Analysis via DataForSEO ────────────────────────────
       let serpContext = ''
       try {
@@ -135,7 +164,7 @@ COMPANY (write FOR this brand only):
 - Brand / Company: ${projectName}
 - Website: ${projectDomain}
 ${sitePageTitles.length ? `- The site's existing pages (what this company does): ${sitePageTitles.slice(0, 12).join(' | ')}` : ''}
-
+${siteContext}
 CONTENT DETAILS:
 - Title: ${dto.title}
 - Focus Keyword: ${dto.focusKeyword}

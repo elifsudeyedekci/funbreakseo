@@ -22,7 +22,9 @@ import {
 } from 'class-validator';
 import { ProjectStatus, User } from '@prisma/client';
 import { ProjectService } from './project.service';
+import { ActionPlanService } from './action-plan.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { ActiveSubscriptionGuard } from '../auth/active-subscription.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 
 // ─── DTOs ────────────────────────────────────────────────────────────────────
@@ -77,7 +79,27 @@ export class UpdateProjectDto {
 @UseGuards(JwtAuthGuard)
 @Controller('projects')
 export class ProjectController {
-  constructor(private readonly projectService: ProjectService) {}
+  constructor(
+    private readonly projectService: ProjectService,
+    private readonly actionPlanService: ActionPlanService,
+  ) {}
+
+  @Get(':id/action-plan')
+  @ApiOperation({ summary: 'Tarama + kelime verisinden aksiyon planı: otomatik yapılabilecekler vs manuel görevler' })
+  getActionPlan(@Param('id') id: string, @CurrentUser() user: User) {
+    return this.actionPlanService.getActionPlan(id, user.organizationId!);
+  }
+
+  @Post(':id/action-plan/execute')
+  @UseGuards(ActiveSubscriptionGuard)
+  @ApiOperation({ summary: 'Tek tık: önerilen içerikleri işine özel üretim kuyruğuna atar' })
+  executeActionPlan(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+    @Body() body: { maxContent?: number },
+  ) {
+    return this.actionPlanService.executeActionPlan(id, user.organizationId!, user.id, body);
+  }
 
   @Get()
   @ApiOperation({ summary: 'List all projects for current organization' })

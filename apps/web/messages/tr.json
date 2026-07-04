@@ -756,7 +756,14 @@
     "statusFailed": "Başarısız",
     "empty": "Henüz rapor yok",
     "emptyDesc": "İlk raporunuzu oluşturmak için \"Rapor Oluştur\" düğmesine tıklayın.",
-    "downloadBtn": "İndir"
+    "downloadBtn": "İndir",
+    "monthlyPdfTitle": "Aylık Performans Raporu (PDF)",
+    "monthlyPdfDesc": "GSC trafiği, kelime sıralamaları, backlink ve GEO görünürlüğü — grafikli, profesyonel aylık rapor. Her ayın 1'inde e-postanıza da otomatik gelir.",
+    "monthlyPdfBtn": "Aylık Raporu İndir",
+    "keywordPdfTitle": "Günlük Kelime Raporu (PDF)",
+    "keywordPdfDesc": "Takip ettiğiniz kelimelerin güncel pozisyonları ve değişimleri. Her sabah e-postanıza gelir; buradan anlık da indirebilirsiniz.",
+    "keywordPdfBtn": "Kelime Raporunu İndir",
+    "generating": "Rapor hazırlanıyor..."
   },
   "accountPage": {
     "title": "Hesabım",
@@ -1362,5 +1369,15 @@
     "ctaText": "Ücretsiz hesap açın, tüm sorunları, GEO skorunu ve iyileştirme önerilerini görün.",
     "ctaBtn": "Ücretsiz Hesap Aç",
     "noCard": "Kredi kartı gerekmez"
+  },
+  "actionPlan": {
+    "title": "Aksiyon Planı",
+    "subtitle": "Tarama ve kelime verinize göre: neyi bizim halledebileceğimiz, neyi sizin yapmanız gerektiği",
+    "executeBtn": "Tek Tıkla Başlat",
+    "executing": "Başlatılıyor...",
+    "autoTitle": "Otomatik yapabileceklerimiz",
+    "manualTitle": "Sizin yapmanız gerekenler",
+    "manualEmpty": "Manuel müdahale gerektiren sorun yok — harika!",
+    "moreFixable": "düzeltilebilir sorun daha"
   }
 }

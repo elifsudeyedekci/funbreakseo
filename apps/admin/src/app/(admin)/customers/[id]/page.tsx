@@ -64,6 +64,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
         const raw = r.data?.data ?? r.data;
         if (!raw?.id) return MOCK_CUSTOMER;
         return {
+          projects: (raw.projects ?? []).map((p: { id: string; domain: string; name?: string }) => ({ id: p.id, domain: p.domain, name: p.name ?? p.domain })),
           id: raw.id,
           fullName: raw.users?.[0]?.fullName ?? raw.name ?? 'Bilinmiyor',
           email: raw.users?.[0]?.email ?? '',
@@ -142,7 +143,18 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
 
   if (isLoading || !customer) return <PageSpinner />;
 
-  const c = customer as typeof MOCK_CUSTOMER;
+  const c = customer as typeof MOCK_CUSTOMER & { projects?: Array<{ id: string; domain: string; name: string }> };
+
+  const downloadMonthlyReport = async (projectId: string, domain: string) => {
+    const res = await adminApi.get(`/admin/reports/${projectId}/monthly-pdf`, { responseType: 'blob', timeout: 120000 });
+    const contentType = (res.headers['content-type'] as string) ?? 'application/pdf';
+    const url = URL.createObjectURL(new Blob([res.data], { type: contentType }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = contentType.includes('pdf') ? `funbreakseo-rapor-${domain}.pdf` : `funbreakseo-rapor-${domain}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const consentCols: ColumnDef<ConsentRow>[] = [
     { header: 'Sözleşme', accessorKey: 'type', cell: ({ row }) => (
@@ -200,6 +212,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
           <TabsTrigger value="consents">Yasal Onaylar</TabsTrigger>
           <TabsTrigger value="audit">Denetim Kaydı</TabsTrigger>
           <TabsTrigger value="health">Sağlık</TabsTrigger>
+          <TabsTrigger value="reports">Raporlar</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
@@ -326,6 +339,39 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
 
         <TabsContent value="audit">
           <DataTable columns={auditCols} data={auditLog as AuditRow[]} emptyMessage="Denetim kaydı yok." />
+        </TabsContent>
+
+        <TabsContent value="reports">
+          <Card>
+            <CardHeader><CardTitle className="text-sm flex items-center gap-2"><FileText className="w-4 h-4" />Aylık Performans Raporları</CardTitle></CardHeader>
+            <CardContent>
+              <p className="text-xs text-[var(--text-muted)] mb-4">
+                Seçilen projenin aylık SEO &amp; GEO raporu anlık verilerle üretilir (GSC + sıralama + backlink + GEO). PDF olarak indirilir.
+              </p>
+              {(c.projects ?? []).length === 0 ? (
+                <p className="text-sm text-[var(--text-muted)]">Bu müşterinin henüz projesi yok.</p>
+              ) : (
+                <div className="space-y-2">
+                  {(c.projects ?? []).map((p) => (
+                    <div key={p.id} className="flex items-center justify-between py-2 border-b border-[var(--border-subtle)] last:border-0">
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium">{p.domain}</span>
+                        <span className="text-xs text-[var(--text-muted)]">{p.name}</span>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        icon={<Download className="w-3.5 h-3.5" />}
+                        onClick={() => downloadMonthlyReport(p.id, p.domain)}
+                      >
+                        Aylık Rapor İndir (PDF)
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="health">

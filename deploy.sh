@@ -21,6 +21,14 @@ git pull origin master
 echo "[2/6] Installing dependencies..."
 pnpm install --frozen-lockfile
 
+# PDF raporları için puppeteer Chromium kullanır. İlk kurulumda bir kez
+# sistem kütüphaneleri gerekir (root ile):
+#   sudo apt-get install -y libnss3 libatk1.0-0t64 libatk-bridge2.0-0t64 \
+#     libcups2t64 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 \
+#     libxrandr2 libgbm1 libasound2t64 libpango-1.0-0 libcairo2
+# Kurulu değilse sistem çalışmaya devam eder; raporlar PDF yerine
+# yazdırılabilir HTML olarak üretilir (otomatik fallback).
+
 # 3. Prisma client oluştur
 echo "[3/6] Generating Prisma client..."
 pnpm --filter @funbreakseo/database generate

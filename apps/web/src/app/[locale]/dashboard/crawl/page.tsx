@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { crawlerApi } from '@/lib/api';
 import { useSelectedProject } from '@/lib/useSelectedProject';
+import { ActionPlanPanel } from '@/components/dashboard/ActionPlanPanel';
 
 const ISSUE_CATEGORIES = [
   { key: 'title', label: 'Title Tags' },
@@ -65,6 +66,9 @@ export default function CrawlPage() {
           {startMutation.isPending ? 'Starting…' : '+ Start New Crawl'}
         </button>
       </div>
+
+      {/* Tek tıkla aksiyon planı */}
+      {projectId && <ActionPlanPanel projectId={projectId} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Crawl History */}

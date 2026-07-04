@@ -9,6 +9,8 @@ import { CompetitorModule } from '../competitor/competitor.module';
 import { GeoModule } from '../geo/geo.module';
 import { OutreachModule } from '../outreach/outreach.module';
 import { KeywordModule } from '../keyword/keyword.module';
+import { ContentModule } from '../content/content.module';
+import { ActionPlanService } from './action-plan.service';
 
 @Module({
   imports: [
@@ -20,9 +22,10 @@ import { KeywordModule } from '../keyword/keyword.module';
     GeoModule,
     OutreachModule,
     KeywordModule,
+    ContentModule,
   ],
   controllers: [ProjectController],
-  providers: [ProjectService, PrismaService],
+  providers: [ProjectService, ActionPlanService, PrismaService],
   exports: [ProjectService],
 })
 export class ProjectModule {}

@@ -3,9 +3,26 @@
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
-import { Download, Plus, FileText } from 'lucide-react';
-import { reportsApi } from '@/lib/api';
+import { Download, Plus, FileText, BarChart3, TrendingUp } from 'lucide-react';
+import { api, reportsApi } from '@/lib/api';
 import { useSelectedProject } from '@/lib/useSelectedProject';
+
+async function downloadPdf(url: string, filename: string, setBusy: (v: boolean) => void) {
+  setBusy(true);
+  try {
+    const res = await api.get(url, { responseType: 'blob', timeout: 120000 });
+    const contentType = (res.headers['content-type'] as string) ?? 'application/pdf';
+    const blob = new Blob([res.data], { type: contentType });
+    const objectUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = objectUrl;
+    a.download = contentType.includes('pdf') ? filename : filename.replace(/\.pdf$/, '.html');
+    a.click();
+    URL.revokeObjectURL(objectUrl);
+  } finally {
+    setBusy(false);
+  }
+}
 
 interface Report {
   id: string;
@@ -27,6 +44,8 @@ export default function ReportsPage() {
   const t = useTranslations('reportsPage');
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ name: '', format: 'PDF', frequency: 'MONTHLY' });
+  const [monthlyBusy, setMonthlyBusy] = useState(false);
+  const [keywordBusy, setKeywordBusy] = useState(false);
 
   const statusLabel: Record<string, string> = {
     PENDING: t('statusPending'),
@@ -71,6 +90,49 @@ export default function ReportsPage() {
         >
           <Plus className="w-4 h-4" /> {t('createBtn')}
         </button>
+      </div>
+
+      {/* Profesyonel hazır raporlar */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="rounded-xl border border-blue-500/25 bg-blue-500/[0.06] p-5 flex flex-col">
+          <div className="flex items-center gap-2 mb-2">
+            <BarChart3 className="w-5 h-5 text-blue-400" />
+            <h2 className="font-semibold text-[var(--text-primary)]">{t('monthlyPdfTitle')}</h2>
+          </div>
+          <p className="text-sm text-[var(--text-secondary)] flex-1 mb-4">{t('monthlyPdfDesc')}</p>
+          <button
+            onClick={() => projectId && downloadPdf(`/projects/${projectId}/reports/monthly-pdf`, `funbreakseo-aylik-rapor.pdf`, setMonthlyBusy)}
+            disabled={!projectId || monthlyBusy}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 px-4 py-2.5 text-sm font-semibold text-white transition-colors"
+          >
+            {monthlyBusy ? (
+              <span className="inline-block h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <Download className="w-4 h-4" />
+            )}
+            {monthlyBusy ? t('generating') : t('monthlyPdfBtn')}
+          </button>
+        </div>
+
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.06] p-5 flex flex-col">
+          <div className="flex items-center gap-2 mb-2">
+            <TrendingUp className="w-5 h-5 text-emerald-400" />
+            <h2 className="font-semibold text-[var(--text-primary)]">{t('keywordPdfTitle')}</h2>
+          </div>
+          <p className="text-sm text-[var(--text-secondary)] flex-1 mb-4">{t('keywordPdfDesc')}</p>
+          <button
+            onClick={() => projectId && downloadPdf(`/projects/${projectId}/reports/keywords-pdf`, `funbreakseo-kelime-raporu.pdf`, setKeywordBusy)}
+            disabled={!projectId || keywordBusy}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 px-4 py-2.5 text-sm font-semibold text-white transition-colors"
+          >
+            {keywordBusy ? (
+              <span className="inline-block h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <Download className="w-4 h-4" />
+            )}
+            {keywordBusy ? t('generating') : t('keywordPdfBtn')}
+          </button>
+        </div>
       </div>
 
       {showCreate && (

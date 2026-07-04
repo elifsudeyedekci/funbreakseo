@@ -1,6 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { MonthlyReportService } from './monthly-report.service';
+import { EmailService } from '../email-notification/email.service';
 
 export interface ReportDto {
   projectId: string;
@@ -19,7 +21,13 @@ export type ReportType =
 
 @Injectable()
 export class ReportService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(ReportService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly monthlyReport: MonthlyReportService,
+    private readonly email: EmailService,
+  ) {}
 
   async generateReport(
     projectId: string,
@@ -299,29 +307,55 @@ export class ReportService {
 
     for (const scheduled of scheduledReports) {
       try {
-        // Check if cron expression matches current time
-        const report = await this.generateReport(
-          scheduled.projectId,
-          scheduled.format as 'PDF' | 'HTML' | 'JSON',
-        );
+        // Sıklık kontrolü: WEEKLY → pazartesi, MONTHLY → ayın 1'i, DAILY → her gün
+        const expr = (scheduled.cronExpression ?? 'WEEKLY').toUpperCase();
+        const isDue =
+          expr.includes('DAILY') ||
+          (expr.includes('WEEKLY') && now.getDay() === 1) ||
+          (expr.includes('MONTHLY') && now.getDate() === 1) ||
+          (!expr.includes('DAILY') && !expr.includes('WEEKLY') && !expr.includes('MONTHLY'));
+        if (!isDue) continue;
 
-        // Log the send
+        const recipientList = Array.isArray(scheduled.recipients)
+          ? (scheduled.recipients as string[])
+          : [];
+        if (recipientList.length === 0) continue;
+
+        // Gerçek rapor üret ve PDF ekiyle gönder
+        const data = await this.monthlyReport.buildReportData(scheduled.projectId);
+        const html = this.monthlyReport.renderHtml(data);
+        const pdf = await this.monthlyReport.generatePdf(html);
+
+        const bodyHtml = `<div style="font-family:Segoe UI,Arial,sans-serif;color:#1e293b">
+          <h2 style="color:#1d4ed8">Zamanlanmış SEO Raporunuz</h2>
+          <p><strong>${data.project.domain}</strong> için ${data.period.label} dönemi raporu ektedir.</p>
+          <p style="color:#94a3b8;font-size:12px">FunBreak SEO · funbreakseo.com</p>
+        </div>`;
+
+        for (const recipient of recipientList) {
+          if (pdf) {
+            await this.email.sendMail(
+              recipient,
+              `SEO Raporu — ${data.project.domain} (${data.period.label})`,
+              bodyHtml,
+              [{
+                filename: `funbreakseo-rapor-${data.project.domain}-${data.period.start.slice(0, 7)}.pdf`,
+                content: pdf,
+                contentType: 'application/pdf',
+              }],
+            );
+          } else {
+            await this.email.sendMail(recipient, `SEO Raporu — ${data.project.domain} (${data.period.label})`, html);
+          }
+        }
+
         await this.prisma.scheduledReport.update({
           where: { id: scheduled.id },
           data: { lastSentAt: now },
         });
-
-        // In production, email report to recipients
-        const recipientList = Array.isArray(scheduled.recipients) ? (scheduled.recipients as string[]) : [];
-        console.log(
-          `Sent scheduled report for project ${scheduled.projectId} to ${recipientList.join(', ')}`,
-          { reportSummary: report.project },
-        );
+        this.logger.log(`Zamanlanmış rapor gönderildi: proje=${scheduled.projectId} alıcı=${recipientList.length}`);
       } catch (err) {
-        console.error(
-          `Failed to send scheduled report ${scheduled.id}:`,
-          err,
-        );
+        this.logger.error(`Zamanlanmış rapor gönderilemedi (${scheduled.id}): ${(err as Error).message}`);
       }
     }
   }

@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl';
 import { Play, AlertCircle, AlertTriangle, Info, RefreshCw, Download } from 'lucide-react';
 import { auditApi } from '@/lib/api';
 import { cn, exportToCSV } from '@/lib/utils';
+import { ActionPlanPanel } from '@/components/dashboard/ActionPlanPanel';
 import type { IssueSeverity, IssueCategory } from '@funbreakseo/shared';
 
 interface AuditIssue {
@@ -127,6 +128,9 @@ export default function AuditPage() {
         </button>
         </div>
       </div>
+
+      {/* Aksiyon planı — tek tıkla otomatik iyileştirme */}
+      {audit && !isRunning && <ActionPlanPanel projectId={projectId} />}
 
       {/* Score + summary */}
       {audit && (

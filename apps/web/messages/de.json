@@ -729,7 +729,14 @@
     "statusFailed": "Fehlgeschlagen",
     "empty": "Noch keine Berichte",
     "emptyDesc": "Klicken Sie auf \"Bericht erstellen\", um Ihren ersten Bericht zu generieren.",
-    "downloadBtn": "Herunterladen"
+    "downloadBtn": "Herunterladen",
+    "monthlyPdfTitle": "Monatlicher Leistungsbericht (PDF)",
+    "monthlyPdfDesc": "GSC-Traffic, Keyword-Rankings, Backlinks und GEO-Sichtbarkeit — professioneller Monatsbericht mit Diagrammen. Kommt am 1. jedes Monats auch automatisch per E-Mail.",
+    "monthlyPdfBtn": "Monatsbericht herunterladen",
+    "keywordPdfTitle": "Täglicher Keyword-Bericht (PDF)",
+    "keywordPdfDesc": "Aktuelle Positionen und Veränderungen Ihrer Keywords. Kommt jeden Morgen per E-Mail; hier jederzeit sofort abrufbar.",
+    "keywordPdfBtn": "Keyword-Bericht herunterladen",
+    "generating": "Bericht wird erstellt..."
   },
   "accountPage": {
     "title": "Mein Konto",
@@ -1362,5 +1369,15 @@
     "ctaText": "Erstellen Sie ein kostenloses Konto, um alle Probleme, Ihren GEO-Wert und Verbesserungsvorschläge zu sehen.",
     "ctaBtn": "Kostenloses Konto erstellen",
     "noCard": "Keine Kreditkarte erforderlich"
+  },
+  "actionPlan": {
+    "title": "Aktionsplan",
+    "subtitle": "Basierend auf Crawl- und Keyword-Daten: was wir automatisch erledigen und was Sie tun müssen",
+    "executeBtn": "Mit einem Klick starten",
+    "executing": "Wird gestartet...",
+    "autoTitle": "Was wir automatisch erledigen",
+    "manualTitle": "Was Sie tun müssen",
+    "manualEmpty": "Keine manuellen Aufgaben — super!",
+    "moreFixable": "weitere behebbare Probleme"
   }
 }

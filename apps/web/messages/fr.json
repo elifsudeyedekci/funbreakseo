@@ -729,7 +729,14 @@
     "statusFailed": "Échec",
     "empty": "Pas encore de rapports",
     "emptyDesc": "Cliquez sur « Créer un rapport » pour générer votre premier rapport.",
-    "downloadBtn": "Télécharger"
+    "downloadBtn": "Télécharger",
+    "monthlyPdfTitle": "Rapport de Performance Mensuel (PDF)",
+    "monthlyPdfDesc": "Trafic GSC, positions des mots-clés, backlinks et visibilité GEO — rapport mensuel professionnel avec graphiques. Envoyé aussi automatiquement par e-mail le 1er du mois.",
+    "monthlyPdfBtn": "Télécharger le rapport mensuel",
+    "keywordPdfTitle": "Rapport Quotidien des Mots-clés (PDF)",
+    "keywordPdfDesc": "Positions actuelles et variations de vos mots-clés suivis. Envoyé chaque matin par e-mail ; téléchargeable ici à tout moment.",
+    "keywordPdfBtn": "Télécharger le rapport",
+    "generating": "Génération du rapport..."
   },
   "accountPage": {
     "title": "Mon compte",
@@ -1362,5 +1369,15 @@
     "ctaText": "Créez un compte gratuit pour voir tous les problèmes, votre score GEO et les suggestions.",
     "ctaBtn": "Créer un Compte Gratuit",
     "noCard": "Aucune carte bancaire requise"
+  },
+  "actionPlan": {
+    "title": "Plan d'action",
+    "subtitle": "Basé sur vos données de crawl et de mots-clés : ce que nous gérons automatiquement vs. ce que vous devez faire",
+    "executeBtn": "Lancer en un clic",
+    "executing": "Lancement...",
+    "autoTitle": "Ce que nous pouvons faire automatiquement",
+    "manualTitle": "Ce que vous devez faire",
+    "manualEmpty": "Aucune intervention manuelle requise — parfait !",
+    "moreFixable": "autres problèmes corrigibles"
   }
 }

@@ -702,7 +702,14 @@
     "statusFailed": "Failed",
     "empty": "No reports yet",
     "emptyDesc": "Click \"Create Report\" to generate your first report.",
-    "downloadBtn": "Download"
+    "downloadBtn": "Download",
+    "monthlyPdfTitle": "Monthly Performance Report (PDF)",
+    "monthlyPdfDesc": "GSC traffic, keyword rankings, backlinks and GEO visibility — a professional monthly report with charts. Also emailed automatically on the 1st of each month.",
+    "monthlyPdfBtn": "Download Monthly Report",
+    "keywordPdfTitle": "Daily Keyword Report (PDF)",
+    "keywordPdfDesc": "Current positions and changes for your tracked keywords. Emailed every morning; download instantly here anytime.",
+    "keywordPdfBtn": "Download Keyword Report",
+    "generating": "Generating report..."
   },
   "accountPage": {
     "title": "My Account",
@@ -1362,5 +1369,15 @@
     "ctaText": "Create a free account to see all issues, your GEO score and improvement suggestions.",
     "ctaBtn": "Create Free Account",
     "noCard": "No credit card required"
+  },
+  "actionPlan": {
+    "title": "Action Plan",
+    "subtitle": "Based on your crawl and keyword data: what we can handle automatically vs. what you need to do",
+    "executeBtn": "Start with One Click",
+    "executing": "Starting...",
+    "autoTitle": "What we can do automatically",
+    "manualTitle": "What you need to do",
+    "manualEmpty": "No issues requiring manual work — great!",
+    "moreFixable": "more fixable issues"
   }
 }

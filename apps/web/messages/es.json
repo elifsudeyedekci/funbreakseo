@@ -729,7 +729,14 @@
     "statusFailed": "Fallido",
     "empty": "Todavía no hay informes",
     "emptyDesc": "Haz clic en \"Crear Informe\" para generar tu primer informe.",
-    "downloadBtn": "Descargar"
+    "downloadBtn": "Descargar",
+    "monthlyPdfTitle": "Informe Mensual de Rendimiento (PDF)",
+    "monthlyPdfDesc": "Tráfico GSC, posiciones de palabras clave, backlinks y visibilidad GEO — informe mensual profesional con gráficos. También llega por e-mail el día 1 de cada mes.",
+    "monthlyPdfBtn": "Descargar informe mensual",
+    "keywordPdfTitle": "Informe Diario de Palabras Clave (PDF)",
+    "keywordPdfDesc": "Posiciones actuales y cambios de tus palabras clave. Llega cada mañana por e-mail; descárgalo aquí al instante.",
+    "keywordPdfBtn": "Descargar informe",
+    "generating": "Generando informe..."
   },
   "accountPage": {
     "title": "Mi cuenta",
@@ -1362,5 +1369,15 @@
     "ctaText": "Crea una cuenta gratuita para ver todos los problemas, tu puntuación GEO y sugerencias.",
     "ctaBtn": "Crear Cuenta Gratuita",
     "noCard": "No se requiere tarjeta de crédito"
+  },
+  "actionPlan": {
+    "title": "Plan de Acción",
+    "subtitle": "Según tus datos de rastreo y palabras clave: lo que hacemos automáticamente vs. lo que debes hacer tú",
+    "executeBtn": "Iniciar con un clic",
+    "executing": "Iniciando...",
+    "autoTitle": "Lo que podemos hacer automáticamente",
+    "manualTitle": "Lo que debes hacer tú",
+    "manualEmpty": "No hay tareas manuales pendientes — ¡genial!",
+    "moreFixable": "problemas corregibles más"
   }
 }

@@ -108,13 +108,19 @@ export class EmailService {
     });
   }
 
-  async sendMail(to: string, subject: string, html: string): Promise<void> {
+  async sendMail(
+    to: string,
+    subject: string,
+    html: string,
+    attachments?: Array<{ filename: string; content: Buffer; contentType?: string }>,
+  ): Promise<void> {
     try {
       await this.transporter.sendMail({
         from: this.config.get<string>('SMTP_FROM', '"FunBreakSEO" <noreply@funbreakseo.com>'),
         to,
         subject,
         html,
+        attachments,
       });
       this.logger.log(`Email sent to ${to}: ${subject}`);
     } catch (err) {
