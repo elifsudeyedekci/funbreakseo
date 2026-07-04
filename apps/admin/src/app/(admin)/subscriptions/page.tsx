@@ -47,8 +47,30 @@ export default function SubscriptionsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['admin-subscriptions'],
     queryFn: async () => {
-      try { const r = await adminApi.get('/admin/subscriptions', { params: { limit: 100 } }); return r.data?.data ?? []; }
-      catch { return []; }
+      try {
+        const r = await adminApi.get('/admin/subscriptions', { params: { limit: 100 } });
+        const raw: Array<Record<string, unknown>> = Array.isArray(r.data) ? r.data : (r.data?.data ?? []);
+        // API ham Prisma satırı döner (plan: obje, organization: obje) — UI şekline çevir
+        return raw.map((s) => {
+          const plan = s.plan as { slug?: string; name?: string } | string | null;
+          const org = s.organization as { name?: string } | null;
+          const pastDueSince = s.pastDueSince ? new Date(s.pastDueSince as string) : null;
+          return {
+            id: s.id as string,
+            organizationName: org?.name ?? (s.organizationName as string) ?? '—',
+            plan: (typeof plan === 'string' ? plan : (plan?.slug ?? plan?.name ?? '—')).toUpperCase(),
+            status: (s.status as string) ?? '—',
+            cycle: (s.billingCycle as string) ?? (s.cycle as string) ?? '—',
+            currentPeriodEnd: (s.currentPeriodEnd as string) ?? '',
+            paymentRef: (s.paymentProviderRef as string) ?? (s.paymentRef as string) ?? undefined,
+            isComplimentary: Boolean(s.isComplimentary),
+            pastDueDays:
+              s.status === 'PAST_DUE' && pastDueSince && !isNaN(pastDueSince.getTime())
+                ? Math.max(1, Math.floor((Date.now() - pastDueSince.getTime()) / 86_400_000))
+                : undefined,
+          } satisfies Subscription;
+        });
+      } catch { return []; }
     },
   });
 
@@ -93,7 +115,9 @@ export default function SubscriptionsPage() {
     {
       header: 'Dönem Sonu', accessorKey: 'currentPeriodEnd',
       cell: ({ getValue }) => {
-        const d = new Date(getValue() as string);
+        const raw = getValue() as string;
+        const d = raw ? new Date(raw) : null;
+        if (!d || isNaN(d.getTime())) return <span className="text-xs text-[var(--text-muted)]">—</span>;
         return <span className={d < new Date() ? 'text-red-400 text-xs' : 'text-xs text-[var(--text-muted)]'}>{format(d, 'dd MMM yyyy', { locale: tr })}</span>;
       },
     },

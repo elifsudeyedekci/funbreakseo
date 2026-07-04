@@ -73,7 +73,9 @@ export class ProjectService {
 
   // ─── List ─────────────────────────────────────────────────────────────────────
 
-  async findAll(organizationId: string) {
+  async findAll(organizationId: string | null | undefined) {
+    // Org bağı olmayan kullanıcı (örn. seed SUPER_ADMIN) 500 yerine boş liste alır
+    if (!organizationId) return [];
     return this.prisma.project.findMany({
       where: { organizationId, deletedAt: null },
       include: {

@@ -1,7 +1,7 @@
 'use client';
 export const dynamic = 'force-dynamic';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '@/lib/api';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
@@ -20,6 +20,7 @@ import { Play, Search, RefreshCw, Save } from 'lucide-react';
 const LOCALES = ['tr', 'en', 'de', 'fr', 'es', 'ar', 'ru', 'hi'];
 
 interface AutopilotSettings {
+  isEnabled: boolean;
   activeLocales: string[];
   weeklyTargetPerLocale: number;
   publishMode: 'AUTO' | 'SEMI_AUTO';
@@ -41,6 +42,7 @@ interface QueueItem {
 }
 
 const ZERO_SETTINGS: AutopilotSettings = {
+  isEnabled: false,
   activeLocales: [],
   weeklyTargetPerLocale: 0,
   publishMode: 'SEMI_AUTO',
@@ -49,6 +51,46 @@ const ZERO_SETTINGS: AutopilotSettings = {
   nicheTopics: [],
   monthlyBudget: 0,
 };
+
+/** API'nin ham settings satırını UI şekline çevir */
+function mapSettings(raw: Record<string, unknown> | null | undefined): AutopilotSettings {
+  if (!raw) return ZERO_SETTINGS;
+  const perLocale = raw.weeklyTargetPerLocale as Record<string, number> | number | null;
+  const weekly =
+    typeof perLocale === 'number'
+      ? perLocale
+      : perLocale && typeof perLocale === 'object'
+        ? (Object.values(perLocale)[0] ?? 0)
+        : Number(raw.weeklyTarget ?? 0);
+  return {
+    isEnabled: Boolean(raw.isEnabled ?? raw.isActive),
+    activeLocales: (raw.enabledLocales as string[]) ?? (raw.locales as string[]) ?? [],
+    weeklyTargetPerLocale: weekly,
+    publishMode: ((raw.publishMode as string) === 'AUTO' ? 'AUTO' : 'SEMI_AUTO'),
+    minSeoScore: Number(raw.minSeoScore ?? 0),
+    minGeoScore: Number(raw.minGeoScore ?? 0),
+    nicheTopics: (raw.nicheTopics as string[]) ?? (raw.nichKeywords as string[]) ?? [],
+    monthlyBudget: Number(raw.monthlyBudgetUsd ?? raw.monthlyBudget ?? 0),
+  };
+}
+
+/** API dashboard yanıtını (thisMonth/produced) UI istatistik şekline çevir */
+function mapStats(raw: Record<string, unknown> | null | undefined): typeof ZERO_STATS {
+  if (!raw) return ZERO_STATS;
+  const thisMonth = (raw.thisMonth as Array<{ locale: string; produced?: number; published?: number; queued?: number }>) ?? [];
+  return {
+    generatedThisMonth: thisMonth.map((x) => ({
+      locale: x.locale ?? '?',
+      generated: x.produced ?? 0,
+      published: x.published ?? 0,
+    })),
+    discoveredKeywords: Number(raw.discoveredKeywords ?? 0),
+    rankingContentPct: Number(raw.rankingContentPct ?? 0),
+    lowPerformers:
+      (raw.lowPerformers as Array<{ id: string; keyword: string; locale: string; avgPosition: number }>) ??
+      (raw.performanceAlerts && Array.isArray(raw.performanceAlerts) ? (raw.performanceAlerts as typeof ZERO_STATS.lowPerformers) : []),
+  };
+}
 
 const ZERO_STATS = {
   generatedThisMonth: [] as { locale: string; generated: number; published: number }[],
@@ -72,13 +114,33 @@ export default function AutopilotPage() {
           adminApi.get('/admin/autopilot/dashboard'),
           adminApi.get('/admin/autopilot/queue'),
         ]);
-        return { settings: settingsRes.data, stats: dashRes.data, queue: queueRes.data };
+        const rawQueue = queueRes.data;
+        const queue = Array.isArray(rawQueue) ? rawQueue : (rawQueue?.data ?? rawQueue?.items ?? []);
+        return {
+          settings: mapSettings(settingsRes.data?.data ?? settingsRes.data),
+          stats: mapStats(dashRes.data?.data ?? dashRes.data),
+          queue: Array.isArray(queue) ? queue : [],
+        };
       } catch { return { settings: ZERO_SETTINGS, queue: [], stats: ZERO_STATS }; }
     },
   });
 
+  // Sunucudan gelen ayarları forma yükle (eskiden hep boş görünüyordu)
+  useEffect(() => {
+    if (data?.settings) setSettings(data.settings);
+  }, [data?.settings]);
+
   const updateMutation = useMutation({
-    mutationFn: (d: Record<string, unknown>) => adminApi.patch('/admin/autopilot/settings', d),
+    // UI şeklini backend DTO'suna çevir (locales, weeklyTarget, isEnabled...)
+    mutationFn: (s: AutopilotSettings) =>
+      adminApi.patch('/admin/autopilot/settings', {
+        isEnabled: s.isEnabled,
+        publishMode: s.publishMode,
+        weeklyTarget: s.weeklyTargetPerLocale,
+        minSeoScore: s.minSeoScore,
+        minGeoScore: s.minGeoScore,
+        locales: s.activeLocales,
+      }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-autopilot'] }); toast('Ayarlar kaydedildi', 'success'); setEditMode(false); },
     onError: () => toast('Güncelleme başarısız', 'error'),
   });
@@ -103,7 +165,7 @@ export default function AutopilotPage() {
 
   const queueCols: ColumnDef<QueueItem>[] = [
     { header: 'Kelime', accessorKey: 'keyword', cell: ({ getValue }) => <span className="font-medium">{getValue() as string}</span> },
-    { header: 'Dil', accessorKey: 'locale', cell: ({ getValue }) => <Badge variant="default">{(getValue() as string).toUpperCase()}</Badge> },
+    { header: 'Dil', accessorKey: 'locale', cell: ({ getValue }) => <Badge variant="default">{((getValue() as string) ?? '?').toUpperCase()}</Badge> },
     { header: 'Durum', accessorKey: 'status', cell: ({ getValue }) => {
       const s = getValue() as string;
       const v = s === 'PUBLISHED' ? 'success' : s === 'REVIEW' ? 'warning' : s === 'GENERATING' ? 'info' : 'default';
@@ -162,6 +224,17 @@ export default function AutopilotPage() {
             <CardContent>
               {editMode ? (
                 <div className="space-y-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={settings.isEnabled}
+                      onChange={(e) => setSettings((p) => ({ ...p, isEnabled: e.target.checked }))}
+                      className="accent-emerald-500 w-4 h-4"
+                    />
+                    <span className="text-sm font-semibold text-[var(--text-primary)]">
+                      Autopilot Aktif (kapalıysa sistem hiç içerik üretmez)
+                    </span>
+                  </label>
                   <div>
                     <p className="text-sm font-medium text-[var(--text-secondary)] mb-2">Aktif Diller</p>
                     <div className="flex flex-wrap gap-2">
@@ -195,7 +268,7 @@ export default function AutopilotPage() {
                   </div>
                   <div className="flex gap-2">
                     <Button variant="primary" icon={<Save className="w-4 h-4" />} loading={updateMutation.isPending}
-                      onClick={() => updateMutation.mutate(settings as unknown as Record<string, unknown>)}>
+                      onClick={() => updateMutation.mutate(settings)}>
                       Kaydet
                     </Button>
                     <Button variant="ghost" onClick={() => setEditMode(false)}>İptal</Button>
@@ -203,6 +276,8 @@ export default function AutopilotPage() {
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div><p className="text-[var(--text-muted)]">Durum</p>
+                    <Badge variant={settings.isEnabled ? 'success' : 'danger'}>{settings.isEnabled ? 'AKTİF' : 'KAPALI'}</Badge></div>
                   <div><p className="text-[var(--text-muted)]">Aktif Diller</p>
                     <div className="flex gap-1 mt-1 flex-wrap">{settings.activeLocales.map((l) => <Badge key={l} variant="info">{l.toUpperCase()}</Badge>)}</div></div>
                   <div><p className="text-[var(--text-muted)]">Haftalık Hedef</p><p className="font-medium">{settings.weeklyTargetPerLocale} / dil</p></div>

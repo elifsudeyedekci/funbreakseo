@@ -64,7 +64,29 @@ export default function LegalPage() {
     queryFn: async () => {
       try {
         const r = await adminApi.get('/admin/legal-docs');
-        return (r.data?.data ?? []) as LegalDoc[];
+        // API düz dizi döner; kayıtlar {type, version, locale, content, ...} şeklindedir
+        const raw: Array<Record<string, unknown>> = Array.isArray(r.data) ? r.data : (r.data?.data ?? []);
+        const TYPE_TITLES: Record<string, string> = {
+          TERMS: 'Kullanım Şartları',
+          PRIVACY: 'Gizlilik Politikası',
+          KVKK: 'KVKK Aydınlatma Metni',
+          COOKIE: 'Çerez Politikası',
+          DISTANCE_SALES: 'Mesafeli Satış Sözleşmesi',
+          PRE_INFO: 'Ön Bilgilendirme Formu',
+          REFUND: 'İptal & İade Politikası',
+        };
+        return raw.map((d) => {
+          const type = (d.type as string) ?? (d.key as string) ?? '?';
+          const locale = (d.locale as string) ?? 'tr';
+          return {
+            id: d.id as string,
+            key: type,
+            title: `${TYPE_TITLES[type] ?? (d.title as string) ?? type}${locale !== 'tr' ? ` (${locale.toUpperCase()})` : ''}`,
+            content: (d.content as string) ?? '',
+            version: (d.version as string) ?? '1.0',
+            updatedAt: (d.updatedAt as string) ?? (d.effectiveDate as string) ?? new Date().toISOString(),
+          } satisfies LegalDoc;
+        });
       } catch {
         return [];
       }

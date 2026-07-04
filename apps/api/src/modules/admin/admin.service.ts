@@ -66,13 +66,63 @@ export class AdminService {
     // Queue health: count jobs per queue
     const queueHealth = await this.getSystemQueues();
 
+    // Dashboard kartlarının beklediği ek metrikler
+    const [totalCustomers, pastDueOrgs] = await Promise.all([
+      this.prisma.organization.count(),
+      this.prisma.subscription.count({ where: { status: 'PAST_DUE' } }),
+    ]);
+
+    // Son 7 gün — günlük yeni kayıt
+    const sevenDaysAgo = new Date(now.getTime() - 6 * 86_400_000);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+    const recentUsers = await this.prisma.user.findMany({
+      where: { createdAt: { gte: sevenDaysAgo } },
+      select: { createdAt: true },
+    });
+    const byDay = new Map<string, number>();
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(sevenDaysAgo.getTime() + i * 86_400_000);
+      byDay.set(day.toISOString().slice(0, 10), 0);
+    }
+    for (const u of recentUsers) {
+      const key = u.createdAt.toISOString().slice(0, 10);
+      byDay.set(key, (byDay.get(key) ?? 0) + 1);
+    }
+    const newUsersByDay = [...byDay.entries()].map(([date, count]) => ({ date, count }));
+    const maxDailyUsers = Math.max(1, ...newUsersByDay.map((d) => d.count));
+
+    // Bu ay API harcaması — sağlayıcı bazlı kırılım
+    const usageByProvider = await this.prisma.apiUsageLog.groupBy({
+      by: ['provider'],
+      _sum: { costUsd: true },
+      where: { createdAt: { gte: startOfMonth } },
+    });
+    const providerCost = (needle: string) =>
+      usageByProvider
+        .filter((u) => (u.provider ?? '').toLowerCase().includes(needle))
+        .reduce((s, u) => s + Number(u._sum?.costUsd ?? 0), 0);
+    const apiUsage = {
+      dataforseoSerp: providerCost('serp'),
+      dataforseoKeyword: providerCost('keyword'),
+      llm: providerCost('llm') + providerCost('anthropic') + providerCost('claude') + providerCost('openai'),
+      crawler: providerCost('crawl'),
+    };
+    // Kırılım eşleşmezse tüm maliyeti DataForSEO SERP altında göster
+    const breakdownSum = Object.values(apiUsage).reduce((s, v) => s + v, 0);
+    if (breakdownSum === 0 && apiCost > 0) apiUsage.dataforseoSerp = apiCost;
+
     return {
       mrr,
+      totalCustomers,
+      pastDueOrgs,
       activeSubscriptions,
       trialSubscriptions,
       newSignupsThisMonth,
       churn,
       apiCost,
+      apiUsage,
+      newUsersByDay,
+      maxDailyUsers,
       queueHealth,
       pendingContentReview,
       pendingOutreachReview,
