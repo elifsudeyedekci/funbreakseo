@@ -1313,6 +1313,11 @@ model BacklinkOrder {
   targetUrl      String
   anchorText     String?
   contentBrief   String?       @db.Text
+  topic          String?
+  links          Json?
+  contentDraft   String?       @db.Text
+  revisionNote   String?       @db.Text
+  contentApprovedAt DateTime?
   status         OrderStatus   @default(PENDING_PAYMENT)
   price          Decimal       @db.Decimal(10, 2)
   escrowTxId     String?

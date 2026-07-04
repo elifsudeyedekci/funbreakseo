@@ -182,6 +182,9 @@ export const marketApi = {
   getListing: (id: string) => api.get(`/market/listings/${id}`),
   createOrder: (d: Record<string, unknown>) => api.post('/market/orders', d),
   getOrders: () => api.get('/market/orders'),
+  getOrder: (id: string) => api.get(`/market/orders/${id}`),
+  approveOrderContent: (id: string) => api.post(`/market/orders/${id}/approve-content`),
+  requestOrderRevision: (id: string, note: string) => api.post(`/market/orders/${id}/request-revision`, { note }),
   disputeOrder: (id: string, reason: string) => api.post(`/market/orders/${id}/dispute`, { reason }),
 };
 

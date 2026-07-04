@@ -47,7 +47,8 @@ export function DashboardSidebar({ mobileOpen, onClose, currentProjectId }: Side
     { icon: Brain, label: t('geo'), path: '/dashboard/geo', projectScoped: true, geo: true },
     { icon: Link2, label: t('backlinks'), path: '/dashboard/backlinks', projectScoped: true },
     { icon: Trophy, label: t('competitors'), path: '/dashboard/competitors', projectScoped: true },
-    { icon: Mail, label: t('outreach'), path: '/dashboard/outreach', projectScoped: true },
+    // Outreach müşteri özelliği değil: mailleri PLATFORM atar, olumlu dönüşler
+    // admin onayıyla fiyatlanıp backlink havuzuna girer; müşteri havuzdan alır.
     { icon: BarChart2, label: t('reports'), path: '/dashboard/reports', projectScoped: true },
   ];
 

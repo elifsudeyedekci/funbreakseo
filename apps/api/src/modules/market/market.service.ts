@@ -1,7 +1,14 @@
-import { BadRequestException, Injectable } from '@nestjs/common'
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common'
 import { InjectQueue } from '@nestjs/bullmq'
 import { Queue } from 'bullmq'
+import axios from 'axios'
 import { PrismaService } from '../../prisma.service'
+
+export interface OrderLink {
+  url: string
+  anchor: string
+  type: 'KEYWORD' | 'BRAND'
+}
 
 interface ListingsFilters {
   drTier?: string
@@ -20,6 +27,10 @@ interface CreateOrderDto {
   targetUrl: string
   anchorText?: string
   contentBrief?: string
+  /** Blog konusu — müşteri seçer */
+  topic?: string
+  /** En fazla 3 link: 2 anahtar kelime + 1 marka/site adı */
+  links?: OrderLink[]
 }
 
 interface PublisherApplyDto {
@@ -38,6 +49,8 @@ interface PublisherApplyDto {
 
 @Injectable()
 export class MarketService {
+  private readonly logger = new Logger(MarketService.name)
+
   constructor(
     private readonly prisma: PrismaService,
     @InjectQueue('market') private readonly queue: Queue,
@@ -123,6 +136,16 @@ export class MarketService {
       throw new BadRequestException('Insufficient wallet balance')
     }
 
+    // Link doğrulaması: en fazla 3 (2 kelime + 1 marka)
+    const links = (dto.links ?? []).slice(0, 3)
+    if (links.length > 0) {
+      const brandCount = links.filter((l) => l.type === 'BRAND').length
+      const keywordCount = links.filter((l) => l.type === 'KEYWORD').length
+      if (brandCount > 1 || keywordCount > 2) {
+        throw new BadRequestException('En fazla 2 anahtar kelime + 1 marka linki seçilebilir')
+      }
+    }
+
     const order = await this.prisma.$transaction(async (tx) => {
       const newOrder = await tx.backlinkOrder.create({
         data: {
@@ -130,8 +153,10 @@ export class MarketService {
           projectId,
           listingId: dto.listingId,
           targetUrl: dto.targetUrl,
-          anchorText: dto.anchorText ?? null,
+          anchorText: dto.anchorText ?? links[0]?.anchor ?? null,
           contentBrief: dto.contentBrief ?? null,
+          topic: dto.topic ?? null,
+          links: links.length > 0 ? (links as unknown as object) : undefined,
           status: 'ESCROW_HELD',
           price: listing.price,
         },
@@ -165,7 +190,202 @@ export class MarketService {
       { delay: 7 * 24 * 60 * 60 * 1000 },
     )
 
+    // Müşterinin sitesine özel blog taslağını arka planda üret
+    void this.generateOrderContent(order.id).catch((e) =>
+      this.logger.error(`Sipariş içeriği üretilemedi (${order.id}): ${(e as Error).message}`),
+    )
+
     return order
+  }
+
+  // ─── Sipariş içeriği: siteye özel AI blog + onay/düzeltme döngüsü ──────────
+
+  /**
+   * Müşterinin sitesini okuyup, seçtiği konu ve 3 linki (2 kelime + 1 marka)
+   * doğal biçimde yerleştiren blog taslağı üretir. Taslak müşteri onayına düşer;
+   * onaylanmadan yayıncıya GİTMEZ.
+   */
+  async generateOrderContent(orderId: string, revisionNote?: string): Promise<void> {
+    const order = await this.prisma.backlinkOrder.findUnique({
+      where: { id: orderId },
+      include: {
+        project: true,
+        listing: { include: { publisherSite: true } },
+      },
+    })
+    if (!order) return
+
+    const apiKey = process.env.ANTHROPIC_API_KEY
+    if (!apiKey) {
+      this.logger.warn('ANTHROPIC_API_KEY yok — sipariş içeriği üretilemedi')
+      return
+    }
+
+    const domain = order.project.domain.replace(/^https?:\/\//, '').replace(/\/$/, '')
+    const links = ((order.links as unknown as OrderLink[]) ?? []).slice(0, 3)
+    const topic = order.topic ?? order.contentBrief ?? `${domain} hakkında`
+
+    // Müşterinin sitesini canlı oku — blog o işletmeye özel olsun
+    let siteContext = ''
+    try {
+      const res = await axios.get(`https://${domain}`, {
+        timeout: 8000,
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; FunBreakSEO/1.0)' },
+        responseType: 'text',
+        transformResponse: [(d) => d],
+        validateStatus: (s) => s < 400,
+      })
+      const html = typeof res.data === 'string' ? res.data : ''
+      const metaDesc = html.match(/<meta[^>]+name=["']description["'][^>]*content=["']([^"']*)["']/i)?.[1] ?? ''
+      const text = html
+        .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+        .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 1200)
+      siteContext = `${metaDesc ? `Site açıklaması: ${metaDesc}\n` : ''}Ana sayfa özeti: ${text}`
+    } catch {
+      siteContext = ''
+    }
+
+    const language = order.project.language === 'tr' ? 'Turkish' : order.project.language
+    const linkInstructions = links.length
+      ? links
+          .map(
+            (l, i) =>
+              `${i + 1}. [${l.anchor}](${l.url}) — ${l.type === 'BRAND' ? 'marka/site adı linki' : 'anahtar kelime linki'}`,
+          )
+          .join('\n')
+      : `1. [${order.anchorText ?? domain}](${order.targetUrl})`
+
+    const prompt = `You are writing a GUEST POST that will be published on the website "${order.listing.publisherSite?.domain ?? 'a publisher site'}". The post must promote the customer's business naturally.
+
+CUSTOMER BUSINESS:
+- Website: ${domain}
+${siteContext ? `- ${siteContext}` : ''}
+
+ARTICLE:
+- Topic: ${topic}
+- Language: ${language}
+- Length: 700-1000 words
+- Style: informative, natural, editorial (NOT an ad). One H1, 3-4 H2 sections.
+
+LINKS (CRITICAL — insert ALL of these exactly, naturally within sentences, markdown format):
+${linkInstructions}
+
+RULES:
+- Each link must appear exactly once, inside a natural sentence.
+- Do not cluster links; spread them across different sections.
+- Write valuable content the publisher's readers would genuinely enjoy.
+- No competitor mentions.
+${revisionNote ? `\nCUSTOMER REVISION REQUEST (apply these changes):\n${revisionNote}` : ''}
+
+Return ONLY the article in Markdown.`
+
+    const resp = await axios.post(
+      'https://api.anthropic.com/v1/messages',
+      {
+        model: process.env.DEFAULT_CONTENT_MODEL ?? 'claude-sonnet-4-6',
+        max_tokens: 3000,
+        messages: [{ role: 'user', content: prompt }],
+      },
+      {
+        headers: {
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json',
+        },
+        timeout: 120000,
+      },
+    )
+
+    const draft: string = resp.data?.content?.[0]?.text ?? ''
+    if (!draft) throw new Error('Boş içerik döndü')
+
+    await this.prisma.backlinkOrder.update({
+      where: { id: orderId },
+      data: { contentDraft: draft, revisionNote: revisionNote ?? null, status: 'CONTENT_READY' },
+    })
+
+    // Müşteriye bildir: taslak onayını bekliyor
+    const org = await this.prisma.organization.findUnique({
+      where: { id: order.organizationId },
+      select: { ownerUserId: true },
+    })
+    if (org) {
+      await this.prisma.notification.create({
+        data: {
+          userId: org.ownerUserId,
+          type: 'ORDER_CONTENT_READY',
+          title: 'Backlink içeriğiniz hazır — onayınızı bekliyor',
+          body: `"${topic}" konulu misafir yazısı hazırlandı. Onaylayın veya düzeltme isteyin; onaysız yayıncıya gönderilmez.`,
+          link: '/dashboard/backlinks',
+        },
+      })
+    }
+    this.logger.log(`Sipariş içeriği hazır: ${orderId}${revisionNote ? ' (revizyon)' : ''}`)
+  }
+
+  async getOrder(orderId: string, orgId: string) {
+    const order = await this.prisma.backlinkOrder.findFirst({
+      where: { id: orderId, organizationId: orgId },
+      include: { listing: { include: { publisherSite: true } }, project: { select: { domain: true } } },
+    })
+    if (!order) throw new NotFoundException('Order not found')
+    return order
+  }
+
+  /** Müşteri taslağı beğenmedi — notuyla birlikte yeniden üretilir */
+  async requestContentRevision(orderId: string, orgId: string, note: string) {
+    const order = await this.prisma.backlinkOrder.findFirst({
+      where: { id: orderId, organizationId: orgId },
+    })
+    if (!order) throw new NotFoundException('Order not found')
+    if (order.contentApprovedAt) throw new BadRequestException('İçerik zaten onaylandı')
+
+    await this.prisma.backlinkOrder.update({
+      where: { id: orderId },
+      data: { revisionNote: note, status: 'ESCROW_HELD' },
+    })
+    void this.generateOrderContent(orderId, note).catch((e) =>
+      this.logger.error(`Revizyon üretilemedi (${orderId}): ${(e as Error).message}`),
+    )
+    return { message: 'Düzeltme talebiniz alındı — içerik yeniden üretiliyor.' }
+  }
+
+  /** Müşteri onayladı → yayıncıya gönderilmek üzere admin'e düşer */
+  async approveOrderContent(orderId: string, orgId: string) {
+    const order = await this.prisma.backlinkOrder.findFirst({
+      where: { id: orderId, organizationId: orgId },
+      include: { listing: { include: { publisherSite: true } } },
+    })
+    if (!order) throw new NotFoundException('Order not found')
+    if (!order.contentDraft) throw new BadRequestException('Henüz içerik taslağı yok')
+
+    const updated = await this.prisma.backlinkOrder.update({
+      where: { id: orderId },
+      data: { contentApprovedAt: new Date() },
+    })
+
+    // Admin'e bildir: içerik onaylandı, yayıncıya iletilecek
+    const admins = await this.prisma.user.findMany({
+      where: { role: { in: ['ADMIN', 'SUPER_ADMIN'] } },
+      select: { id: true },
+    })
+    if (admins.length > 0) {
+      await this.prisma.notification.createMany({
+        data: admins.map((a) => ({
+          userId: a.id,
+          type: 'ORDER_CONTENT_APPROVED',
+          title: 'Müşteri içeriği onayladı — yayıncıya gönderin',
+          body: `Sipariş ${orderId} içeriği onaylandı. Yayıncı: ${order.listing.publisherSite?.domain ?? '?'}`,
+          link: `/market`,
+        })),
+      })
+    }
+
+    return updated
   }
 
   async getOrders(orgId: string) {

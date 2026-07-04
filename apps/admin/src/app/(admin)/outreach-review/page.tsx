@@ -13,7 +13,20 @@ import { PageSpinner } from '@/components/ui/Spinner';
 import { useToast } from '@/components/ui/Toaster';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
-import { Eye, CheckCircle, XCircle, Reply } from 'lucide-react';
+import { Eye, CheckCircle, XCircle, Reply, Plus, Play, Mail } from 'lucide-react';
+
+interface PlatformCampaign {
+  id: string;
+  name: string;
+  targetUrl: string;
+  topic?: string | null;
+  status: string;
+  prospectsFound: number;
+  emailsSent: number;
+  replies: number;
+  linksWon: number;
+  project?: { domain?: string };
+}
 
 interface OutreachReply {
   id: string;
@@ -65,6 +78,44 @@ export default function OutreachReviewPage() {
   });
 
   const replies = (data ?? []) as OutreachReply[];
+
+  // ── Platform kampanyaları (backlink havuzunu besleyen merkezi outreach) ──
+  const [showCreateCampaign, setShowCreateCampaign] = useState(false);
+  const [campForm, setCampForm] = useState({ name: '', targetUrl: 'https://funbreakseo.com', topic: '' });
+
+  const { data: campaigns = [] } = useQuery({
+    queryKey: ['admin-outreach-campaigns'],
+    queryFn: async () => {
+      try {
+        const r = await adminApi.get('/admin/outreach/campaigns');
+        const raw = Array.isArray(r.data) ? r.data : (r.data?.data ?? []);
+        return raw as PlatformCampaign[];
+      } catch { return []; }
+    },
+  });
+
+  const createCampaign = useMutation({
+    mutationFn: () => adminApi.post('/admin/outreach/campaigns', campForm),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-outreach-campaigns'] });
+      setShowCreateCampaign(false);
+      setCampForm({ name: '', targetUrl: 'https://funbreakseo.com', topic: '' });
+      toast('Kampanya oluşturuldu — adaylar bulunuyor', 'success');
+    },
+    onError: () => toast('Kampanya oluşturulamadı', 'error'),
+  });
+
+  const genEmails = useMutation({
+    mutationFn: (id: string) => adminApi.post(`/admin/outreach/campaigns/${id}/generate-emails`),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-outreach-campaigns'] }); toast('Mailler üretiliyor', 'success'); },
+    onError: () => toast('Mail üretimi başlatılamadı', 'error'),
+  });
+
+  const startCampaign = useMutation({
+    mutationFn: (id: string) => adminApi.post(`/admin/outreach/campaigns/${id}/start`),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-outreach-campaigns'] }); toast('Kampanya başlatıldı — mailler gönderiliyor', 'success'); },
+    onError: () => toast('Kampanya başlatılamadı', 'error'),
+  });
 
   const columns: ColumnDef<OutreachReply>[] = [
     {
@@ -128,10 +179,79 @@ export default function OutreachReviewPage() {
     <div className="page-content">
       <div className="page-header">
         <div>
-          <h1>Outreach İnceleme</h1>
-          <p>{replies.length} yanıt insan incelemesi bekliyor</p>
+          <h1>Outreach — Platform Kampanyaları</h1>
+          <p>Sistem maili merkezi atar; olumlu dönüşler fiyat onayınızla backlink havuzuna girer</p>
         </div>
+        <Button variant="primary" icon={<Plus className="w-4 h-4" />} onClick={() => setShowCreateCampaign(true)}>
+          Yeni Kampanya
+        </Button>
       </div>
+
+      {/* Kampanya listesi */}
+      <div className="section-card" style={{ marginBottom: 20 }}>
+        <div className="section-card-header"><span className="section-card-title">Kampanyalar ({campaigns.length})</span></div>
+        {campaigns.length === 0 ? (
+          <p style={{ padding: '20px', fontSize: 13, color: 'var(--text-muted)' }}>
+            Henüz kampanya yok. &quot;Yeni Kampanya&quot; ile başlatın: sistem yüksek DR&apos;lı adayları bulur, kişisel mailleri üretir ve gönderir.
+          </p>
+        ) : (
+          <div style={{ padding: '8px 16px' }}>
+            {campaigns.map((c) => (
+              <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 4px', borderBottom: '1px solid var(--border-subtle)', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: 180 }}>
+                  <p style={{ fontSize: 14, fontWeight: 600 }}>{c.name}</p>
+                  <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{c.topic ?? c.targetUrl}</p>
+                </div>
+                <Badge variant={c.status === 'RUNNING' ? 'success' : c.status === 'COMPLETED' ? 'info' : 'default'}>{c.status}</Badge>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                  {c.prospectsFound} aday · {c.emailsSent} mail · {c.replies} cevap · {c.linksWon} teklif
+                </span>
+                <div className="flex gap-1">
+                  <Button size="xs" variant="secondary" icon={<Mail className="w-3 h-3" />} loading={genEmails.isPending}
+                    onClick={() => genEmails.mutate(c.id)}>Mailleri Üret</Button>
+                  <Button size="xs" variant="success" icon={<Play className="w-3 h-3" />} loading={startCampaign.isPending}
+                    onClick={() => startCampaign.mutate(c.id)} disabled={c.status === 'RUNNING'}>Başlat</Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <Modal open={showCreateCampaign} onClose={() => setShowCreateCampaign(false)} title="Yeni Platform Kampanyası"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setShowCreateCampaign(false)}>İptal</Button>
+            <Button variant="primary" loading={createCampaign.isPending}
+              disabled={!campForm.name || !campForm.topic}
+              onClick={() => createCampaign.mutate()}>Oluştur</Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <div>
+            <p className="text-xs font-medium text-[var(--text-muted)] mb-1">Kampanya Adı</p>
+            <input value={campForm.name} onChange={(e) => setCampForm((p) => ({ ...p, name: e.target.value }))}
+              placeholder="örn. TR haber siteleri — SEO niş"
+              className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <p className="text-xs font-medium text-[var(--text-muted)] mb-1">Konu / Niş (aday bulmada kullanılır)</p>
+            <input value={campForm.topic} onChange={(e) => setCampForm((p) => ({ ...p, topic: e.target.value }))}
+              placeholder="örn. seo, dijital pazarlama, teknoloji haberleri"
+              className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <p className="text-xs font-medium text-[var(--text-muted)] mb-1">Hedef URL</p>
+            <input value={campForm.targetUrl} onChange={(e) => setCampForm((p) => ({ ...p, targetUrl: e.target.value }))}
+              className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2 text-sm" />
+          </div>
+          <p className="text-xs text-[var(--text-muted)]">
+            Akış: adaylar DR&apos;a göre bulunur → kişisel mailler üretilir → &quot;Başlat&quot; ile gönderim başlar →
+            olumlu dönüşler aşağıdaki yanıt listesine ve fiyat onayı için Pazar sayfasındaki teklif kuyruğuna düşer.
+          </p>
+        </div>
+      </Modal>
 
       <div className="section-card">
         <div className="section-card-header"><span className="section-card-title">Yanıt Listesi</span></div>

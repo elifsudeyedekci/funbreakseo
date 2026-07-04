@@ -8,7 +8,7 @@ import {
   UseGuards,
 } from '@nestjs/common'
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger'
-import { IsNumber, IsOptional, IsString, MinLength } from 'class-validator'
+import { IsArray, IsIn, IsNumber, IsOptional, IsString, MinLength, ValidateNested } from 'class-validator'
 import { Type } from 'class-transformer'
 import { MarketService } from './market.service'
 import { JwtAuthGuard } from '../auth/jwt-auth.guard'
@@ -16,12 +16,24 @@ import { CurrentUser } from '../auth/current-user.decorator'
 import { Roles } from '../auth/roles.decorator'
 import { RolesGuard } from '../auth/roles.guard'
 
+class OrderLinkDto {
+  @IsString() url: string = ''
+  @IsString() anchor: string = ''
+  @IsIn(['KEYWORD', 'BRAND']) type: 'KEYWORD' | 'BRAND' = 'KEYWORD'
+}
+
 class CreateOrderDto {
   @IsString() projectId: string = ''
   @IsString() listingId: string = ''
   @IsString() targetUrl: string = ''
   @IsOptional() @IsString() anchorText?: string
   @IsOptional() @IsString() contentBrief?: string
+  @IsOptional() @IsString() topic?: string
+  @IsOptional() @IsArray() @ValidateNested({ each: true }) @Type(() => OrderLinkDto) links?: OrderLinkDto[]
+}
+
+class RevisionDto {
+  @IsString() @MinLength(3) note: string = ''
 }
 
 class PublisherApplyDto {
@@ -102,6 +114,27 @@ export class MarketController {
   @Get('market/orders')
   getOrders(@CurrentUser() user: any) {
     return this.marketService.getOrders(user.organizationId)
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @Get('market/orders/:id')
+  getOrder(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.marketService.getOrder(id, user.organizationId)
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @Post('market/orders/:id/approve-content')
+  approveOrderContent(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.marketService.approveOrderContent(id, user.organizationId)
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @Post('market/orders/:id/request-revision')
+  requestRevision(@Param('id') id: string, @Body() body: RevisionDto, @CurrentUser() user: any) {
+    return this.marketService.requestContentRevision(id, user.organizationId, body.note)
   }
 
   @ApiBearerAuth()

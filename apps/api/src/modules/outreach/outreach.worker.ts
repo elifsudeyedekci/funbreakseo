@@ -485,6 +485,48 @@ Respond with valid JSON only:
             data: { status: newStatus },
           })
 
+          // Olumlu dönüş → yayıncı teklifi olarak ADMİN onay kuyruğuna düşür.
+          // Müşteri bu akışı hiç görmez; fiyatı admin belirler, sonra havuza girer.
+          if (newStatus === 'REPLIED_POSITIVE' && match.prospect) {
+            try {
+              const existing = await this.prisma.publisherOffer.findFirst({
+                where: {
+                  domain: match.prospect.domain,
+                  status: { in: ['PENDING_ADMIN_REVIEW', 'NEGOTIATING'] },
+                },
+              })
+              if (!existing) {
+                const offer = await this.prisma.publisherOffer.create({
+                  data: {
+                    sourceCampaignId: match.prospect.campaignId,
+                    domain: match.prospect.domain,
+                    domainRating: match.prospect.domainRating ?? null,
+                    rawReplyText: bodyText,
+                    status: 'PENDING_ADMIN_REVIEW',
+                  },
+                })
+                const admins = await this.prisma.user.findMany({
+                  where: { role: { in: ['ADMIN', 'SUPER_ADMIN'] } },
+                  select: { id: true },
+                })
+                if (admins.length > 0) {
+                  await this.prisma.notification.createMany({
+                    data: admins.map((a) => ({
+                      userId: a.id,
+                      type: 'PUBLISHER_OFFER',
+                      title: 'Yeni yayıncı teklifi — fiyat onayınızı bekliyor',
+                      body: `${match.prospect!.domain} (DR ${match.prospect!.domainRating ?? '?'}) link satmaya olumlu döndü. Fiyatı belirleyip havuza ekleyin.`,
+                      link: '/market',
+                    })),
+                  })
+                }
+                this.logger.log(`PublisherOffer oluşturuldu: ${match.prospect.domain} (${offer.id})`)
+              }
+            } catch (offerErr) {
+              this.logger.warn(`PublisherOffer oluşturulamadı: ${(offerErr as Error).message}`)
+            }
+          }
+
           this.logger.log(`Reply classified as ${classification} for prospect ${match.prospectId}`)
         }
       } finally {
