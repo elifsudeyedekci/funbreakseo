@@ -9,6 +9,7 @@ import {
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger'
 import { OutreachService } from './outreach.service'
 import { JwtAuthGuard } from '../auth/jwt-auth.guard'
+import { ActiveSubscriptionGuard } from '../auth/active-subscription.guard'
 import { CurrentUser } from '../auth/current-user.decorator'
 
 class CreateCampaignDto {
@@ -26,6 +27,7 @@ export class OutreachController {
   constructor(private readonly outreachService: OutreachService) {}
 
   @Post('projects/:id/outreach/campaigns')
+  @UseGuards(ActiveSubscriptionGuard)
   createCampaign(
     @Param('id') id: string,
     @Body() body: CreateCampaignDto,
@@ -45,11 +47,13 @@ export class OutreachController {
   }
 
   @Post('campaigns/:id/generate-emails')
+  @UseGuards(ActiveSubscriptionGuard)
   generateEmails(@Param('id') id: string) {
     return this.outreachService.generateEmails(id)
   }
 
   @Post('campaigns/:id/start')
+  @UseGuards(ActiveSubscriptionGuard)
   startCampaign(@Param('id') id: string) {
     return this.outreachService.startCampaign(id)
   }
@@ -65,6 +69,7 @@ export class OutreachController {
   }
 
   @Post('projects/:id/backlinks/sync')
+  @UseGuards(ActiveSubscriptionGuard)
   syncBacklinks(@Param('id') id: string) {
     return this.outreachService.syncBacklinks(id)
   }

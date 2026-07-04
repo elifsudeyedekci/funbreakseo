@@ -93,8 +93,10 @@ export class RankTrackingWorker extends WorkerHost {
         status: ProjectStatus.ACTIVE,
         organization: {
           subscription: {
+            // Maliyet koruması: ödemesi geciken (PAST_DUE) ve askıdaki hesaplar
+            // için API maliyeti üretme — sadece aktif/trial hesaplar taranır
             status: {
-              not: SubscriptionStatus.SUSPENDED,
+              in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIALING],
             },
           },
         },

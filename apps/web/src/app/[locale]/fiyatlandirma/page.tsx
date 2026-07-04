@@ -3,13 +3,36 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
+import { useQuery } from '@tanstack/react-query';
 import { Check, X, Minus } from 'lucide-react';
-import { PLAN_PRICES_TRY, DEFAULT_PLAN_LIMITS } from '@funbreakseo/shared';
+import {
+  PLAN_PRICES_TRY,
+  DEFAULT_PLAN_LIMITS,
+  LOCALE_CURRENCY,
+  CURRENCY_SYMBOLS,
+  type Locale,
+} from '@funbreakseo/shared';
+import { api } from '@/lib/api';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { cn } from '@/lib/utils';
 
 type BillingCycle = 'monthly' | 'yearly';
+
+const CURRENCY_OPTIONS = ['TRY', 'USD', 'EUR', 'GBP', 'SAR', 'AED', 'RUB', 'INR'];
+
+interface ApiPlan {
+  slug: string;
+  monthlyPrice: number;
+  yearlyPrice: number;
+  displayCurrency: string;
+}
+
+function formatCurrency(amount: number, currency: string): string {
+  const symbol = CURRENCY_SYMBOLS[currency] ?? currency;
+  const formatted = Math.round(amount).toLocaleString(currency === 'TRY' ? 'tr-TR' : 'en-US');
+  return currency === 'TRY' ? `${symbol}${formatted}` : `${symbol}${formatted}`;
+}
 
 function formatLimitValue(
   value: number | boolean | string,
@@ -31,8 +54,26 @@ export default function PricingPage() {
   const t = useTranslations('pricing');
   const locale = useLocale();
   const [cycle, setCycle] = useState<BillingCycle>('monthly');
+  const [currency, setCurrency] = useState<string>(
+    LOCALE_CURRENCY[locale as Locale] ?? 'TRY',
+  );
 
   const localePath = (path: string) => locale === 'tr' ? path : `/${locale}${path}`;
+
+  // Canlı kurla dönüştürülmüş plan fiyatları (backend CurrencyRate cache'inden)
+  const { data: apiPlans } = useQuery({
+    queryKey: ['public-plans', locale, currency],
+    queryFn: async () => {
+      const { data } = await api.get(`/plans?locale=${locale}&currency=${currency}`);
+      return (data?.data ?? data) as ApiPlan[];
+    },
+    staleTime: 10 * 60 * 1000,
+    retry: 1,
+  });
+
+  const planBySlug = Array.isArray(apiPlans)
+    ? Object.fromEntries(apiPlans.map((p) => [p.slug, p]))
+    : {};
 
   const PLANS: Array<{
     key: string;
@@ -62,10 +103,23 @@ export default function PricingPage() {
     { label: t('features.tracking'), key: 'trackingDepth' as const },
   ];
 
-  function getPrice(planKey: string) {
+  function getPrice(planKey: string): { amount: number; currency: string; yearlyTotal: number } | null {
+    const apiPlan = planBySlug[planKey];
+    if (apiPlan && (apiPlan.monthlyPrice > 0 || apiPlan.yearlyPrice > 0)) {
+      return {
+        amount: cycle === 'monthly' ? apiPlan.monthlyPrice : Math.floor(apiPlan.yearlyPrice / 12),
+        currency: apiPlan.displayCurrency ?? currency,
+        yearlyTotal: apiPlan.yearlyPrice,
+      };
+    }
+    // API'ye ulaşılamazsa TRY sabitleriyle göster
     const prices = PLAN_PRICES_TRY[planKey as keyof typeof PLAN_PRICES_TRY];
     if (!prices || (prices.monthly === 0 && prices.yearly === 0)) return null;
-    return cycle === 'monthly' ? prices.monthly : Math.floor(prices.yearly / 12);
+    return {
+      amount: cycle === 'monthly' ? prices.monthly : Math.floor(prices.yearly / 12),
+      currency: 'TRY',
+      yearlyTotal: prices.yearly,
+    };
   }
 
   return (
@@ -102,6 +156,23 @@ export default function PricingPage() {
                 </span>
               </button>
             </div>
+
+            {/* Para birimi seçici */}
+            <div className="mt-4">
+              <select
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+                aria-label="Currency"
+                className="rounded-lg border border-white/10 px-3 py-2 text-sm text-white/70 focus:border-indigo-500/50 focus:outline-none"
+                style={{ background: '#1a1a24', colorScheme: 'dark' }}
+              >
+                {CURRENCY_OPTIONS.map((c) => (
+                  <option key={c} value={c}>
+                    {CURRENCY_SYMBOLS[c] ?? ''} {c}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Plan cards */}
@@ -129,19 +200,21 @@ export default function PricingPage() {
                     <h2 className="text-lg font-bold text-white mb-1">{plan.name}</h2>
                     <p className="text-xs text-white/50 leading-relaxed mb-4">{plan.desc}</p>
 
-                    {plan.custom ? (
+                    {plan.custom || !price ? (
                       <div className="text-2xl font-bold text-white">{t('customQuote')}</div>
                     ) : (
                       <>
                         <div className="flex items-end gap-1">
-                          <span className="text-4xl font-bold text-white">₺{price?.toLocaleString('tr-TR')}</span>
+                          <span className="text-4xl font-bold text-white">
+                            {formatCurrency(price.amount, price.currency)}
+                          </span>
                           <span className="text-white/40 text-sm mb-1">{t('perMonth')}</span>
                         </div>
                         <p className="text-xs text-white/30 mt-1">
                           {t('includedVat')}
                           {cycle === 'yearly' && (
                             <span className="ml-1 text-emerald-400">
-                              ({t('yearlyTotal')} ₺{PLAN_PRICES_TRY[plan.key as keyof typeof PLAN_PRICES_TRY]?.yearly?.toLocaleString('tr-TR')})
+                              ({t('yearlyTotal')} {formatCurrency(price.yearlyTotal, price.currency)})
                             </span>
                           )}
                         </p>

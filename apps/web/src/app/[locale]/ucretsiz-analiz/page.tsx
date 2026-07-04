@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Search, CheckCircle, AlertCircle, TrendingUp, ArrowRight } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
@@ -20,6 +20,7 @@ interface AuditResult {
 
 export default function FreeAuditPage() {
   const locale = useLocale();
+  const t = useTranslations('freeAudit');
   const searchParams = useSearchParams();
   const localePath = (path: string) => locale === 'tr' ? path : `/${locale}${path}`;
 
@@ -47,7 +48,7 @@ export default function FreeAuditPage() {
       setResult(res.data.data);
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } } };
-      setError(e?.response?.data?.message || 'Analiz sırasında bir hata oluştu. Lütfen tekrar deneyin.');
+      setError(e?.response?.data?.message || t('errorGeneric'));
     } finally {
       setLoading(false);
     }
@@ -63,8 +64,8 @@ export default function FreeAuditPage() {
       <main className="pt-28 pb-24 px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-3xl">
           <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold text-white mb-4">Ücretsiz Site Analizi</h1>
-            <p className="text-white/50 text-lg">Domain adresinizi girin, anında SEO sağlık raporu alın</p>
+            <h1 className="text-4xl font-bold text-white mb-4">{t('title')}</h1>
+            <p className="text-white/50 text-lg">{t('subtitle')}</p>
           </div>
 
           {/* Input */}
@@ -88,7 +89,7 @@ export default function FreeAuditPage() {
               ) : (
                 <Search className="h-4 w-4" />
               )}
-              Analiz Et
+              {t('analyzeBtn')}
             </button>
           </form>
 
@@ -101,8 +102,8 @@ export default function FreeAuditPage() {
           {loading && (
             <div className="text-center py-12">
               <div className="inline-block h-12 w-12 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin mb-4" />
-              <p className="text-white/60">Siteniz analiz ediliyor...</p>
-              <p className="text-white/30 text-sm mt-1">Bu işlem 10-15 saniye sürebilir</p>
+              <p className="text-white/60">{t('analyzing')}</p>
+              <p className="text-white/30 text-sm mt-1">{t('analyzingHint')}</p>
             </div>
           )}
 
@@ -110,7 +111,7 @@ export default function FreeAuditPage() {
             <div className="space-y-6 animate-fade-in">
               {/* Score */}
               <div className="rounded-2xl border border-white/10 bg-white/2 p-6 text-center">
-                <p className="text-white/50 text-sm mb-2">{result.domain} — SEO Sağlık Skoru</p>
+                <p className="text-white/50 text-sm mb-2">{result.domain} — {t('scoreLabel')}</p>
                 <div className={`text-7xl font-bold ${scoreColor} mb-2`}>{result.healthScore}</div>
                 <div className="h-3 bg-white/10 rounded-full overflow-hidden max-w-xs mx-auto mb-3">
                   <div
@@ -126,7 +127,7 @@ export default function FreeAuditPage() {
                 <div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-5">
                   <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
                     <AlertCircle className="h-4 w-4 text-red-400" />
-                    Kritik Sorunlar ({result.criticalIssues.length})
+                    {t('criticalTitle')} ({result.criticalIssues.length})
                   </h2>
                   <ul className="space-y-2">
                     {result.criticalIssues.slice(0, 5).map((issue, i) => (
@@ -136,7 +137,7 @@ export default function FreeAuditPage() {
                       </li>
                     ))}
                     {result.criticalIssues.length > 5 && (
-                      <li className="text-xs text-white/30">+{result.criticalIssues.length - 5} sorun daha...</li>
+                      <li className="text-xs text-white/30">+{result.criticalIssues.length - 5} {t('moreIssues')}</li>
                     )}
                   </ul>
                 </div>
@@ -147,13 +148,13 @@ export default function FreeAuditPage() {
                 <div className="rounded-2xl border border-white/10 bg-white/2 p-5">
                   <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
                     <TrendingUp className="h-4 w-4 text-indigo-400" />
-                    Anahtar Kelime Fırsatları
+                    {t('keywordTitle')}
                   </h2>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {result.keywordIdeas.slice(0, 6).map((kw, i) => (
                       <div key={i} className="rounded-lg border border-white/8 bg-white/3 px-3 py-2">
                         <p className="text-xs font-medium text-white">{kw.keyword}</p>
-                        <p className="text-[10px] text-white/30">{kw.volume?.toLocaleString('tr-TR')} arama/ay</p>
+                        <p className="text-[10px] text-white/30">{kw.volume?.toLocaleString('tr-TR')} {t('searchesPerMonth')}</p>
                       </div>
                     ))}
                   </div>
@@ -163,11 +164,11 @@ export default function FreeAuditPage() {
               {/* GEO teaser */}
               <div className="rounded-2xl border border-purple-500/20 bg-purple-500/5 p-5">
                 <h2 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
-                  <span className="text-purple-400">GEO / AI Görünürlük Skoru:</span>
+                  <span className="text-purple-400">{t('geoTitle')}</span>
                   <span className="text-purple-400 font-bold">{result.geoScore}/100</span>
                 </h2>
                 <p className="text-xs text-white/50 mb-3">
-                  ChatGPT, Gemini ve diğer AI platformlarında görünürlüğünüzü görmek için hesap açın.
+                  {t('geoHint')}
                 </p>
                 <div className="h-2 bg-white/10 rounded-full overflow-hidden">
                   <div className="h-full rounded-full bg-purple-500" style={{ width: `${result.geoScore}%` }} />
@@ -176,17 +177,17 @@ export default function FreeAuditPage() {
 
               {/* CTA */}
               <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-6 text-center">
-                <h3 className="text-lg font-bold text-white mb-2">Tam Raporu Görmek İster misiniz?</h3>
+                <h3 className="text-lg font-bold text-white mb-2">{t('ctaTitle')}</h3>
                 <p className="text-sm text-white/60 mb-4">
-                  Ücretsiz hesap açın, tüm sorunları, GEO skorunu ve iyileştirme önerilerini görün.
+                  {t('ctaText')}
                 </p>
                 <Link
                   href={localePath('/kayit')}
                   className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white hover:bg-indigo-500 transition-all"
                 >
-                  Ücretsiz Hesap Aç <ArrowRight className="h-4 w-4" />
+                  {t('ctaBtn')} <ArrowRight className="h-4 w-4" />
                 </Link>
-                <p className="text-xs text-white/30 mt-2">Kredi kartı gerekmez</p>
+                <p className="text-xs text-white/30 mt-2">{t('noCard')}</p>
               </div>
             </div>
           )}

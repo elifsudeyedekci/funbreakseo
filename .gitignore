@@ -52,3 +52,5 @@ apps/api/uploads
 
 # Generated
 apps/api/dist
+
+ts-errors*.txt

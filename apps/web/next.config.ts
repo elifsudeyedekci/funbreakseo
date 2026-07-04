@@ -7,7 +7,7 @@ const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   webpack(config) {
     // Force a single lucide-react instance across all packages to prevent
@@ -47,6 +47,10 @@ const nextConfig: NextConfig = {
       {
         source: '/robots.txt',
         destination: `${apiUrl}/robots.txt`,
+      },
+      {
+        source: '/rss.xml',
+        destination: `${apiUrl}/rss.xml`,
       },
     ];
   },

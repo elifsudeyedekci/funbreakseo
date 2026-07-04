@@ -30,6 +30,7 @@ import { Type } from 'class-transformer';
 import { TrackingDepth, User } from '@prisma/client';
 import { KeywordService } from './keyword.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { ActiveSubscriptionGuard } from '../auth/active-subscription.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 
 // ─── DTOs ────────────────────────────────────────────────────────────────────
@@ -128,6 +129,7 @@ export class KeywordController {
   }
 
   @Post('projects/:projectId/keywords')
+  @UseGuards(ActiveSubscriptionGuard)
   @ApiOperation({ summary: 'Bulk add keywords to a project' })
   async addKeywords(
     @CurrentUser() user: User,
@@ -157,6 +159,7 @@ export class KeywordController {
   }
 
   @Post('keywords/research')
+  @UseGuards(ActiveSubscriptionGuard)
   @ApiOperation({ summary: 'Research keywords with DataForSEO suggestions' })
   async research(
     @CurrentUser() user: User,
@@ -180,6 +183,7 @@ export class KeywordController {
   }
 
   @Post('keywords/:id/refresh-rank')
+  @UseGuards(ActiveSubscriptionGuard)
   @ApiOperation({ summary: 'Queue an immediate rank check for a keyword' })
   async refreshRank(
     @CurrentUser() user: User,
@@ -189,6 +193,7 @@ export class KeywordController {
   }
 
   @Post('projects/:projectId/keywords/refresh-metrics')
+  @UseGuards(ActiveSubscriptionGuard)
   @ApiOperation({ summary: 'Refresh DataForSEO metrics for all keywords in project' })
   async refreshMetrics(
     @CurrentUser() user: User,
@@ -198,6 +203,7 @@ export class KeywordController {
   }
 
   @Post('projects/:projectId/keywords/refresh-ranks')
+  @UseGuards(ActiveSubscriptionGuard)
   @ApiOperation({ summary: 'Queue SERP position checks for all keywords in project' })
   async refreshRanks(
     @CurrentUser() user: User,

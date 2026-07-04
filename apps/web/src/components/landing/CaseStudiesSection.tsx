@@ -1,11 +1,13 @@
 'use client';
-import { useTranslations } from 'next-intl';
-import { TrendingUp } from 'lucide-react';
+import Link from 'next/link';
+import { useLocale, useTranslations } from 'next-intl';
+import { TrendingUp, ArrowRight } from 'lucide-react';
 
 const CASE_COLORS = ['from-blue-500/20', 'from-purple-500/20', 'from-emerald-500/20'];
 
 export function CaseStudiesSection() {
   const t = useTranslations('caseStudies');
+  const locale = useLocale();
   const items = t.raw('items') as Array<{ company: string; industry: string; result: string; detail: string }>;
 
   return (
@@ -35,6 +37,15 @@ export function CaseStudiesSection() {
               <p className="text-sm text-white/50">{c.detail}</p>
             </div>
           ))}
+        </div>
+
+        <div className="text-center mt-10">
+          <Link
+            href={`/${locale}/vaka-calismalari`}
+            className="inline-flex items-center gap-2 text-sm font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
+          >
+            {t('viewAll')} <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
       </div>
     </section>

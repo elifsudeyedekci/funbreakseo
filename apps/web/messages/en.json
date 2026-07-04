@@ -1,4 +1,4 @@
-﻿{
+{
   "common": {
     "loading": "Loading...",
     "error": "An error occurred",
@@ -163,10 +163,22 @@
     "yearlyTotal": "yearly",
     "faqTitle": "Pricing FAQ",
     "faqs": [
-      { "q": "Is VAT included?", "a": "Yes, all prices are shown VAT inclusive (20%). Separate invoices are issued for corporate taxpayers." },
-      { "q": "Can I switch to the annual plan?", "a": "Yes, you can switch from a monthly plan to an annual plan at any time. You immediately earn 2 months free." },
-      { "q": "What happens after the trial period ends?", "a": "After the 14-day trial period, your account is suspended. Your data is kept for 30 days." },
-      { "q": "Can I get a corporate invoice?", "a": "Yes. During payment, select the corporate invoice option and enter your company details." }
+      {
+        "q": "Is VAT included?",
+        "a": "Yes, all prices are shown VAT inclusive (20%). Separate invoices are issued for corporate taxpayers."
+      },
+      {
+        "q": "Can I switch to the annual plan?",
+        "a": "Yes, you can switch from a monthly plan to an annual plan at any time. You immediately earn 2 months free."
+      },
+      {
+        "q": "What happens after the trial period ends?",
+        "a": "After the 14-day trial period, your account is suspended. Your data is kept for 30 days."
+      },
+      {
+        "q": "Can I get a corporate invoice?",
+        "a": "Yes. During payment, select the corporate invoice option and enter your company details."
+      }
     ]
   },
   "auth": {
@@ -241,7 +253,8 @@
     "aboutUs": "About Us",
     "contact": "Contact",
     "geoWhat": "What is GEO?",
-    "freeAnalysis": "Free Site Analysis"
+    "freeAnalysis": "Free Site Analysis",
+    "caseStudies": "Case Studies"
   },
   "cookie": {
     "title": "Cookie Preferences",
@@ -260,7 +273,8 @@
     "forbidden": "You don't have access to this page",
     "unauthorized": "Please sign in to continue",
     "maintenance": "Maintenance mode — We'll be back shortly",
-    "goHome": "Go to Homepage"
+    "goHome": "Go to Homepage",
+    "retry": "Try Again"
   },
   "howItWorks": {
     "badge": "How It Works",
@@ -310,7 +324,12 @@
     "readTime": "min read",
     "all": "All",
     "backToBlog": "← Back to Blog",
-    "author": "Author"
+    "author": "Author",
+    "faqTitle": "Frequently Asked Questions",
+    "relatedTitle": "Related Articles",
+    "ctaTitle": "Curious about your site's SEO health?",
+    "ctaText": "Get a free analysis in 30 seconds — no sign-up required.",
+    "ctaBtn": "Run Free Analysis"
   },
   "testimonials": {
     "badge": "Customer Reviews",
@@ -359,7 +378,13 @@
         "result": "340% lead increase",
         "detail": "Local SEO + GEO optimization combination"
       }
-    ]
+    ],
+    "readMore": "Read More",
+    "backToList": "All Case Studies",
+    "viewAll": "View all success stories",
+    "ctaTitle": "Get similar results for your business",
+    "ctaSubtitle": "See your site's potential in 30 seconds with a free analysis.",
+    "ctaButton": "Start Free Analysis"
   },
   "featuresSection": {
     "tag1": "Platform Features",
@@ -431,7 +456,8 @@
     "autopilot": {
       "title": "Autopilot",
       "desc": "Automate scanning, content creation, backlink discovery and reporting — full automation in one click."
-    }
+    },
+    "reportMockupLabel": "Client Name — SEO Report"
   },
   "dashNav": {
     "projects": "Projects",
@@ -989,125 +1015,352 @@
     "untitled": "Content"
   },
   "ozelliklerPage": {
-  "badge": "11 Powerful Tools",
-  "title": "SEO and GEO in",
-  "titleHighlight": "one platform",
-  "subtitle": "Go beyond traditional SEO tools. Technical analysis, AI content, backlink, outreach, and AI visibility — no separate subscriptions.",
-  "cta": {
-    "title": "Try all features free for 14 days",
-    "subtitle": "No credit card required. Instant setup. Cancel anytime.",
-    "button": "Start Free"
+    "badge": "11 Powerful Tools",
+    "title": "SEO and GEO in",
+    "titleHighlight": "one platform",
+    "subtitle": "Go beyond traditional SEO tools. Technical analysis, AI content, backlink, outreach, and AI visibility — no separate subscriptions.",
+    "cta": {
+      "title": "Try all features free for 14 days",
+      "subtitle": "No credit card required. Instant setup. Cancel anytime.",
+      "button": "Start Free"
+    },
+    "cats": {
+      "seoAnalysis": "SEO & Analysis",
+      "geoAi": "GEO & Artificial Intelligence",
+      "contentProd": "Content & Production",
+      "backlinkOutreach": "Backlink & Outreach",
+      "reportingAgency": "Reporting & Agency"
+    },
+    "features": {
+      "seoScan": {
+        "title": "SEO Scan",
+        "desc": "150+ technical checks, Core Web Vitals, crawl errors and speed analysis in one click. Prioritized fix guide for every issue.",
+        "tags": [
+          "150+ Rules",
+          "Core Web Vitals",
+          "Automated"
+        ]
+      },
+      "rankTracking": {
+        "title": "Rank Tracking",
+        "desc": "Monitor keyword positions in Google and Bing daily. Competitor comparison, trend graphs, and instant alerts.",
+        "tags": [
+          "Daily Update",
+          "Competitor Analysis",
+          "Location"
+        ]
+      },
+      "keywordResearch": {
+        "title": "Keyword Research",
+        "desc": "Discover the most valuable keywords with search volume, difficulty score, and competitor analysis. Clustering and prioritization included.",
+        "tags": [
+          "Volume & CPC",
+          "Difficulty Score",
+          "Clustering"
+        ]
+      },
+      "competitorAnalysis": {
+        "title": "Competitor Analysis",
+        "desc": "Organic traffic sources, ranking gains, and backlink profiles of your competitors. Never miss a move with automated alerts.",
+        "tags": [
+          "Traffic Analysis",
+          "Content Gap",
+          "Alerts"
+        ]
+      },
+      "geoAiVisibility": {
+        "title": "GEO / AI Visibility",
+        "desc": "Track your brand mention and citation rate on ChatGPT, Gemini, Perplexity, Claude and Google AI Mode. Shape your GEO strategy with data.",
+        "tags": [
+          "6 AI Platforms",
+          "Mention Tracking",
+          "GEO Report"
+        ]
+      },
+      "autopilot": {
+        "title": "Autopilot",
+        "desc": "Automate crawling, AI content generation, backlink detection and report sending in one flow. You focus on growth, the platform handles the rest.",
+        "tags": [
+          "Full Automation",
+          "Workflow",
+          "Scheduling"
+        ]
+      },
+      "aiContent": {
+        "title": "AI Content Engine",
+        "desc": "GPT-4o powered SEO-compatible blog posts, meta tags, product descriptions, and landing page copy. E-E-A-T compliant, 8 language support.",
+        "tags": [
+          "GPT-4o",
+          "E-E-A-T",
+          "8 Languages"
+        ]
+      },
+      "multilingualSeo": {
+        "title": "Multilingual SEO",
+        "desc": "Hreflang validation in 8 languages, automatic translation suggestions, and country-based rank tracking. Go global.",
+        "tags": [
+          "8 Languages",
+          "Hreflang",
+          "Country-Based"
+        ]
+      },
+      "backlinkMarket": {
+        "title": "Backlink Market",
+        "desc": "Find and order quality links with DR/DA and thematic filter. Manual approval guarantee.",
+        "tags": [
+          "DR/DA Filter",
+          "Manual Approval",
+          "Thematic"
+        ]
+      },
+      "outreach": {
+        "title": "Outreach Campaign",
+        "desc": "AI-personalized email templates, automated follow-up sequences, and reply management. Ready templates for guest posting and link campaigns.",
+        "tags": [
+          "AI Template",
+          "Auto Follow-up",
+          "CRM Integration"
+        ]
+      },
+      "whiteLabel": {
+        "title": "White Label Reports",
+        "desc": "Create branded PDF, Excel and interactive client portal reports with your own logo and color palette. Ideal for agency growth.",
+        "tags": [
+          "Own Brand",
+          "PDF & Excel",
+          "Client Portal"
+        ]
+      }
+    }
   },
-  "cats": {
-    "seoAnalysis": "SEO & Analysis",
-    "geoAi": "GEO & Artificial Intelligence",
-    "contentProd": "Content & Production",
-    "backlinkOutreach": "Backlink & Outreach",
-    "reportingAgency": "Reporting & Agency"
+  "seoPage": {
+    "badge": "Comprehensive Guide — 2025",
+    "title": "What is SEO?",
+    "titleHighlight": "Search Engine Optimization",
+    "subtitle": "The complete set of technical, content, and authority strategies you apply to rank higher in Google and other search engines. In 2025, SEO works together with AI searches (GEO).",
+    "stats": [
+      {
+        "value": "68%",
+        "label": "Estimated share of all web traffic coming from organic search"
+      },
+      {
+        "value": "#1",
+        "label": "Average click-through rate for the first position in Google is 27.6%"
+      },
+      {
+        "value": "3 sec",
+        "label": "53% of users leave if page load time exceeds 3 seconds"
+      },
+      {
+        "value": "200+",
+        "label": "Number of factors in Google's ranking algorithm"
+      }
+    ],
+    "pillarsTitle": "The 6 Pillars of SEO",
+    "pillars": {
+      "technical": {
+        "title": "Technical SEO",
+        "desc": "Site speed, Core Web Vitals, crawl budget, hreflang, structured data and mobile compatibility. The foundation for search engines to correctly crawl and index your site."
+      },
+      "content": {
+        "title": "Content Optimization",
+        "desc": "E-E-A-T compliant content production targeting keywords, title optimization, meta descriptions, and internal linking strategy."
+      },
+      "offpage": {
+        "title": "Off-Page SEO & Backlinks",
+        "desc": "Quality backlink profile that increases authority and trust score. Domain Rating (DR), anchor text distribution, and link diversity."
+      },
+      "local": {
+        "title": "Local & International SEO",
+        "desc": "Google Business profile, local keywords, hreflang tags, and multilingual content strategy to go global."
+      },
+      "analytics": {
+        "title": "SEO Analytics & Measurement",
+        "desc": "Organic traffic, ranking changes, CTR optimization, and ROI measurement. Data-driven decisions with Google Search Console and FunBreak SEO dashboard."
+      },
+      "geo": {
+        "title": "SEO + GEO Integration",
+        "desc": "In 2025, Google alone is not enough. Manage GEO strategy alongside SEO to rank on ChatGPT, Gemini, and Perplexity."
+      }
+    },
+    "howTitle": "How Does SEO Work?",
+    "howBody": "Google crawls billions of web pages every day, indexes their content, and ranks the most relevant pages for user queries by evaluating 200+ factors. SEO is the process of understanding these factors and optimizing your site in a way that search engines and users prefer.",
+    "whyTitle": "Why Is It Important?",
+    "whyBody": "Organic search accounts for 68% of all web traffic and doesn't stop when a campaign budget runs out, unlike paid ads. A well-optimized site continues to receive quality traffic at low cost for years. The page ranked #1 in Google gets an average CTR of 27.6%, while the #10 page gets only 2.4%.",
+    "changedTitle": "How Has SEO Changed in 2025?",
+    "changedBody": "With the rise of AI-based search tools, SEO alone is no longer sufficient. Platforms like ChatGPT, Gemini, and Perplexity answer millions of queries and choose whether to recommend brands on their own. In this new environment, applying GEO (Generative Engine Optimization) together with SEO has become critical.",
+    "ctaTitle": "Learn Your Site's SEO Score for Free",
+    "ctaSubtitle": "See where your site stands in 5 minutes with 150+ technical checks, Core Web Vitals analysis, and prioritized action list.",
+    "ctaButton": "Start Free SEO Scan",
+    "geoLink": "What is GEO? →"
   },
-  "features": {
-    "seoScan": { "title": "SEO Scan", "desc": "150+ technical checks, Core Web Vitals, crawl errors and speed analysis in one click. Prioritized fix guide for every issue.", "tags": ["150+ Rules", "Core Web Vitals", "Automated"] },
-    "rankTracking": { "title": "Rank Tracking", "desc": "Monitor keyword positions in Google and Bing daily. Competitor comparison, trend graphs, and instant alerts.", "tags": ["Daily Update", "Competitor Analysis", "Location"] },
-    "keywordResearch": { "title": "Keyword Research", "desc": "Discover the most valuable keywords with search volume, difficulty score, and competitor analysis. Clustering and prioritization included.", "tags": ["Volume & CPC", "Difficulty Score", "Clustering"] },
-    "competitorAnalysis": { "title": "Competitor Analysis", "desc": "Organic traffic sources, ranking gains, and backlink profiles of your competitors. Never miss a move with automated alerts.", "tags": ["Traffic Analysis", "Content Gap", "Alerts"] },
-    "geoAiVisibility": { "title": "GEO / AI Visibility", "desc": "Track your brand mention and citation rate on ChatGPT, Gemini, Perplexity, Claude and Google AI Mode. Shape your GEO strategy with data.", "tags": ["6 AI Platforms", "Mention Tracking", "GEO Report"] },
-    "autopilot": { "title": "Autopilot", "desc": "Automate crawling, AI content generation, backlink detection and report sending in one flow. You focus on growth, the platform handles the rest.", "tags": ["Full Automation", "Workflow", "Scheduling"] },
-    "aiContent": { "title": "AI Content Engine", "desc": "GPT-4o powered SEO-compatible blog posts, meta tags, product descriptions, and landing page copy. E-E-A-T compliant, 8 language support.", "tags": ["GPT-4o", "E-E-A-T", "8 Languages"] },
-    "multilingualSeo": { "title": "Multilingual SEO", "desc": "Hreflang validation in 8 languages, automatic translation suggestions, and country-based rank tracking. Go global.", "tags": ["8 Languages", "Hreflang", "Country-Based"] },
-    "backlinkMarket": { "title": "Backlink Market", "desc": "Find and order quality links with DR/DA and thematic filter. Manual approval guarantee.", "tags": ["DR/DA Filter", "Manual Approval", "Thematic"] },
-    "outreach": { "title": "Outreach Campaign", "desc": "AI-personalized email templates, automated follow-up sequences, and reply management. Ready templates for guest posting and link campaigns.", "tags": ["AI Template", "Auto Follow-up", "CRM Integration"] },
-    "whiteLabel": { "title": "White Label Reports", "desc": "Create branded PDF, Excel and interactive client portal reports with your own logo and color palette. Ideal for agency growth.", "tags": ["Own Brand", "PDF & Excel", "Client Portal"] }
+  "geoLandingPage": {
+    "badge": "New: GEO Optimization",
+    "title": "Stand Out in",
+    "titleHighlight": "AI Searches",
+    "subtitle": "40% of users now use ChatGPT and Gemini instead of Google. Reach these audiences with GEO (Generative Engine Optimization).",
+    "whatTitle": "What is GEO?",
+    "whatBody": "GEO (Generative Engine Optimization) is the set of optimization strategies applied to ensure your brand appears correctly and frequently in AI-generated answers — including ChatGPT, Gemini, Perplexity, Claude, and Google AI Overview. While traditional SEO focuses on Google search rankings, GEO targets the large language model (LLM) ecosystem.",
+    "whyTitle": "Why Is It Important?",
+    "whyBody": "The use of AI-based search tools tripled between 2024-2025. ChatGPT reached 600 million monthly active users. These users now turn to AI tools for product and service recommendations. If your brand isn't on these platforms, you're missing a large portion of potential customers.",
+    "howTitle": "How Does FunBreak GEO Work?",
+    "howBody": "Our platform scans 6 different AI platforms every week to measure your brand's mention and citation rate. It compares with competitors, sets alerts for declining visibility, and provides improvement recommendations.",
+    "howItems": [
+      {
+        "title": "Mention Tracking:",
+        "desc": "How many times is your brand mentioned in AI responses?"
+      },
+      {
+        "title": "Citation Rate:",
+        "desc": "What is your percentage of being cited as a source?"
+      },
+      {
+        "title": "Competitor Comparison:",
+        "desc": "Benchmarking with other brands in your industry"
+      },
+      {
+        "title": "Content Recommendations:",
+        "desc": "What content should you produce to be an AI-recommended brand?"
+      }
+    ],
+    "platformsTitle": "Platforms We Track",
+    "marketShare": "AI Market Share",
+    "cta": "Try GEO Tracking for Free",
+    "ctaNote": "14 days free, no credit card required"
+  },
+  "hakkimizdaPage": {
+    "badge": "From Istanbul to the World",
+    "title": "Building the Future of",
+    "titleHighlight": "SEO and GEO",
+    "subtitle": "FunBreak SEO is a technology company serving the world from Istanbul to help brands stay visible in Google and AI searches.",
+    "mission": {
+      "title": "Our Mission",
+      "desc": "To enable businesses of all sizes to achieve visible, measurable, and sustainable growth in search engines and the AI ecosystem."
+    },
+    "vision": {
+      "title": "Our Vision",
+      "desc": "To become the leading platform that shapes brands' digital identity in the GEO era, enabling them to have a say on every platform from Google to ChatGPT."
+    },
+    "values": {
+      "title": "Our Values",
+      "desc": "Transparency, data-driven decision making, continuous innovation, and focus on customer success. No hidden fees, no surprises."
+    },
+    "storyTitle": "Our Story",
+    "teamTitle": "Our Team",
+    "teamSubtitle": "A dynamic team of software engineers equipped with AI technology, SEO experts, and data scientists.",
+    "companyTitle": "Company Information",
+    "companyNameLabel": "Company Name",
+    "foundedLabel": "Founded",
+    "foundedValue": "2024, Istanbul",
+    "addressLabel": "Address",
+    "addressValue": "Armağanevler Mahallesi Ortanca Sokak 69/22 Ümraniye/Istanbul",
+    "phoneLabel": "Phone",
+    "emailLabel": "Email",
+    "serviceAreasLabel": "Service Areas",
+    "serviceAreasValue": "Turkey, EU, MENA, Global",
+    "milestones": [
+      {
+        "year": "2024",
+        "title": "Founded",
+        "desc": "Founded in Istanbul, first technical infrastructure built."
+      },
+      {
+        "year": "2024",
+        "title": "Beta Release",
+        "desc": "SEO scanning and GEO monitoring modules launched with the first 50 beta users."
+      },
+      {
+        "year": "2025",
+        "title": "AI Content Engine",
+        "desc": "GPT-4o integration and Autopilot feature launch."
+      },
+      {
+        "year": "2025",
+        "title": "Growth",
+        "desc": "500+ active projects, 1M+ tracked keywords."
+      }
+    ],
+    "team": [
+      {
+        "initial": "K",
+        "name": "Founder & CEO",
+        "role": "Strategy & Vision",
+        "bio": "10+ years of experience in digital marketing and SEO. Founded FunBreak SEO to ensure brands remain visible not only in Google but also in AI searches in the GEO era.",
+        "skills": [
+          "SEO Strategy",
+          "Product Development",
+          "GEO",
+          "Growth"
+        ]
+      },
+      {
+        "initial": "Y",
+        "name": "Software Team",
+        "role": "Development & Engineering",
+        "bio": "Our engineering team, equipped with AI technology and specialized in modern web and backend development, builds scalable, fast, and reliable systems.",
+        "skills": [
+          "TypeScript",
+          "Python",
+          "Go",
+          "PHP",
+          "Java",
+          "Rust",
+          "Next.js",
+          "NestJS",
+          "PostgreSQL",
+          "Redis"
+        ]
+      },
+      {
+        "initial": "I",
+        "name": "Content & SEO Team",
+        "role": "Strategy & Content",
+        "bio": "Our expert team managing SEO strategy, content optimization, and GEO-compatible publishing processes for Turkey and global markets.",
+        "skills": [
+          "SEO Writing",
+          "GEO Strategy",
+          "Keywords",
+          "E-E-A-T",
+          "Multilingual Content"
+        ]
+      },
+      {
+        "initial": "V",
+        "name": "Data & AI Team",
+        "role": "Artificial Intelligence & Analytics",
+        "bio": "Our team of experienced researchers and engineers in large language models, data pipelines, and SEO analytics designs the AI infrastructure of the platform.",
+        "skills": [
+          "LLM",
+          "Python",
+          "TensorFlow",
+          "RAG",
+          "Data Engineering",
+          "NLP"
+        ]
+      }
+    ],
+    "ctaTitle": "Let's grow together",
+    "ctaSubtitle": "Try free for 14 days, discover your site's SEO and GEO potential.",
+    "ctaButton": "Try Free",
+    "ctaContactButton": "Contact Us"
+  },
+  "freeAudit": {
+    "title": "Free Site Analysis",
+    "subtitle": "Enter your domain and get an instant SEO health report",
+    "analyzeBtn": "Analyze",
+    "analyzing": "Analyzing your site...",
+    "analyzingHint": "This may take 10-15 seconds",
+    "errorGeneric": "An error occurred during analysis. Please try again.",
+    "scoreLabel": "SEO Health Score",
+    "criticalTitle": "Critical Issues",
+    "moreIssues": "more issues...",
+    "keywordTitle": "Keyword Opportunities",
+    "searchesPerMonth": "searches/mo",
+    "geoTitle": "GEO / AI Visibility Score:",
+    "geoHint": "Create an account to see your visibility in ChatGPT, Gemini and other AI platforms.",
+    "ctaTitle": "Want the Full Report?",
+    "ctaText": "Create a free account to see all issues, your GEO score and improvement suggestions.",
+    "ctaBtn": "Create Free Account",
+    "noCard": "No credit card required"
   }
-},
-"seoPage": {
-  "badge": "Comprehensive Guide — 2025",
-  "title": "What is SEO?",
-  "titleHighlight": "Search Engine Optimization",
-  "subtitle": "The complete set of technical, content, and authority strategies you apply to rank higher in Google and other search engines. In 2025, SEO works together with AI searches (GEO).",
-  "stats": [
-    { "value": "68%", "label": "Estimated share of all web traffic coming from organic search" },
-    { "value": "#1", "label": "Average click-through rate for the first position in Google is 27.6%" },
-    { "value": "3 sec", "label": "53% of users leave if page load time exceeds 3 seconds" },
-    { "value": "200+", "label": "Number of factors in Google's ranking algorithm" }
-  ],
-  "pillarsTitle": "The 6 Pillars of SEO",
-  "pillars": {
-    "technical": { "title": "Technical SEO", "desc": "Site speed, Core Web Vitals, crawl budget, hreflang, structured data and mobile compatibility. The foundation for search engines to correctly crawl and index your site." },
-    "content": { "title": "Content Optimization", "desc": "E-E-A-T compliant content production targeting keywords, title optimization, meta descriptions, and internal linking strategy." },
-    "offpage": { "title": "Off-Page SEO & Backlinks", "desc": "Quality backlink profile that increases authority and trust score. Domain Rating (DR), anchor text distribution, and link diversity." },
-    "local": { "title": "Local & International SEO", "desc": "Google Business profile, local keywords, hreflang tags, and multilingual content strategy to go global." },
-    "analytics": { "title": "SEO Analytics & Measurement", "desc": "Organic traffic, ranking changes, CTR optimization, and ROI measurement. Data-driven decisions with Google Search Console and FunBreak SEO dashboard." },
-    "geo": { "title": "SEO + GEO Integration", "desc": "In 2025, Google alone is not enough. Manage GEO strategy alongside SEO to rank on ChatGPT, Gemini, and Perplexity." }
-  },
-  "howTitle": "How Does SEO Work?",
-  "howBody": "Google crawls billions of web pages every day, indexes their content, and ranks the most relevant pages for user queries by evaluating 200+ factors. SEO is the process of understanding these factors and optimizing your site in a way that search engines and users prefer.",
-  "whyTitle": "Why Is It Important?",
-  "whyBody": "Organic search accounts for 68% of all web traffic and doesn't stop when a campaign budget runs out, unlike paid ads. A well-optimized site continues to receive quality traffic at low cost for years. The page ranked #1 in Google gets an average CTR of 27.6%, while the #10 page gets only 2.4%.",
-  "changedTitle": "How Has SEO Changed in 2025?",
-  "changedBody": "With the rise of AI-based search tools, SEO alone is no longer sufficient. Platforms like ChatGPT, Gemini, and Perplexity answer millions of queries and choose whether to recommend brands on their own. In this new environment, applying GEO (Generative Engine Optimization) together with SEO has become critical.",
-  "ctaTitle": "Learn Your Site's SEO Score for Free",
-  "ctaSubtitle": "See where your site stands in 5 minutes with 150+ technical checks, Core Web Vitals analysis, and prioritized action list.",
-  "ctaButton": "Start Free SEO Scan",
-  "geoLink": "What is GEO? →"
-},
-"geoLandingPage": {
-  "badge": "New: GEO Optimization",
-  "title": "Stand Out in",
-  "titleHighlight": "AI Searches",
-  "subtitle": "40% of users now use ChatGPT and Gemini instead of Google. Reach these audiences with GEO (Generative Engine Optimization).",
-  "whatTitle": "What is GEO?",
-  "whatBody": "GEO (Generative Engine Optimization) is the set of optimization strategies applied to ensure your brand appears correctly and frequently in AI-generated answers — including ChatGPT, Gemini, Perplexity, Claude, and Google AI Overview. While traditional SEO focuses on Google search rankings, GEO targets the large language model (LLM) ecosystem.",
-  "whyTitle": "Why Is It Important?",
-  "whyBody": "The use of AI-based search tools tripled between 2024-2025. ChatGPT reached 600 million monthly active users. These users now turn to AI tools for product and service recommendations. If your brand isn't on these platforms, you're missing a large portion of potential customers.",
-  "howTitle": "How Does FunBreak GEO Work?",
-  "howBody": "Our platform scans 6 different AI platforms every week to measure your brand's mention and citation rate. It compares with competitors, sets alerts for declining visibility, and provides improvement recommendations.",
-  "howItems": [
-    { "title": "Mention Tracking:", "desc": "How many times is your brand mentioned in AI responses?" },
-    { "title": "Citation Rate:", "desc": "What is your percentage of being cited as a source?" },
-    { "title": "Competitor Comparison:", "desc": "Benchmarking with other brands in your industry" },
-    { "title": "Content Recommendations:", "desc": "What content should you produce to be an AI-recommended brand?" }
-  ],
-  "platformsTitle": "Platforms We Track",
-  "marketShare": "AI Market Share",
-  "cta": "Try GEO Tracking for Free",
-  "ctaNote": "14 days free, no credit card required"
-},
-"hakkimizdaPage": {
-  "badge": "From Istanbul to the World",
-  "title": "Building the Future of",
-  "titleHighlight": "SEO and GEO",
-  "subtitle": "FunBreak SEO is a technology company serving the world from Istanbul to help brands stay visible in Google and AI searches.",
-  "mission": { "title": "Our Mission", "desc": "To enable businesses of all sizes to achieve visible, measurable, and sustainable growth in search engines and the AI ecosystem." },
-  "vision": { "title": "Our Vision", "desc": "To become the leading platform that shapes brands' digital identity in the GEO era, enabling them to have a say on every platform from Google to ChatGPT." },
-  "values": { "title": "Our Values", "desc": "Transparency, data-driven decision making, continuous innovation, and focus on customer success. No hidden fees, no surprises." },
-  "storyTitle": "Our Story",
-  "teamTitle": "Our Team",
-  "teamSubtitle": "A dynamic team of software engineers equipped with AI technology, SEO experts, and data scientists.",
-  "companyTitle": "Company Information",
-  "companyNameLabel": "Company Name",
-  "foundedLabel": "Founded",
-  "foundedValue": "2024, Istanbul",
-  "addressLabel": "Address",
-  "addressValue": "Armağanevler Mahallesi Ortanca Sokak 69/22 Ümraniye/Istanbul",
-  "phoneLabel": "Phone",
-  "emailLabel": "Email",
-  "serviceAreasLabel": "Service Areas",
-  "serviceAreasValue": "Turkey, EU, MENA, Global",
-  "milestones": [
-    { "year": "2024", "title": "Founded", "desc": "Founded in Istanbul, first technical infrastructure built." },
-    { "year": "2024", "title": "Beta Release", "desc": "SEO scanning and GEO monitoring modules launched with the first 50 beta users." },
-    { "year": "2025", "title": "AI Content Engine", "desc": "GPT-4o integration and Autopilot feature launch." },
-    { "year": "2025", "title": "Growth", "desc": "500+ active projects, 1M+ tracked keywords." }
-  ],
-  "team": [
-    { "initial": "K", "name": "Founder & CEO", "role": "Strategy & Vision", "bio": "10+ years of experience in digital marketing and SEO. Founded FunBreak SEO to ensure brands remain visible not only in Google but also in AI searches in the GEO era.", "skills": ["SEO Strategy", "Product Development", "GEO", "Growth"] },
-    { "initial": "Y", "name": "Software Team", "role": "Development & Engineering", "bio": "Our engineering team, equipped with AI technology and specialized in modern web and backend development, builds scalable, fast, and reliable systems.", "skills": ["TypeScript", "Python", "Go", "PHP", "Java", "Rust", "Next.js", "NestJS", "PostgreSQL", "Redis"] },
-    { "initial": "I", "name": "Content & SEO Team", "role": "Strategy & Content", "bio": "Our expert team managing SEO strategy, content optimization, and GEO-compatible publishing processes for Turkey and global markets.", "skills": ["SEO Writing", "GEO Strategy", "Keywords", "E-E-A-T", "Multilingual Content"] },
-    { "initial": "V", "name": "Data & AI Team", "role": "Artificial Intelligence & Analytics", "bio": "Our team of experienced researchers and engineers in large language models, data pipelines, and SEO analytics designs the AI infrastructure of the platform.", "skills": ["LLM", "Python", "TensorFlow", "RAG", "Data Engineering", "NLP"] }
-  ],
-  "ctaTitle": "Let's grow together",
-  "ctaSubtitle": "Try free for 14 days, discover your site's SEO and GEO potential.",
-  "ctaButton": "Try Free",
-  "ctaContactButton": "Contact Us"
-}
 }

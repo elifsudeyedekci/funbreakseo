@@ -25,6 +25,7 @@ export function Footer() {
   const companyLinks = [
     { href: localePath('/hakkimizda'), label: t('aboutUs') },
     { href: localePath('/blog'), label: 'Blog' },
+    { href: localePath('/vaka-calismalari'), label: t('caseStudies') },
     { href: localePath('/iletisim'), label: t('contact') },
     { href: localePath('/geo'), label: t('geoWhat') },
     { href: localePath('/ucretsiz-analiz'), label: t('freeAnalysis') },

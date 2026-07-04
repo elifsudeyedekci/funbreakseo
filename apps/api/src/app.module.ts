@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { BullModule } from '@nestjs/bullmq';
 import { ScheduleModule } from '@nestjs/schedule';
 
@@ -44,7 +45,9 @@ import { CompetitorModule } from './modules/competitor/competitor.module';
     ThrottlerModule.forRoot([
       {
         ttl: 60_000,
-        limit: 100,
+        // SSR fetch'leri ve panel istekleri aynı IP'den gelebilir — geniş tut,
+        // hassas endpoint'ler kendi @Throttle limitini taşır
+        limit: 300,
       },
     ]),
 
@@ -91,6 +94,10 @@ import { CompetitorModule } from './modules/competitor/competitor.module';
     CustomerApiModule,
     HealthModule,
     CompetitorModule,
+  ],
+  providers: [
+    // Global rate limit — ThrottlerModule tek başına yetmez, guard da kayıtlı olmalı
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })
 export class AppModule {}

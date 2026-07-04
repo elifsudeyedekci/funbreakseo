@@ -1,32 +1,64 @@
+'use client';
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
+import { useQuery } from '@tanstack/react-query';
 import { Check, Zap } from 'lucide-react';
-import { PLAN_PRICES_TRY } from '@funbreakseo/shared';
+import { PLAN_PRICES_TRY, LOCALE_CURRENCY, CURRENCY_SYMBOLS, type Locale } from '@funbreakseo/shared';
+import { api } from '@/lib/api';
+
+interface ApiPlan {
+  slug: string;
+  monthlyPrice: number;
+  displayCurrency: string;
+}
 
 export function PricingPreview() {
   const t = useTranslations('pricing');
   const locale = useLocale();
   const localePath = (path: string) => (locale === 'tr' ? path : `/${locale}${path}`);
 
+  const currency = LOCALE_CURRENCY[locale as Locale] ?? 'TRY';
+
+  // Fiyatlar ziyaretçinin para biriminde, canlı kurla (fallback: TRY sabitleri)
+  const { data: apiPlans } = useQuery({
+    queryKey: ['public-plans', locale, currency],
+    queryFn: async () => {
+      const { data } = await api.get(`/plans?locale=${locale}&currency=${currency}`);
+      return (data?.data ?? data) as ApiPlan[];
+    },
+    staleTime: 10 * 60 * 1000,
+    retry: 1,
+  });
+
+  const planBySlug = Array.isArray(apiPlans)
+    ? Object.fromEntries(apiPlans.map((p) => [p.slug, p]))
+    : {};
+
+  const displayPrice = (slug: keyof typeof PLAN_PRICES_TRY): string => {
+    const apiPlan = planBySlug[slug];
+    if (apiPlan && apiPlan.monthlyPrice > 0) {
+      const symbol = CURRENCY_SYMBOLS[apiPlan.displayCurrency] ?? apiPlan.displayCurrency;
+      return `${symbol}${Math.round(apiPlan.monthlyPrice).toLocaleString(currency === 'TRY' ? 'tr-TR' : 'en-US')}`;
+    }
+    return `₺${PLAN_PRICES_TRY[slug].monthly.toLocaleString('tr-TR')}`;
+  };
+
   const plans = [
     {
-      key: 'starter',
+      key: 'starter' as const,
       name: t('starter'),
-      price: PLAN_PRICES_TRY.starter.monthly,
       features: [`1 ${t('features.projects')}`, `50 ${t('features.keywords')}`, `5 ${t('features.blogs')}`, `25 ${t('features.geo')}`, t('features.email')],
       popular: false,
     },
     {
-      key: 'growth',
+      key: 'growth' as const,
       name: t('growth'),
-      price: PLAN_PRICES_TRY.growth.monthly,
       features: [`5 ${t('features.projects')}`, `250 ${t('features.keywords')}`, `25 ${t('features.blogs')}`, `150 ${t('features.geo')}`, `2 ${t('features.outreach')}`, t('features.whatsapp')],
       popular: true,
     },
     {
-      key: 'pro',
+      key: 'pro' as const,
       name: t('pro'),
-      price: PLAN_PRICES_TRY.pro.monthly,
       features: [`15 ${t('features.projects')}`, `1.000 ${t('features.keywords')}`, `100 ${t('features.blogs')}`, `750 ${t('features.geo')}`, `10 ${t('features.outreach')}`, t('features.priority'), `API`],
       popular: false,
     },
@@ -72,7 +104,7 @@ export function PricingPreview() {
               <div className="mb-7">
                 <h3 className="text-lg font-semibold text-white mb-1">{plan.name}</h3>
                 <div className="flex items-end gap-1 mt-3">
-                  <span className="text-4xl font-bold text-white">₺{plan.price}</span>
+                  <span className="text-4xl font-bold text-white">{displayPrice(plan.key)}</span>
                   <span className="text-white/25 text-sm mb-1.5">{t('perMonth')}</span>
                 </div>
                 <p className="text-xs text-white/20 mt-1">{t('includedVat')}</p>

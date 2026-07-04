@@ -60,7 +60,7 @@
     },
     {
       "name": "Projeler",
-      "url": "/projects",
+      "url": "/dashboard/projects",
       "description": "Projelerinizi yönetin"
     }
   ]

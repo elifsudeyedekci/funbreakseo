@@ -8,6 +8,7 @@ import {
   Res,
   Header,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { Response } from 'express';
 import { PublicService } from './public.service';
 
@@ -34,6 +35,22 @@ export class PublicController {
     return this.publicService.getBlogBySlug(slug);
   }
 
+  @Get('public/testimonials')
+  getTestimonials(@Query('locale') locale?: string) {
+    return this.publicService.getTestimonials(locale);
+  }
+
+  @Get('public/case-studies')
+  getCaseStudies(@Query('locale') locale?: string) {
+    return this.publicService.getCaseStudies(locale);
+  }
+
+  @Get('public/case-studies/:slug')
+  getCaseStudyBySlug(@Param('slug') slug: string) {
+    return this.publicService.getCaseStudyBySlug(slug);
+  }
+
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
   @Post('public/contact')
   handleContact(
     @Body()
@@ -47,6 +64,7 @@ export class PublicController {
     return this.publicService.handleContact(dto);
   }
 
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
   @Post('public/lead')
   handleLead(
     @Body()
@@ -60,6 +78,7 @@ export class PublicController {
     return this.publicService.handleLead(dto);
   }
 
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
   @Post('public/free-audit')
   handleFreeAudit(@Body() dto: { domain: string; email?: string }) {
     return this.publicService.handleFreeAudit(dto);

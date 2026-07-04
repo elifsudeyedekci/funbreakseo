@@ -5,6 +5,13 @@ import { getTranslations } from 'next-intl/server';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 
+interface FaqItem {
+  question?: string;
+  answer?: string;
+  q?: string;
+  a?: string;
+}
+
 interface BlogPost {
   id: string;
   slug: string;
@@ -14,8 +21,19 @@ interface BlogPost {
   content?: string;
   locale?: string;
   publishedAt?: string;
+  updatedAt?: string;
   readingMinutes?: number;
   authorName?: string;
+  faqSection?: FaqItem[] | null;
+  jsonLd?: Record<string, unknown> | Record<string, unknown>[] | null;
+  metaTitle?: string;
+  metaDescription?: string;
+}
+
+interface BlogListItem {
+  slug: string;
+  title: string;
+  locale?: string;
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1';
@@ -35,6 +53,21 @@ async function getPost(slug: string): Promise<BlogPost | null> {
   }
 }
 
+async function getRelatedPosts(locale: string, excludeSlug: string): Promise<BlogListItem[]> {
+  try {
+    const res = await fetch(`${API_URL}/public/blog?locale=${locale}&limit=4`, {
+      next: { revalidate: 300 },
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    const data = json?.data ?? json;
+    const posts: BlogListItem[] = Array.isArray(data) ? data : (data?.data ?? []);
+    return posts.filter((p) => p.slug !== excludeSlug).slice(0, 3);
+  } catch {
+    return [];
+  }
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -44,8 +77,8 @@ export async function generateMetadata({
   const post = await getPost(slug);
   if (!post) return {};
   return {
-    title: post.title + ' | FunBreak SEO Blog',
-    description: post.excerpt ?? '',
+    title: (post.metaTitle || post.title) + ' | FunBreak SEO Blog',
+    description: post.metaDescription || post.excerpt || '',
     openGraph: { type: 'article', publishedTime: post.publishedAt },
   };
 }
@@ -69,6 +102,41 @@ export default async function BlogPostPage({
 
   const t = await getTranslations('blog');
   const blogHref = locale === 'tr' ? '/blog' : `/${locale}/blog`;
+  const related = await getRelatedPosts(post.locale ?? locale, slug);
+
+  // FAQ öğelerini normalize et ({question,answer} veya {q,a})
+  const faqs = (Array.isArray(post.faqSection) ? post.faqSection : [])
+    .map((f) => ({ q: f.question ?? f.q ?? '', a: f.answer ?? f.a ?? '' }))
+    .filter((f) => f.q && f.a);
+
+  // Yapılandırılmış veri: seed'deki jsonLd varsa onu kullan, yoksa Article + FAQPage üret
+  const structuredData: Record<string, unknown>[] = [];
+  if (post.jsonLd) {
+    structuredData.push(...(Array.isArray(post.jsonLd) ? post.jsonLd : [post.jsonLd]));
+  } else {
+    structuredData.push({
+      '@context': 'https://schema.org',
+      '@type': 'Article',
+      headline: post.title,
+      description: post.excerpt ?? undefined,
+      datePublished: post.publishedAt,
+      dateModified: post.updatedAt ?? post.publishedAt,
+      author: { '@type': 'Organization', name: post.authorName ?? 'FunBreak SEO' },
+      publisher: { '@type': 'Organization', name: 'FunBreak SEO' },
+      mainEntityOfPage: `https://funbreakseo.com/${post.locale ?? locale}/blog/${post.slug}`,
+    });
+    if (faqs.length > 0) {
+      structuredData.push({
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: faqs.map((f) => ({
+          '@type': 'Question',
+          name: f.q,
+          acceptedAnswer: { '@type': 'Answer', text: f.a },
+        })),
+      });
+    }
+  }
 
   const dateStr = post.publishedAt
     ? new Date(post.publishedAt).toLocaleDateString(getDateLocale(locale), {
@@ -82,6 +150,13 @@ export default async function BlogPostPage({
 
   return (
     <>
+      {structuredData.map((sd, i) => (
+        <script
+          key={i}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(sd) }}
+        />
+      ))}
       <Navbar />
       <main className="pt-28 pb-24 px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-3xl">
@@ -122,6 +197,24 @@ export default async function BlogPostPage({
               <p className="text-white/40 italic">{post.excerpt}</p>
             )}
           </div>
+          {/* FAQ bölümü (FAQPage schema ile eşleşir) */}
+          {faqs.length > 0 && (
+            <section className="mt-12 pt-8 border-t border-white/10">
+              <h2 className="text-xl font-bold text-white mb-5">{t('faqTitle')}</h2>
+              <div className="space-y-3">
+                {faqs.map((f, i) => (
+                  <details key={i} className="group rounded-xl border border-white/10 bg-white/[0.02] px-5 py-4">
+                    <summary className="cursor-pointer text-sm font-semibold text-white/80 group-open:text-white list-none flex items-center justify-between">
+                      {f.q}
+                      <span className="text-white/30 group-open:rotate-45 transition-transform text-lg leading-none">+</span>
+                    </summary>
+                    <p className="mt-3 text-sm text-white/55 leading-relaxed">{f.a}</p>
+                  </details>
+                ))}
+              </div>
+            </section>
+          )}
+
           <div className="mt-12 pt-8 border-t border-white/10">
             <p className="text-sm text-white/40">
               {t('author')}:{' '}
@@ -129,6 +222,36 @@ export default async function BlogPostPage({
                 {post.authorName ?? 'FunBreak SEO'}
               </span>
             </p>
+          </div>
+
+          {/* İlgili yazılar */}
+          {related.length > 0 && (
+            <section className="mt-12">
+              <h2 className="text-lg font-bold text-white mb-4">{t('relatedTitle')}</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {related.map((r) => (
+                  <Link
+                    key={r.slug}
+                    href={`${blogHref}/${r.slug}`}
+                    className="rounded-xl border border-white/10 bg-white/[0.02] p-4 hover:border-indigo-500/40 transition-colors"
+                  >
+                    <p className="text-sm font-medium text-white/80 line-clamp-3">{r.title}</p>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Ürün CTA */}
+          <div className="mt-12 rounded-2xl border border-indigo-500/20 bg-indigo-500/[0.06] p-8 text-center">
+            <h2 className="text-xl font-bold text-white mb-2">{t('ctaTitle')}</h2>
+            <p className="text-sm text-white/50 mb-5">{t('ctaText')}</p>
+            <Link
+              href={locale === 'tr' ? '/ucretsiz-analiz' : `/${locale}/ucretsiz-analiz`}
+              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 px-6 py-3 text-sm font-semibold text-white transition-colors"
+            >
+              {t('ctaBtn')}
+            </Link>
           </div>
         </div>
       </main>

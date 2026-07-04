@@ -484,6 +484,7 @@ export class BillingService {
         currentPeriodStart: now,
         currentPeriodEnd: periodEnd,
         trialEndsAt: null,
+        pastDueSince: null,
       },
     });
 

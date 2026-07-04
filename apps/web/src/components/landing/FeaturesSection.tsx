@@ -405,7 +405,7 @@ export function FeaturesSection() {
               <div className="rounded-lg border border-white/[0.07] bg-black/20 p-3">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-5 h-5 rounded bg-gradient-to-br from-indigo-500 to-purple-600 flex-shrink-0" />
-                  <div className="text-[9px] text-white/30 truncate">Müşteri Adı — SEO Raporu</div>
+                  <div className="text-[9px] text-white/30 truncate">{t('reportMockupLabel')}</div>
                 </div>
                 <div className="h-px bg-white/[0.05] mb-2" />
                 <div className="flex gap-2">

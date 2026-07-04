@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { Plus, Globe, Search, AlertCircle, X } from 'lucide-react';
 import { projectApi } from '@/lib/api';
 import { cn, formatDate } from '@/lib/utils';
+import { OnboardingCard } from '@/components/dashboard/OnboardingCard';
 
 interface Project {
   id: string;
@@ -108,6 +109,7 @@ export default function ProjectsPage() {
 
   return (
     <div className="p-6">
+      <OnboardingCard onAddProject={() => { setShowModal(true); setCreateError(null); }} />
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-white">{t('title')}</h1>

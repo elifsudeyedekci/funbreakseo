@@ -178,10 +178,22 @@
     "yearlyTotal": "yıllık",
     "faqTitle": "Fiyatlandırma SSS",
     "faqs": [
-      { "q": "KDV dahil mi?", "a": "Evet, tüm fiyatlar KDV (%20) dahil olarak gösterilmektedir. Kurumsal mükelleflere ayrıca fatura düzenlenmektedir." },
-      { "q": "Yıllık plana geçebilir miyim?", "a": "Evet, istediğiniz zaman aylık plandan yıllık plana geçebilirsiniz. Geçiş anında 2 ay bedava kazanırsınız." },
-      { "q": "Deneme süresi bittikten sonra ne olur?", "a": "14 günlük deneme süresi bittikten sonra hesabınız askıya alınır. Verileriniz 30 gün boyunca korunur." },
-      { "q": "Kurumsal fatura alabilir miyim?", "a": "Evet. Ödeme sırasında kurumsal fatura seçeneğini seçerek şirket bilgilerinizi girebilirsiniz." }
+      {
+        "q": "KDV dahil mi?",
+        "a": "Evet, tüm fiyatlar KDV (%20) dahil olarak gösterilmektedir. Kurumsal mükelleflere ayrıca fatura düzenlenmektedir."
+      },
+      {
+        "q": "Yıllık plana geçebilir miyim?",
+        "a": "Evet, istediğiniz zaman aylık plandan yıllık plana geçebilirsiniz. Geçiş anında 2 ay bedava kazanırsınız."
+      },
+      {
+        "q": "Deneme süresi bittikten sonra ne olur?",
+        "a": "14 günlük deneme süresi bittikten sonra hesabınız askıya alınır. Verileriniz 30 gün boyunca korunur."
+      },
+      {
+        "q": "Kurumsal fatura alabilir miyim?",
+        "a": "Evet. Ödeme sırasında kurumsal fatura seçeneğini seçerek şirket bilgilerinizi girebilirsiniz."
+      }
     ]
   },
   "auth": {
@@ -268,7 +280,8 @@
     "aboutUs": "Hakkımızda",
     "contact": "İletişim",
     "geoWhat": "GEO Nedir?",
-    "freeAnalysis": "Ücretsiz Site Analizi"
+    "freeAnalysis": "Ücretsiz Site Analizi",
+    "caseStudies": "Vaka Çalışmaları"
   },
   "cookie": {
     "title": "Çerez Tercihleri",
@@ -287,7 +300,8 @@
     "forbidden": "Bu sayfaya erişim yetkiniz yok",
     "unauthorized": "Giriş yapmanız gerekiyor",
     "maintenance": "Bakım modunda — Kısa süre içinde geri döneceğiz",
-    "goHome": "Ana Sayfaya Dön"
+    "goHome": "Ana Sayfaya Dön",
+    "retry": "Tekrar Dene"
   },
   "howItWorks": {
     "badge": "Nasıl Çalışır?",
@@ -337,7 +351,12 @@
     "readTime": "dk okuma",
     "all": "Tümü",
     "backToBlog": "← Blog'a Dön",
-    "author": "Yazar"
+    "author": "Yazar",
+    "faqTitle": "Sıkça Sorulan Sorular",
+    "relatedTitle": "İlgili Yazılar",
+    "ctaTitle": "Sitenizin SEO durumunu merak mı ediyorsunuz?",
+    "ctaText": "30 saniyede ücretsiz analiz alın — kayıt gerekmez.",
+    "ctaBtn": "Ücretsiz Analiz Yap"
   },
   "testimonials": {
     "badge": "Müşteri Yorumları",
@@ -386,7 +405,13 @@
         "result": "%340 lead artışı",
         "detail": "Local SEO + GEO optimizasyon kombinasyonu"
       }
-    ]
+    ],
+    "readMore": "Devamını Oku",
+    "backToList": "Tüm Vaka Çalışmaları",
+    "viewAll": "Tüm başarı hikayelerini gör",
+    "ctaTitle": "Siz de benzer sonuçlar elde edin",
+    "ctaSubtitle": "Ücretsiz analizle sitenizin potansiyelini 30 saniyede görün.",
+    "ctaButton": "Ücretsiz Analiz Başlat"
   },
   "featuresSection": {
     "tag1": "Platform Özellikleri",
@@ -458,7 +483,8 @@
     "autopilot": {
       "title": "Autopilot",
       "desc": "Tarama, içerik üretimi, backlink bulma ve raporlamayı otomatikleştirin — tek tuşla tam otomasyon."
-    }
+    },
+    "reportMockupLabel": "Müşteri Adı — SEO Raporu"
   },
   "dashNav": {
     "projects": "Projeler",
@@ -989,125 +1015,352 @@
     "acceptAndContinue": "Onaylıyorum ve Devam Ediyorum"
   },
   "ozelliklerPage": {
-  "badge": "11 Güçlü Araç",
-  "title": "SEO ve GEO için",
-  "titleHighlight": "tek platform",
-  "subtitle": "Geleneksel SEO araçlarının ötesine geçin. Teknik analiz, AI içerik, backlink, outreach ve yapay zeka görünürlüğü — ayrı abonelik gerekmez.",
-  "cta": {
-    "title": "Tüm özellikleri 14 gün ücretsiz deneyin",
-    "subtitle": "Kredi kartı gerekmez. Anında kurulum. İstediğiniz zaman iptal.",
-    "button": "Ücretsiz Başla"
+    "badge": "11 Güçlü Araç",
+    "title": "SEO ve GEO için",
+    "titleHighlight": "tek platform",
+    "subtitle": "Geleneksel SEO araçlarının ötesine geçin. Teknik analiz, AI içerik, backlink, outreach ve yapay zeka görünürlüğü — ayrı abonelik gerekmez.",
+    "cta": {
+      "title": "Tüm özellikleri 14 gün ücretsiz deneyin",
+      "subtitle": "Kredi kartı gerekmez. Anında kurulum. İstediğiniz zaman iptal.",
+      "button": "Ücretsiz Başla"
+    },
+    "cats": {
+      "seoAnalysis": "SEO & Analiz",
+      "geoAi": "GEO & Yapay Zeka",
+      "contentProd": "İçerik & Üretim",
+      "backlinkOutreach": "Backlink & Outreach",
+      "reportingAgency": "Raporlama & Ajans"
+    },
+    "features": {
+      "seoScan": {
+        "title": "SEO Tarama",
+        "desc": "150+ teknik kontrol, Core Web Vitals, crawl hataları ve hız analizi tek tıkla. Her sorun için önceliklendirilmiş düzeltme rehberi.",
+        "tags": [
+          "150+ Kural",
+          "Core Web Vitals",
+          "Otomatik"
+        ]
+      },
+      "rankTracking": {
+        "title": "Sıralama Takibi",
+        "desc": "Google ve Bing'deki anahtar kelime pozisyonlarını günlük izleyin. Rakip karşılaştırması, trend grafikleri ve anlık uyarılar.",
+        "tags": [
+          "Günlük Güncelleme",
+          "Rakip Analizi",
+          "Lokasyon"
+        ]
+      },
+      "keywordResearch": {
+        "title": "Anahtar Kelime Araştırması",
+        "desc": "Arama hacmi, zorluk skoru ve rakip analizi ile en değerli anahtar kelimeleri keşfedin. Kümeleme ve önceliklendirme dahil.",
+        "tags": [
+          "Hacim & CPC",
+          "Zorluk Skoru",
+          "Kümeleme"
+        ]
+      },
+      "competitorAnalysis": {
+        "title": "Rakip Analizi",
+        "desc": "Rakiplerinizin organik trafik kaynakları, sıralama kazanımları ve backlink profilleri. Otomatik uyarılarla hiçbir hareketi kaçırmayın.",
+        "tags": [
+          "Trafik Analizi",
+          "İçerik Boşluğu",
+          "Uyarılar"
+        ]
+      },
+      "geoAiVisibility": {
+        "title": "GEO / AI Görünürlük",
+        "desc": "ChatGPT, Gemini, Perplexity, Claude ve Google AI Mode'da markanızın anılma ve citation oranını izleyin. GEO stratejinizi veriye dayalı şekillendirin.",
+        "tags": [
+          "6 AI Platformu",
+          "Mention Takibi",
+          "GEO Raporu"
+        ]
+      },
+      "autopilot": {
+        "title": "Autopilot",
+        "desc": "Tarama, AI içerik üretimi, backlink tespiti ve rapor gönderimini tek akışta otomatikleştirin. Siz büyümeye odaklanın, platform halleder.",
+        "tags": [
+          "Tam Otomasyon",
+          "İş Akışı",
+          "Zamanlama"
+        ]
+      },
+      "aiContent": {
+        "title": "AI İçerik Motoru",
+        "desc": "GPT-4o destekli SEO uyumlu blog yazıları, meta taglar, ürün açıklamaları ve landing page metinleri. E-E-A-T uyumlu, 8 dil destekli.",
+        "tags": [
+          "GPT-4o",
+          "E-E-A-T",
+          "8 Dil"
+        ]
+      },
+      "multilingualSeo": {
+        "title": "Çok Dilli SEO",
+        "desc": "8 dilde hreflang doğrulama, otomatik çeviri önerileri ve ülke bazlı sıralama takibi. Küresel pazara açılın.",
+        "tags": [
+          "8 Dil",
+          "Hreflang",
+          "Ülke Bazlı"
+        ]
+      },
+      "backlinkMarket": {
+        "title": "Backlink Market",
+        "desc": "DR/DA ve tematik uyum filtresi ile kaliteli link bulun ve sipariş edin. Manuel onay güvencesi.",
+        "tags": [
+          "DR/DA Filtre",
+          "Manuel Onay",
+          "Tematik Uyum"
+        ]
+      },
+      "outreach": {
+        "title": "Outreach Kampanya",
+        "desc": "AI ile kişiselleştirilmiş e-posta şablonları, otomatik takip dizileri ve yanıt yönetimi. Konuk yazarlık ve link kampanyaları için hazır şablonlar.",
+        "tags": [
+          "AI Şablon",
+          "Oto Takip",
+          "CRM Entegrasyonu"
+        ]
+      },
+      "whiteLabel": {
+        "title": "White Label Raporlar",
+        "desc": "Kendi logonuz ve renk paletinizle markalı PDF, Excel ve interaktif müşteri portalı raporları oluşturun. Ajans büyütmek için ideal.",
+        "tags": [
+          "Kendi Marka",
+          "PDF & Excel",
+          "Müşteri Portali"
+        ]
+      }
+    }
   },
-  "cats": {
-    "seoAnalysis": "SEO & Analiz",
-    "geoAi": "GEO & Yapay Zeka",
-    "contentProd": "İçerik & Üretim",
-    "backlinkOutreach": "Backlink & Outreach",
-    "reportingAgency": "Raporlama & Ajans"
+  "seoPage": {
+    "badge": "Kapsamlı Rehber — 2025",
+    "title": "SEO Nedir?",
+    "titleHighlight": "Arama Motoru Optimizasyonu",
+    "subtitle": "Google ve diğer arama motorlarında üst sıralara çıkmak için uyguladığınız teknik, içerik ve otorite stratejilerinin bütünüdür. 2025'te SEO, yapay zeka aramaları (GEO) ile birlikte çalışır.",
+    "stats": [
+      {
+        "value": "%68",
+        "label": "Tüm web trafiğinin organik aramadan geldiği tahmini oran"
+      },
+      {
+        "value": "#1",
+        "label": "Google'da birinci sıranın ortalama tıklama oranı %27,6"
+      },
+      {
+        "value": "3 sn",
+        "label": "Sayfa yüklenme süresi 3 saniyeyi geçerse kullanıcıların %53'ü terk eder"
+      },
+      {
+        "value": "200+",
+        "label": "Google'ın sıralama algoritmasındaki faktör sayısı"
+      }
+    ],
+    "pillarsTitle": "SEO'nun 6 Temel Direği",
+    "pillars": {
+      "technical": {
+        "title": "Teknik SEO",
+        "desc": "Site hızı, Core Web Vitals, crawl bütçesi, hreflang, yapısal veri ve mobil uyum. Arama motorlarının sitenizi doğru taraması ve indexlemesi için temel."
+      },
+      "content": {
+        "title": "İçerik Optimizasyonu",
+        "desc": "Hedef anahtar kelimelere yönelik E-E-A-T uyumlu içerik üretimi, başlık optimizasyonu, meta açıklamalar ve iç linkleme stratejisi."
+      },
+      "offpage": {
+        "title": "Off-Page SEO & Backlink",
+        "desc": "Otorite ve güven puanını artıran kaliteli backlink profili. Domain Rating (DR), anchor text dağılımı ve link çeşitliliği."
+      },
+      "local": {
+        "title": "Yerel & Uluslararası SEO",
+        "desc": "Google Business profili, yerel anahtar kelimeler, hreflang etiketleri ve çok dilli içerik stratejisiyle küresel pazara açılın."
+      },
+      "analytics": {
+        "title": "SEO Analitik & Ölçüm",
+        "desc": "Organik trafik, sıralama değişimleri, CTR optimizasyonu ve ROI ölçümü. Google Search Console ve FunBreak SEO dashboardıyla veriye dayalı kararlar."
+      },
+      "geo": {
+        "title": "SEO + GEO Entegrasyonu",
+        "desc": "2025'te sadece Google yetmez. ChatGPT, Gemini ve Perplexity'de de sıralama almak için GEO stratejisini SEO ile birlikte yönetin."
+      }
+    },
+    "howTitle": "SEO Nasıl Çalışır?",
+    "howBody": "Google her gün milyarlarca web sayfasını tarar, içeriklerini indexler ve kullanıcı sorgusuna en alakalı sayfaları 200'den fazla faktörü değerlendirerek sıralar. SEO, bu faktörleri anlayıp sitenizi arama motorlarının ve kullanıcıların tercih edeceği şekilde optimize etme sürecidir.",
+    "whyTitle": "Neden Önemli?",
+    "whyBody": "Organik arama, tüm web trafiğinin %68'ini oluşturuyor ve ücretli reklamların aksine kampanya bütçesi bitince durmuyor. İyi optimize edilmiş bir site, yıllarca düşük maliyetle nitelikli trafik almaya devam eder.",
+    "changedTitle": "2025'te SEO Nasıl Değişti?",
+    "changedBody": "Yapay zeka tabanlı arama araçlarının yükselişiyle SEO artık tek başına yeterli değil. ChatGPT, Gemini ve Perplexity gibi platformlar milyonlarca sorguya cevap veriyor. GEO (Generative Engine Optimization) ile SEO'nun birlikte uygulanması kritik hale geldi.",
+    "ctaTitle": "Sitenizin SEO Skorunu Ücretsiz Öğrenin",
+    "ctaSubtitle": "150+ teknik kontrol, Core Web Vitals analizi ve öncelikli aksiyon listesi ile sitenizin nerede durduğunu 5 dakikada görün.",
+    "ctaButton": "Ücretsiz SEO Taraması Başlat",
+    "geoLink": "GEO Nedir? →"
   },
-  "features": {
-    "seoScan": { "title": "SEO Tarama", "desc": "150+ teknik kontrol, Core Web Vitals, crawl hataları ve hız analizi tek tıkla. Her sorun için önceliklendirilmiş düzeltme rehberi.", "tags": ["150+ Kural", "Core Web Vitals", "Otomatik"] },
-    "rankTracking": { "title": "Sıralama Takibi", "desc": "Google ve Bing'deki anahtar kelime pozisyonlarını günlük izleyin. Rakip karşılaştırması, trend grafikleri ve anlık uyarılar.", "tags": ["Günlük Güncelleme", "Rakip Analizi", "Lokasyon"] },
-    "keywordResearch": { "title": "Anahtar Kelime Araştırması", "desc": "Arama hacmi, zorluk skoru ve rakip analizi ile en değerli anahtar kelimeleri keşfedin. Kümeleme ve önceliklendirme dahil.", "tags": ["Hacim & CPC", "Zorluk Skoru", "Kümeleme"] },
-    "competitorAnalysis": { "title": "Rakip Analizi", "desc": "Rakiplerinizin organik trafik kaynakları, sıralama kazanımları ve backlink profilleri. Otomatik uyarılarla hiçbir hareketi kaçırmayın.", "tags": ["Trafik Analizi", "İçerik Boşluğu", "Uyarılar"] },
-    "geoAiVisibility": { "title": "GEO / AI Görünürlük", "desc": "ChatGPT, Gemini, Perplexity, Claude ve Google AI Mode'da markanızın anılma ve citation oranını izleyin. GEO stratejinizi veriye dayalı şekillendirin.", "tags": ["6 AI Platformu", "Mention Takibi", "GEO Raporu"] },
-    "autopilot": { "title": "Autopilot", "desc": "Tarama, AI içerik üretimi, backlink tespiti ve rapor gönderimini tek akışta otomatikleştirin. Siz büyümeye odaklanın, platform halleder.", "tags": ["Tam Otomasyon", "İş Akışı", "Zamanlama"] },
-    "aiContent": { "title": "AI İçerik Motoru", "desc": "GPT-4o destekli SEO uyumlu blog yazıları, meta taglar, ürün açıklamaları ve landing page metinleri. E-E-A-T uyumlu, 8 dil destekli.", "tags": ["GPT-4o", "E-E-A-T", "8 Dil"] },
-    "multilingualSeo": { "title": "Çok Dilli SEO", "desc": "8 dilde hreflang doğrulama, otomatik çeviri önerileri ve ülke bazlı sıralama takibi. Küresel pazara açılın.", "tags": ["8 Dil", "Hreflang", "Ülke Bazlı"] },
-    "backlinkMarket": { "title": "Backlink Market", "desc": "DR/DA ve tematik uyum filtresi ile kaliteli link bulun ve sipariş edin. Manuel onay güvencesi.", "tags": ["DR/DA Filtre", "Manuel Onay", "Tematik Uyum"] },
-    "outreach": { "title": "Outreach Kampanya", "desc": "AI ile kişiselleştirilmiş e-posta şablonları, otomatik takip dizileri ve yanıt yönetimi. Konuk yazarlık ve link kampanyaları için hazır şablonlar.", "tags": ["AI Şablon", "Oto Takip", "CRM Entegrasyonu"] },
-    "whiteLabel": { "title": "White Label Raporlar", "desc": "Kendi logonuz ve renk paletinizle markalı PDF, Excel ve interaktif müşteri portalı raporları oluşturun. Ajans büyütmek için ideal.", "tags": ["Kendi Marka", "PDF & Excel", "Müşteri Portali"] }
+  "geoLandingPage": {
+    "badge": "Yeni: GEO Optimizasyon",
+    "title": "Yapay Zeka Aramalarında",
+    "titleHighlight": "Öne Çıkın",
+    "subtitle": "Kullanıcıların %40'ı artık Google yerine ChatGPT ve Gemini kullanıyor. GEO (Generative Engine Optimization) ile bu kitlelere ulaşın.",
+    "whatTitle": "GEO Nedir?",
+    "whatBody": "GEO (Generative Engine Optimization), markanızın yapay zeka tarafından üretilen yanıtlarda — ChatGPT, Gemini, Perplexity, Claude ve Google AI Overview dahil — doğru ve sık şekilde yer almasını sağlamak için uygulanan optimizasyon stratejilerinin bütününüdür.",
+    "whyTitle": "Neden Önemli?",
+    "whyBody": "Yapay zeka tabanlı arama araçlarının kullanımı 2024-2025 arasında 3 kata katlandı. ChatGPT aylık 600 milyon aktif kullanıcıya ulaştı. Bu kullanıcılar artık ürün ve hizmet önerileri için de AI araçlarına başvuruyor.",
+    "howTitle": "FunBreak GEO Nasıl Çalışır?",
+    "howBody": "Platformumuz her hafta 6 farklı AI platformunu tarayarak markanızın mention ve citation oranını ölçer. Rakiplerinizle karşılaştırır, düşen görünürlük için alarm kurar ve iyileştirme önerileri sunar.",
+    "howItems": [
+      {
+        "title": "Mention Takibi:",
+        "desc": "Markanız AI yanıtlarında kaç kez geçiyor?"
+      },
+      {
+        "title": "Citation Oranı:",
+        "desc": "Kaynak olarak gösterilme yüzdeniz nedir?"
+      },
+      {
+        "title": "Rakip Karşılaştırma:",
+        "desc": "Sektörünüzdeki diğer markalarla kıyaslama"
+      },
+      {
+        "title": "İçerik Önerileri:",
+        "desc": "AI tarafından önerilen marka olmak için hangi içerikleri üretmelisiniz?"
+      }
+    ],
+    "platformsTitle": "Takip Ettiğimiz Platformlar",
+    "marketShare": "AI Pazar Payı",
+    "cta": "GEO Takibini Ücretsiz Dene",
+    "ctaNote": "14 gün ücretsiz, kredi kartı gerekmez"
+  },
+  "hakkimizdaPage": {
+    "badge": "İstanbul'dan Dünyaya",
+    "title": "SEO ve GEO'nun",
+    "titleHighlight": "Geleceğini İnşa Ediyoruz",
+    "subtitle": "FunBreak SEO, markaların Google ve yapay zeka aramalarında görünür kalmasını sağlamak için İstanbul'dan dünyaya hizmet veren bir teknoloji şirketidir.",
+    "mission": {
+      "title": "Misyonumuz",
+      "desc": "Her ölçekteki işletmenin arama motoru ve yapay zeka ekosisteminde görünür, ölçülebilir ve sürdürülebilir büyüme elde etmesini sağlamak."
+    },
+    "vision": {
+      "title": "Vizyonumuz",
+      "desc": "GEO çağında markaların dijital kimliğini oluşturan, Google'dan ChatGPT'ye kadar her platformda söz sahibi olmalarını sağlayan lider platform olmak."
+    },
+    "values": {
+      "title": "Değerlerimiz",
+      "desc": "Şeffaflık, veriye dayalı karar alma, sürekli inovasyon ve müşteri başarısına odaklanma. Gizli ücret yok, sürpriz yok."
+    },
+    "storyTitle": "Hikayemiz",
+    "teamTitle": "Ekibimiz",
+    "teamSubtitle": "Yapay zeka teknolojileriyle donatılmış yazılım mühendisleri, SEO uzmanları ve veri bilimcilerinden oluşan dinamik kadromuz.",
+    "companyTitle": "Şirket Bilgileri",
+    "companyNameLabel": "Şirket Ünvanı",
+    "foundedLabel": "Kuruluş",
+    "foundedValue": "2024, İstanbul",
+    "addressLabel": "Adres",
+    "addressValue": "Armağanevler Mahallesi Ortanca Sokak 69/22 Ümraniye/İstanbul",
+    "phoneLabel": "Telefon",
+    "emailLabel": "E-posta",
+    "serviceAreasLabel": "Hizmet Alanları",
+    "serviceAreasValue": "Türkiye, AB, MENA, Küresel",
+    "milestones": [
+      {
+        "year": "2024",
+        "title": "Kuruluş",
+        "desc": "İstanbul'da kuruldu, ilk teknik altyapı inşa edildi."
+      },
+      {
+        "year": "2024",
+        "title": "Beta Sürümü",
+        "desc": "İlk 50 beta kullanıcısı ile SEO tarama ve GEO izleme modülleri yayına girdi."
+      },
+      {
+        "year": "2025",
+        "title": "AI İçerik Motoru",
+        "desc": "GPT-4o entegrasyonu ve Autopilot özelliği lansmanı."
+      },
+      {
+        "year": "2025",
+        "title": "Büyüme",
+        "desc": "500+ aktif proje, 1M+ takip edilen anahtar kelime."
+      }
+    ],
+    "team": [
+      {
+        "initial": "K",
+        "name": "Kurucu & CEO",
+        "role": "Strateji & Vizyon",
+        "bio": "Dijital pazarlama ve SEO alanında 10+ yıl deneyim. FunBreak SEO'yu, GEO çağında markaların sadece Google'da değil yapay zeka aramalarında da görünür kalmasını sağlamak amacıyla kurdu.",
+        "skills": [
+          "SEO Stratejisi",
+          "Ürün Geliştirme",
+          "GEO",
+          "Büyüme"
+        ]
+      },
+      {
+        "initial": "Y",
+        "name": "Yazılım Ekibi",
+        "role": "Geliştirme & Mühendislik",
+        "bio": "Yapay zeka teknolojileriyle donatılmış, modern web ve backend geliştirme konusunda uzmanlaşmış mühendis kadromuz; ölçeklenebilir, hızlı ve güvenilir sistemler inşa eder.",
+        "skills": [
+          "TypeScript",
+          "Python",
+          "Go",
+          "PHP",
+          "Java",
+          "Rust",
+          "Next.js",
+          "NestJS",
+          "PostgreSQL",
+          "Redis"
+        ]
+      },
+      {
+        "initial": "İ",
+        "name": "İçerik & SEO Ekibi",
+        "role": "Strateji & İçerik",
+        "bio": "Türkiye ve global pazarlar için SEO stratejisi, içerik optimizasyonu ve GEO uyumlu yayın süreçlerini yürüten uzman kadromuz.",
+        "skills": [
+          "SEO Yazarlığı",
+          "GEO Stratejisi",
+          "Anahtar Kelime",
+          "E-E-A-T",
+          "Çok Dilli İçerik"
+        ]
+      },
+      {
+        "initial": "V",
+        "name": "Veri & AI Ekibi",
+        "role": "Yapay Zeka & Analitik",
+        "bio": "Büyük dil modelleri, veri pipeline'ları ve SEO analitiği konusunda deneyimli araştırmacı ve mühendislerden oluşan ekibimiz platformun yapay zeka altyapısını tasarlar.",
+        "skills": [
+          "LLM",
+          "Python",
+          "TensorFlow",
+          "RAG",
+          "Veri Mühendisliği",
+          "NLP"
+        ]
+      }
+    ],
+    "ctaTitle": "Birlikte büyüyelim",
+    "ctaSubtitle": "14 gün ücretsiz deneyin, sitenizin SEO ve GEO potansiyelini keşfedin.",
+    "ctaButton": "Ücretsiz Dene",
+    "ctaContactButton": "Bizimle İletişime Geç"
+  },
+  "freeAudit": {
+    "title": "Ücretsiz Site Analizi",
+    "subtitle": "Domain adresinizi girin, anında SEO sağlık raporu alın",
+    "analyzeBtn": "Analiz Et",
+    "analyzing": "Siteniz analiz ediliyor...",
+    "analyzingHint": "Bu işlem 10-15 saniye sürebilir",
+    "errorGeneric": "Analiz sırasında bir hata oluştu. Lütfen tekrar deneyin.",
+    "scoreLabel": "SEO Sağlık Skoru",
+    "criticalTitle": "Kritik Sorunlar",
+    "moreIssues": "sorun daha...",
+    "keywordTitle": "Anahtar Kelime Fırsatları",
+    "searchesPerMonth": "arama/ay",
+    "geoTitle": "GEO / AI Görünürlük Skoru:",
+    "geoHint": "ChatGPT, Gemini ve diğer AI platformlarında görünürlüğünüzü görmek için hesap açın.",
+    "ctaTitle": "Tam Raporu Görmek İster misiniz?",
+    "ctaText": "Ücretsiz hesap açın, tüm sorunları, GEO skorunu ve iyileştirme önerilerini görün.",
+    "ctaBtn": "Ücretsiz Hesap Aç",
+    "noCard": "Kredi kartı gerekmez"
   }
-},
-"seoPage": {
-  "badge": "Kapsamlı Rehber — 2025",
-  "title": "SEO Nedir?",
-  "titleHighlight": "Arama Motoru Optimizasyonu",
-  "subtitle": "Google ve diğer arama motorlarında üst sıralara çıkmak için uyguladığınız teknik, içerik ve otorite stratejilerinin bütünüdür. 2025'te SEO, yapay zeka aramaları (GEO) ile birlikte çalışır.",
-  "stats": [
-    { "value": "%68", "label": "Tüm web trafiğinin organik aramadan geldiği tahmini oran" },
-    { "value": "#1", "label": "Google'da birinci sıranın ortalama tıklama oranı %27,6" },
-    { "value": "3 sn", "label": "Sayfa yüklenme süresi 3 saniyeyi geçerse kullanıcıların %53'ü terk eder" },
-    { "value": "200+", "label": "Google'ın sıralama algoritmasındaki faktör sayısı" }
-  ],
-  "pillarsTitle": "SEO'nun 6 Temel Direği",
-  "pillars": {
-    "technical": { "title": "Teknik SEO", "desc": "Site hızı, Core Web Vitals, crawl bütçesi, hreflang, yapısal veri ve mobil uyum. Arama motorlarının sitenizi doğru taraması ve indexlemesi için temel." },
-    "content": { "title": "İçerik Optimizasyonu", "desc": "Hedef anahtar kelimelere yönelik E-E-A-T uyumlu içerik üretimi, başlık optimizasyonu, meta açıklamalar ve iç linkleme stratejisi." },
-    "offpage": { "title": "Off-Page SEO & Backlink", "desc": "Otorite ve güven puanını artıran kaliteli backlink profili. Domain Rating (DR), anchor text dağılımı ve link çeşitliliği." },
-    "local": { "title": "Yerel & Uluslararası SEO", "desc": "Google Business profili, yerel anahtar kelimeler, hreflang etiketleri ve çok dilli içerik stratejisiyle küresel pazara açılın." },
-    "analytics": { "title": "SEO Analitik & Ölçüm", "desc": "Organik trafik, sıralama değişimleri, CTR optimizasyonu ve ROI ölçümü. Google Search Console ve FunBreak SEO dashboardıyla veriye dayalı kararlar." },
-    "geo": { "title": "SEO + GEO Entegrasyonu", "desc": "2025'te sadece Google yetmez. ChatGPT, Gemini ve Perplexity'de de sıralama almak için GEO stratejisini SEO ile birlikte yönetin." }
-  },
-  "howTitle": "SEO Nasıl Çalışır?",
-  "howBody": "Google her gün milyarlarca web sayfasını tarar, içeriklerini indexler ve kullanıcı sorgusuna en alakalı sayfaları 200'den fazla faktörü değerlendirerek sıralar. SEO, bu faktörleri anlayıp sitenizi arama motorlarının ve kullanıcıların tercih edeceği şekilde optimize etme sürecidir.",
-  "whyTitle": "Neden Önemli?",
-  "whyBody": "Organik arama, tüm web trafiğinin %68'ini oluşturuyor ve ücretli reklamların aksine kampanya bütçesi bitince durmuyor. İyi optimize edilmiş bir site, yıllarca düşük maliyetle nitelikli trafik almaya devam eder.",
-  "changedTitle": "2025'te SEO Nasıl Değişti?",
-  "changedBody": "Yapay zeka tabanlı arama araçlarının yükselişiyle SEO artık tek başına yeterli değil. ChatGPT, Gemini ve Perplexity gibi platformlar milyonlarca sorguya cevap veriyor. GEO (Generative Engine Optimization) ile SEO'nun birlikte uygulanması kritik hale geldi.",
-  "ctaTitle": "Sitenizin SEO Skorunu Ücretsiz Öğrenin",
-  "ctaSubtitle": "150+ teknik kontrol, Core Web Vitals analizi ve öncelikli aksiyon listesi ile sitenizin nerede durduğunu 5 dakikada görün.",
-  "ctaButton": "Ücretsiz SEO Taraması Başlat",
-  "geoLink": "GEO Nedir? →"
-},
-"geoLandingPage": {
-  "badge": "Yeni: GEO Optimizasyon",
-  "title": "Yapay Zeka Aramalarında",
-  "titleHighlight": "Öne Çıkın",
-  "subtitle": "Kullanıcıların %40'ı artık Google yerine ChatGPT ve Gemini kullanıyor. GEO (Generative Engine Optimization) ile bu kitlelere ulaşın.",
-  "whatTitle": "GEO Nedir?",
-  "whatBody": "GEO (Generative Engine Optimization), markanızın yapay zeka tarafından üretilen yanıtlarda — ChatGPT, Gemini, Perplexity, Claude ve Google AI Overview dahil — doğru ve sık şekilde yer almasını sağlamak için uygulanan optimizasyon stratejilerinin bütününüdür.",
-  "whyTitle": "Neden Önemli?",
-  "whyBody": "Yapay zeka tabanlı arama araçlarının kullanımı 2024-2025 arasında 3 kata katlandı. ChatGPT aylık 600 milyon aktif kullanıcıya ulaştı. Bu kullanıcılar artık ürün ve hizmet önerileri için de AI araçlarına başvuruyor.",
-  "howTitle": "FunBreak GEO Nasıl Çalışır?",
-  "howBody": "Platformumuz her hafta 6 farklı AI platformunu tarayarak markanızın mention ve citation oranını ölçer. Rakiplerinizle karşılaştırır, düşen görünürlük için alarm kurar ve iyileştirme önerileri sunar.",
-  "howItems": [
-    { "title": "Mention Takibi:", "desc": "Markanız AI yanıtlarında kaç kez geçiyor?" },
-    { "title": "Citation Oranı:", "desc": "Kaynak olarak gösterilme yüzdeniz nedir?" },
-    { "title": "Rakip Karşılaştırma:", "desc": "Sektörünüzdeki diğer markalarla kıyaslama" },
-    { "title": "İçerik Önerileri:", "desc": "AI tarafından önerilen marka olmak için hangi içerikleri üretmelisiniz?" }
-  ],
-  "platformsTitle": "Takip Ettiğimiz Platformlar",
-  "marketShare": "AI Pazar Payı",
-  "cta": "GEO Takibini Ücretsiz Dene",
-  "ctaNote": "14 gün ücretsiz, kredi kartı gerekmez"
-},
-"hakkimizdaPage": {
-  "badge": "İstanbul'dan Dünyaya",
-  "title": "SEO ve GEO'nun",
-  "titleHighlight": "Geleceğini İnşa Ediyoruz",
-  "subtitle": "FunBreak SEO, markaların Google ve yapay zeka aramalarında görünür kalmasını sağlamak için İstanbul'dan dünyaya hizmet veren bir teknoloji şirketidir.",
-  "mission": { "title": "Misyonumuz", "desc": "Her ölçekteki işletmenin arama motoru ve yapay zeka ekosisteminde görünür, ölçülebilir ve sürdürülebilir büyüme elde etmesini sağlamak." },
-  "vision": { "title": "Vizyonumuz", "desc": "GEO çağında markaların dijital kimliğini oluşturan, Google'dan ChatGPT'ye kadar her platformda söz sahibi olmalarını sağlayan lider platform olmak." },
-  "values": { "title": "Değerlerimiz", "desc": "Şeffaflık, veriye dayalı karar alma, sürekli inovasyon ve müşteri başarısına odaklanma. Gizli ücret yok, sürpriz yok." },
-  "storyTitle": "Hikayemiz",
-  "teamTitle": "Ekibimiz",
-  "teamSubtitle": "Yapay zeka teknolojileriyle donatılmış yazılım mühendisleri, SEO uzmanları ve veri bilimcilerinden oluşan dinamik kadromuz.",
-  "companyTitle": "Şirket Bilgileri",
-  "companyNameLabel": "Şirket Ünvanı",
-  "foundedLabel": "Kuruluş",
-  "foundedValue": "2024, İstanbul",
-  "addressLabel": "Adres",
-  "addressValue": "Armağanevler Mahallesi Ortanca Sokak 69/22 Ümraniye/İstanbul",
-  "phoneLabel": "Telefon",
-  "emailLabel": "E-posta",
-  "serviceAreasLabel": "Hizmet Alanları",
-  "serviceAreasValue": "Türkiye, AB, MENA, Küresel",
-  "milestones": [
-    { "year": "2024", "title": "Kuruluş", "desc": "İstanbul'da kuruldu, ilk teknik altyapı inşa edildi." },
-    { "year": "2024", "title": "Beta Sürümü", "desc": "İlk 50 beta kullanıcısı ile SEO tarama ve GEO izleme modülleri yayına girdi." },
-    { "year": "2025", "title": "AI İçerik Motoru", "desc": "GPT-4o entegrasyonu ve Autopilot özelliği lansmanı." },
-    { "year": "2025", "title": "Büyüme", "desc": "500+ aktif proje, 1M+ takip edilen anahtar kelime." }
-  ],
-  "team": [
-    { "initial": "K", "name": "Kurucu & CEO", "role": "Strateji & Vizyon", "bio": "Dijital pazarlama ve SEO alanında 10+ yıl deneyim. FunBreak SEO'yu, GEO çağında markaların sadece Google'da değil yapay zeka aramalarında da görünür kalmasını sağlamak amacıyla kurdu.", "skills": ["SEO Stratejisi", "Ürün Geliştirme", "GEO", "Büyüme"] },
-    { "initial": "Y", "name": "Yazılım Ekibi", "role": "Geliştirme & Mühendislik", "bio": "Yapay zeka teknolojileriyle donatılmış, modern web ve backend geliştirme konusunda uzmanlaşmış mühendis kadromuz; ölçeklenebilir, hızlı ve güvenilir sistemler inşa eder.", "skills": ["TypeScript", "Python", "Go", "PHP", "Java", "Rust", "Next.js", "NestJS", "PostgreSQL", "Redis"] },
-    { "initial": "İ", "name": "İçerik & SEO Ekibi", "role": "Strateji & İçerik", "bio": "Türkiye ve global pazarlar için SEO stratejisi, içerik optimizasyonu ve GEO uyumlu yayın süreçlerini yürüten uzman kadromuz.", "skills": ["SEO Yazarlığı", "GEO Stratejisi", "Anahtar Kelime", "E-E-A-T", "Çok Dilli İçerik"] },
-    { "initial": "V", "name": "Veri & AI Ekibi", "role": "Yapay Zeka & Analitik", "bio": "Büyük dil modelleri, veri pipeline'ları ve SEO analitiği konusunda deneyimli araştırmacı ve mühendislerden oluşan ekibimiz platformun yapay zeka altyapısını tasarlar.", "skills": ["LLM", "Python", "TensorFlow", "RAG", "Veri Mühendisliği", "NLP"] }
-  ],
-  "ctaTitle": "Birlikte büyüyelim",
-  "ctaSubtitle": "14 gün ücretsiz deneyin, sitenizin SEO ve GEO potansiyelini keşfedin.",
-  "ctaButton": "Ücretsiz Dene",
-  "ctaContactButton": "Bizimle İletişime Geç"
-}
 }

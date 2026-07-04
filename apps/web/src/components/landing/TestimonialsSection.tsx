@@ -1,6 +1,8 @@
 'use client';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
+import { useQuery } from '@tanstack/react-query';
 import { Star } from 'lucide-react';
+import { api } from '@/lib/api';
 
 const AVATAR_STYLES = [
   { grad: 'from-indigo-500 to-purple-600', shadow: 'shadow-indigo-500/30' },
@@ -8,9 +10,33 @@ const AVATAR_STYLES = [
   { grad: 'from-orange-500 to-rose-600', shadow: 'shadow-orange-500/30' },
 ];
 
+interface ApiTestimonial {
+  authorName: string;
+  company?: string | null;
+  rating: number;
+  text: string;
+}
+
 export function TestimonialsSection() {
   const t = useTranslations('testimonials');
-  const items = t.raw('items') as Array<{ name: string; role: string; company: string; text: string }>;
+  const locale = useLocale();
+  const staticItems = t.raw('items') as Array<{ name: string; role: string; company: string; text: string }>;
+
+  // Admin panelden yönetilen onaylı yorumlar; yoksa i18n statik içerik gösterilir
+  const { data: apiItems } = useQuery({
+    queryKey: ['public-testimonials', locale],
+    queryFn: async () => {
+      const { data } = await api.get(`/public/testimonials?locale=${locale}`);
+      return (data?.data ?? data) as ApiTestimonial[];
+    },
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+
+  const items =
+    Array.isArray(apiItems) && apiItems.length >= 3
+      ? apiItems.map((x) => ({ name: x.authorName, role: '', company: x.company ?? '', text: x.text }))
+      : staticItems;
 
   return (
     <section className="relative py-28 px-4 sm:px-6 lg:px-8">
@@ -77,7 +103,7 @@ export function TestimonialsSection() {
                   </div>
                   <div>
                     <div className="text-sm font-semibold text-white" itemProp="author">{item.name}</div>
-                    <div className="text-xs text-white/30">{item.role} · {item.company}</div>
+                    <div className="text-xs text-white/30">{[item.role, item.company].filter(Boolean).join(' · ')}</div>
                   </div>
                 </div>
               </article>

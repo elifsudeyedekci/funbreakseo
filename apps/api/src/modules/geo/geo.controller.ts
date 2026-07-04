@@ -12,6 +12,7 @@ import { ApiTags } from '@nestjs/swagger'
 import { IsOptional, IsString, MinLength } from 'class-validator'
 import { User } from '@prisma/client'
 import { JwtAuthGuard } from '../auth/jwt-auth.guard'
+import { ActiveSubscriptionGuard } from '../auth/active-subscription.guard'
 import { CurrentUser } from '../auth/current-user.decorator'
 import { GeoService } from './geo.service'
 
@@ -33,6 +34,7 @@ export class GeoController {
 
   // POST /projects/:id/geo/queries
   @Post('projects/:id/geo/queries')
+  @UseGuards(ActiveSubscriptionGuard)
   addGeoQuery(
     @Param('id') id: string,
     @Body() body: AddGeoQueryDto,
@@ -43,6 +45,7 @@ export class GeoController {
 
   // POST /projects/:id/geo/scan
   @Post('projects/:id/geo/scan')
+  @UseGuards(ActiveSubscriptionGuard)
   triggerScan(@Param('id') id: string, @CurrentUser() _user: User) {
     return this.geoService.triggerScan(id)
   }

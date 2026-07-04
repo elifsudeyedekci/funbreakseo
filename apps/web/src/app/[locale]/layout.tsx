@@ -6,6 +6,7 @@ import { SUPPORTED_LOCALES, RTL_LOCALES, type Locale } from '@funbreakseo/shared
 import { Providers } from '@/components/Providers';
 import { WhatsAppFab } from '@/components/WhatsAppFab';
 import { CookieConsentBanner } from '@/components/CookieConsentBanner';
+import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister';
 import '@/app/globals.css';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
@@ -43,6 +44,7 @@ export default async function LocaleLayout({
             {children}
             <WhatsAppFab />
             <CookieConsentBanner />
+            <ServiceWorkerRegister />
           </Providers>
         </NextIntlClientProvider>
       </body>

@@ -12,6 +12,7 @@ import { ApiTags } from '@nestjs/swagger'
 import { IsArray, IsEnum, IsOptional, IsString, MinLength } from 'class-validator'
 import { ContentStatus, ContentType } from '@prisma/client'
 import { JwtAuthGuard } from '../auth/jwt-auth.guard'
+import { ActiveSubscriptionGuard } from '../auth/active-subscription.guard'
 import { CurrentUser } from '../auth/current-user.decorator'
 import { ContentService } from './content.service'
 
@@ -39,6 +40,7 @@ export class ContentController {
 
   // POST /projects/:id/content/generate
   @Post('projects/:id/content/generate')
+  @UseGuards(ActiveSubscriptionGuard)
   async generateContent(
     @Param('id') projectId: string,
     @Body() dto: GenerateContentDto,
@@ -111,6 +113,7 @@ export class ContentController {
 
   // POST /content/:id/regenerate-section
   @Post('content/:id/regenerate-section')
+  @UseGuards(ActiveSubscriptionGuard)
   async regenerateSection(
     @Param('id') contentId: string,
     @Body() body: { section: string; instructions?: string },

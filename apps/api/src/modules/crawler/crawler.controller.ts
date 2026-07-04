@@ -15,6 +15,7 @@ import {
 } from '@nestjs/swagger'
 import { IssueCategory, IssueSeverity } from '@prisma/client'
 import { JwtAuthGuard } from '../auth/jwt-auth.guard'
+import { ActiveSubscriptionGuard } from '../auth/active-subscription.guard'
 import { CurrentUser } from '../auth/current-user.decorator'
 import { CrawlerService } from './crawler.service'
 
@@ -26,6 +27,7 @@ export class CrawlerController {
   constructor(private readonly crawlerService: CrawlerService) {}
 
   @Post('projects/:id/crawl')
+  @UseGuards(ActiveSubscriptionGuard)
   @ApiOperation({ summary: 'Start a manual crawl for a project' })
   @ApiParam({ name: 'id', description: 'Project ID' })
   startCrawl(@Param('id') id: string, @CurrentUser() currentUser: any) {
@@ -88,6 +90,7 @@ export class CrawlerController {
   }
 
   @Post('projects/:id/audit/start')
+  @UseGuards(ActiveSubscriptionGuard)
   @ApiOperation({ summary: 'Start an audit crawl for project' })
   startAudit(@Param('id') id: string, @CurrentUser() currentUser: any) {
     return this.crawlerService.startCrawl(id, 'MANUAL', currentUser)
