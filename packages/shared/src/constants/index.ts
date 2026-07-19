@@ -19,6 +19,9 @@ export const DEFAULT_PLAN_LIMITS = {
     customerApi: false,
     prioritySupport: false,
     trackingDepth: 'FIRST_PAGE',
+    backlinkSyncsPerMonth: 2,
+    competitorComparisonsPerMonth: 3,
+    fullAuditReport: false,
   },
   growth: {
     projects: 5,
@@ -33,6 +36,9 @@ export const DEFAULT_PLAN_LIMITS = {
     customerApi: false,
     prioritySupport: false,
     trackingDepth: 'TOP_100',
+    backlinkSyncsPerMonth: 10,
+    competitorComparisonsPerMonth: 20,
+    fullAuditReport: true,
   },
   pro: {
     projects: 15,
@@ -47,6 +53,9 @@ export const DEFAULT_PLAN_LIMITS = {
     customerApi: true,
     prioritySupport: true,
     trackingDepth: 'TOP_100',
+    backlinkSyncsPerMonth: 60,
+    competitorComparisonsPerMonth: 100,
+    fullAuditReport: true,
   },
   enterprise: {
     projects: 999999,
@@ -61,6 +70,9 @@ export const DEFAULT_PLAN_LIMITS = {
     customerApi: true,
     prioritySupport: true,
     trackingDepth: 'TOP_100',
+    backlinkSyncsPerMonth: 999999,
+    competitorComparisonsPerMonth: 999999,
+    fullAuditReport: true,
   },
 };
 

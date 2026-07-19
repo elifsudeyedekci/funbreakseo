@@ -9,7 +9,71 @@ export type BillingCycle = 'MONTHLY' | 'YEARLY';
 export type ProjectStatus = 'ACTIVE' | 'PAUSED' | 'ARCHIVED';
 export type ContentStatus = 'DRAFT' | 'GENERATING' | 'REVIEW' | 'APPROVED' | 'PUBLISHED' | 'REJECTED';
 export type IssueSeverity = 'CRITICAL' | 'WARNING' | 'NOTICE';
-export type IssueCategory = 'TITLE' | 'META' | 'HEADING' | 'CONTENT' | 'TECHNICAL' | 'SPEED' | 'SCHEMA' | 'LINKS' | 'MOBILE' | 'SECURITY';
+export type IssueCategory = 'TITLE' | 'META' | 'HEADING' | 'CONTENT' | 'TECHNICAL' | 'SPEED' | 'SCHEMA' | 'LINKS' | 'MOBILE' | 'SECURITY' | 'PERFORMANCE' | 'USABILITY' | 'SOCIAL' | 'TECHNOLOGY' | 'LOCAL_SEO';
+
+/** 0-100 numeric score mapped to a competitor-style letter grade (A+ .. F-). */
+export function scoreToLetterGrade(score: number): string {
+  const s = Math.max(0, Math.min(100, score));
+  if (s >= 97) return 'A+';
+  if (s >= 93) return 'A';
+  if (s >= 90) return 'A-';
+  if (s >= 87) return 'B+';
+  if (s >= 83) return 'B';
+  if (s >= 80) return 'B-';
+  if (s >= 77) return 'C+';
+  if (s >= 73) return 'C';
+  if (s >= 70) return 'C-';
+  if (s >= 67) return 'D+';
+  if (s >= 63) return 'D';
+  if (s >= 60) return 'D-';
+  if (s >= 50) return 'F+';
+  if (s >= 30) return 'F';
+  return 'F-';
+}
+
+export interface CategoryScore {
+  score: number;
+  grade: string;
+}
+
+export interface PriorityRecommendation {
+  code: string;
+  title: string;
+  category: IssueCategory;
+  priority: 'CRITICAL' | 'MEDIUM' | 'LOW';
+  howToFix: string;
+  affectedCount?: number;
+}
+
+export interface SiteAuditReportDTO {
+  id: string;
+  crawlJobId: string;
+  projectId: string;
+  overallScore: number;
+  overallGrade: string;
+  categoryScores: {
+    onPage: CategoryScore;
+    geo: CategoryScore;
+    backlink: CategoryScore;
+    usability: CategoryScore;
+    performance: CategoryScore;
+  };
+  recommendationsCount: number;
+  recommendations: PriorityRecommendation[];
+  onPage: Record<string, unknown> | null;
+  geo: Record<string, unknown> | null;
+  performance: Record<string, unknown> | null;
+  usability: Record<string, unknown> | null;
+  social: Record<string, unknown> | null;
+  technology: Record<string, unknown> | null;
+  localSeo: Record<string, unknown> | null;
+  crawlList: Record<string, unknown> | null;
+  screenshotDesktopUrl: string | null;
+  screenshotMobileUrl: string | null;
+  screenshotTabletUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
 export type GeoPlatform = 'CHATGPT' | 'GEMINI' | 'PERPLEXITY' | 'CLAUDE' | 'GOOGLE_AI_OVERVIEW' | 'GOOGLE_AI_MODE';
 export type OrderStatus = 'PENDING_PAYMENT' | 'ESCROW_HELD' | 'CONTENT_READY' | 'PUBLISHED' | 'VERIFIED' | 'COMPLETED' | 'DISPUTED' | 'REFUNDED';
 export type KeywordIntent = 'INFORMATIONAL' | 'NAVIGATIONAL' | 'TRANSACTIONAL' | 'COMMERCIAL';

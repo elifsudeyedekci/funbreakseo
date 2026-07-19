@@ -3,12 +3,14 @@ import { InjectQueue } from '@nestjs/bullmq'
 import { Queue } from 'bullmq'
 import { IssueCategory, IssueSeverity, CrawlJobStatus, CrawlTrigger } from '@prisma/client'
 import { PrismaService } from '../../prisma.service'
+import { PlanLimitService } from '../plan-limit/plan-limit.service'
 
 @Injectable()
 export class CrawlerService {
   constructor(
     private readonly prisma: PrismaService,
     @InjectQueue('crawler') private readonly crawlerQueue: Queue,
+    private readonly planLimit: PlanLimitService,
   ) {}
 
   async startCrawl(
@@ -21,6 +23,10 @@ export class CrawlerService {
     })
     if (!project) {
       throw new NotFoundException(`Project ${projectId} not found`)
+    }
+
+    if (triggeredBy === 'MANUAL') {
+      await this.planLimit.assertCrawlWithinLimit(project.organizationId)
     }
 
     const crawlJob = await this.prisma.crawlJob.create({
@@ -54,36 +60,71 @@ export class CrawlerService {
         include: this.auditInclude(),
       }))
 
-    return this.shapeAudit(latest)
+    if (!latest) return null
+
+    // True severity totals (independent of the 200-row sample below) — groupBy
+    // scans the whole table so counts stay correct even for very large crawls.
+    const severityCounts = await this.prisma.seoIssue.groupBy({
+      by: ['severity'],
+      where: { crawlJobId: latest.id },
+      _count: { severity: true },
+    })
+    const bySeverity = (sev: IssueSeverity) =>
+      severityCounts.find((s) => s.severity === sev)?._count.severity ?? 0
+
+    return this.shapeAudit(latest, {
+      criticalCount: bySeverity('CRITICAL' as IssueSeverity),
+      warningCount: bySeverity('WARNING' as IssueSeverity),
+      noticeCount: bySeverity('NOTICE' as IssueSeverity),
+    })
   }
 
   private auditInclude() {
     return {
       _count: { select: { issues: true, pages: true } },
+      siteAuditReport: true,
       issues: {
-        take: 200,
+        take: 500,
         orderBy: { severity: 'asc' as const },
         select: { id: true, severity: true, category: true, code: true, message: true, recommendation: true, crawledPage: { select: { url: true } } },
       },
     }
   }
 
-  private shapeAudit(latest: any) {
-    if (!latest) return null
+  private shapeAudit(
+    latest: any,
+    severity: { criticalCount: number; warningCount: number; noticeCount: number },
+  ) {
+    // Group the (up to 500) sampled issues by rule code so the UI shows one
+    // row per issue TYPE with an accurate "affected pages" count + URL list,
+    // instead of a duplicate row per page (previous behaviour hardcoded count=1).
+    const grouped = new Map<string, any>()
+    for (const issue of latest.issues as any[]) {
+      const key = issue.code
+      const url = issue.crawledPage?.url
+      const existing = grouped.get(key)
+      if (existing) {
+        existing.count += 1
+        if (url && existing.urls.length < 10) existing.urls.push(url)
+      } else {
+        grouped.set(key, {
+          ...issue,
+          url,
+          urls: url ? [url] : [],
+          howToFix: issue.recommendation,
+          count: 1,
+        })
+      }
+    }
+
     return {
       ...latest,
       crawledPages: latest._count.pages,
       totalIssues: latest._count.issues,
-      criticalCount: latest.issues.filter((i: any) => i.severity === 'CRITICAL').length,
-      warningCount: latest.issues.filter((i: any) => i.severity === 'WARNING').length,
-      noticeCount: latest.issues.filter((i: any) => i.severity === 'NOTICE').length,
+      ...severity,
       completedAt: latest.finishedAt,
-      issues: latest.issues.map((i: any) => ({
-        ...i,
-        url: i.crawledPage?.url,
-        howToFix: i.recommendation,
-        count: 1,
-      })),
+      siteAuditReport: latest.siteAuditReport ?? null,
+      issues: Array.from(grouped.values()),
     }
   }
 

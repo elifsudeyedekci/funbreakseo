@@ -116,6 +116,11 @@ enum IssueCategory {
   LINKS
   MOBILE
   SECURITY
+  PERFORMANCE
+  USABILITY
+  SOCIAL
+  TECHNOLOGY
+  LOCAL_SEO
 }
 
 enum ContentType {
@@ -472,6 +477,7 @@ model Organization {
   developerApiKeys      DeveloperApiKey[]
   affiliateConversions  AffiliateConversion[]
   onboardingStatus      OnboardingStatus?
+  featureUsageLogs      FeatureUsageLog[]
   gscAccessToken        String?
   gscRefreshToken       String?
   gscTokenExpiry        DateTime?
@@ -663,6 +669,20 @@ model UsageRecord {
   @@map("usage_records")
 }
 
+/// Lightweight monthly-quota counter for features that have no natural row
+/// to count against (backlink profile syncs, competitor comparisons, etc).
+model FeatureUsageLog {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  feature        String
+  projectId      String?
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId, feature, createdAt])
+  @@map("feature_usage_logs")
+}
+
 model BillingProfile {
   id             String       @id @default(uuid())
   organizationId String       @unique
@@ -762,6 +782,8 @@ model Project {
   reportRecords         ReportRecord[]
   internalLinkSuggestions InternalLinkSuggestion[]
   scanHistory           ScanHistory[]
+  siteAuditReports      SiteAuditReport[]
+  backlinkHistory       BacklinkHistory[]
   createdAt             DateTime            @default(now())
   updatedAt             DateTime            @updatedAt
   deletedAt             DateTime?
@@ -888,10 +910,18 @@ model Backlink {
   project       Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
   sourceDomain  String
   sourceUrl     String
+  sourceTitle   String?
   targetUrl     String
   anchorText    String?
   domainRating  Int?
+  pageRating    Int?
   isDofollow    Boolean       @default(true)
+  isEdu         Boolean       @default(false)
+  isGov         Boolean       @default(false)
+  country       String?
+  ipAddress     String?
+  subnet        String?
+  toxicScore    Int?
   firstSeen     DateTime
   lastSeen      DateTime
   status        BacklinkStatus @default(ACTIVE)
@@ -900,6 +930,24 @@ model Backlink {
 
   @@index([projectId])
   @@map("backlinks")
+}
+
+/// Daily/periodic snapshot of a project's backlink profile — powers link
+/// velocity charts and lost/gained tracking without re-hitting DataForSEO.
+model BacklinkHistory {
+  id               String   @id @default(uuid())
+  projectId        String
+  project          Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  date             DateTime
+  totalBacklinks   Int      @default(0)
+  referringDomains Int      @default(0)
+  newBacklinks     Int      @default(0)
+  lostBacklinks    Int      @default(0)
+  createdAt        DateTime @default(now())
+
+  @@unique([projectId, date])
+  @@index([projectId])
+  @@map("backlink_history")
 }
 
 // ============================================================
@@ -919,11 +967,49 @@ model CrawlJob {
   triggeredBy  CrawlTrigger   @default(MANUAL)
   pages        CrawledPage[]
   issues       SeoIssue[]
+  siteAuditReport SiteAuditReport?
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 
   @@index([projectId])
   @@map("crawl_jobs")
+}
+
+/// Aggregated, competitor-grade site audit report — one per CrawlJob.
+/// Each module (on-page, GEO, performance, usability, social, technology,
+/// local SEO, crawl-list) owns its own JSON column so independent services
+/// can populate the report without touching unrelated columns.
+model SiteAuditReport {
+  id          String   @id @default(uuid())
+  crawlJobId  String   @unique
+  crawlJob    CrawlJob @relation(fields: [crawlJobId], references: [id], onDelete: Cascade)
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  overallScore          Int    @default(0)
+  overallGrade          String @default("F")
+  categoryScores        Json?  // { onPage:{score,grade}, geo:{...}, backlink:{...}, usability:{...}, performance:{...} }
+  recommendationsCount  Int    @default(0)
+  recommendations       Json?  // PriorityRecommendation[]
+
+  onPageJson       Json?
+  geoJson          Json?
+  performanceJson  Json?
+  usabilityJson    Json?
+  socialJson       Json?
+  technologyJson   Json?
+  localSeoJson     Json?
+  crawlListJson    Json?
+
+  screenshotDesktopUrl String?
+  screenshotMobileUrl  String?
+  screenshotTabletUrl  String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([projectId])
+  @@map("site_audit_reports")
 }
 
 model CrawledPage {
