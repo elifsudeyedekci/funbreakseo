@@ -38,6 +38,10 @@ export interface BacklinkProfile {
     rank: number;
     is_dofollow: boolean;
     anchor: string;
+    title: string | null;
+    page_rating: number | null;
+    is_new: boolean | null;
+    toxic_score: number | null;
   }>;
 }
 
@@ -388,49 +392,86 @@ export class DataForSeoService {
 
   async getBacklinkList(domain: string, limit = 100): Promise<BacklinkProfile['sample']> {
     const cleanDomain = domain.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    const pageSize = limit;
+    const SAFETY_MAX_REQUESTS = 10; // 10 * 1000 = 10,000 backlinks hard cap
+    const allItems: Array<Record<string, any>> = [];
+    let totalCount: number | undefined;
+
     try {
-      const response = await this.request<{
-        tasks: Array<{
-          result?: Array<{
-            items?: Array<{
-              url_from?: string;
-              url_to?: string;
-              domain_from?: string;
-              rank?: number;
-              domain_from_rank?: number;
-              page_from_rank?: number;
-              backlink_spam_score?: number;
-              dofollow?: boolean;
-              is_broken?: boolean;
-              anchor?: string;
-              text_pre?: string;
-              text_post?: string;
+      for (let page = 0; page < SAFETY_MAX_REQUESTS; page++) {
+        const offset = page * pageSize;
+        const response = await this.request<{
+          tasks: Array<{
+            result?: Array<{
+              total_count?: number;
+              items?: Array<{
+                url_from?: string;
+                url_to?: string;
+                domain_from?: string;
+                rank?: number;
+                domain_from_rank?: number;
+                page_from_rank?: number;
+                backlink_spam_score?: number;
+                dofollow?: boolean;
+                is_broken?: boolean;
+                anchor?: string;
+                text_pre?: string;
+                text_post?: string;
+                title?: string;
+                is_new?: boolean;
+              }>;
             }>;
           }>;
-        }>;
-      }>('/backlinks/backlinks/live', [
-        {
-          target: cleanDomain,
-          // Match the verified curl exactly: { target, mode:'as_is', limit } → 27.
-          // mode "as_is" returns EVERY individual backlink (default one_per_domain
-          // collapsed it to ~13). Extra filters (backlinks_status_type:'live',
-          // broken flags) were dropping rows back to 13 — removed.
-          mode: 'as_is',
-          limit,
-        },
-      ]);
+        }>('/backlinks/backlinks/live', [
+          {
+            target: cleanDomain,
+            // Match the verified curl exactly: { target, mode:'as_is', limit } → 27.
+            // mode "as_is" returns EVERY individual backlink (default one_per_domain
+            // collapsed it to ~13). Extra filters (backlinks_status_type:'live',
+            // broken flags) were dropping rows back to 13 — removed.
+            mode: 'as_is',
+            limit: pageSize,
+            offset,
+          },
+        ]);
 
-      const task = response.tasks?.[0] as any;
-      const items = (task?.result?.[0]?.items ?? []) as Array<Record<string, any>>;
-      this.logger.log(
-        `getBacklinkList ${cleanDomain}: total_count=${task?.result?.[0]?.total_count ?? '?'} items=${items.length}`,
-      );
-      return items.map((item: Record<string, any>) => {
+        const task = response.tasks?.[0] as any;
+        const result = task?.result?.[0];
+        const items = (result?.items ?? []) as Array<Record<string, any>>;
+        totalCount = result?.total_count ?? totalCount;
+
+        this.logger.log(
+          `getBacklinkList ${cleanDomain}: page=${page} offset=${offset} total_count=${totalCount ?? '?'} items=${items.length} accumulated=${allItems.length + items.length}`,
+        );
+
+        allItems.push(...items);
+
+        // Stop paginating when: this page came back short (no more pages),
+        // we've reached the known total_count, or we're about to hit the
+        // safety cap on the next iteration.
+        if (items.length < pageSize) break;
+        if (typeof totalCount === 'number' && allItems.length >= totalCount) break;
+      }
+
+      if (typeof totalCount === 'number' && allItems.length < totalCount && allItems.length >= SAFETY_MAX_REQUESTS * pageSize) {
+        this.logger.warn(
+          `getBacklinkList ${cleanDomain}: hit safety cap of ${SAFETY_MAX_REQUESTS * pageSize} backlinks (total_count=${totalCount}) — remaining backlinks were not fetched`,
+        );
+      }
+
+      return allItems.map((item: Record<string, any>) => {
         // DataForSEO "rank" / "domain_from_rank" is a 0-1000 authority scale.
         // DR is conventionally 0-100, so normalise (÷10) and clamp. This fixes
         // impossible values like 438/346 showing up as DR.
         const raw = item.domain_from_rank || item.page_from_rank || item.rank || 0;
         const dr = Math.min(100, Math.max(0, Math.round(raw / 10)));
+        // page_from_rank is the linking PAGE's own rank (0-1000 scale) — used
+        // for the new pageRating column. Normalise the same way as DR.
+        const pageRatingRaw = item.page_from_rank;
+        const pageRating =
+          typeof pageRatingRaw === 'number'
+            ? Math.min(100, Math.max(0, Math.round(pageRatingRaw / 10)))
+            : null;
         return {
           url_from: item.url_from ?? '',
           url_to: item.url_to ?? '',
@@ -438,6 +479,12 @@ export class DataForSeoService {
           rank: dr,
           is_dofollow: item.dofollow ?? true,
           anchor: item.anchor ?? '',
+          title: item.title ?? null,
+          page_rating: pageRating,
+          is_new: typeof item.is_new === 'boolean' ? item.is_new : null,
+          // DataForSEO's field for this is backlink_spam_score (0-100 scale,
+          // already comparable to our toxicScore column) — no normalisation.
+          toxic_score: typeof item.backlink_spam_score === 'number' ? item.backlink_spam_score : null,
         };
       });
     } catch (err) {

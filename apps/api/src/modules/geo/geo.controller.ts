@@ -15,6 +15,8 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard'
 import { ActiveSubscriptionGuard } from '../auth/active-subscription.guard'
 import { CurrentUser } from '../auth/current-user.decorator'
 import { GeoService } from './geo.service'
+import { GeoAuditService } from './geo-audit.service'
+import { PrismaService } from '../../prisma.service'
 
 export class AddGeoQueryDto {
   @IsString() @MinLength(3) prompt: string = ''
@@ -30,7 +32,11 @@ export class GeoHistoryQueryDto {
 @UseGuards(JwtAuthGuard)
 @Controller()
 export class GeoController {
-  constructor(private readonly geoService: GeoService) {}
+  constructor(
+    private readonly geoService: GeoService,
+    private readonly geoAuditService: GeoAuditService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   // POST /projects/:id/geo/queries
   @Post('projects/:id/geo/queries')
@@ -98,5 +104,39 @@ export class GeoController {
     @CurrentUser() _user: User,
   ) {
     return this.geoService.getGeoHistory(id, query.days ? Number(query.days) : 30)
+  }
+
+  // GET /projects/:id/geo/audit
+  @Get('projects/:id/geo/audit')
+  async getGeoAudit(@Param('id') id: string, @CurrentUser() _user: User) {
+    const project = await this.prisma.project.findUnique({
+      where: { id },
+      select: { domain: true },
+    })
+    if (!project) {
+      // Preserve existing controller convention of letting the service layer
+      // raise NotFoundException where relevant; here there's nothing to
+      // delegate to, so surface an empty audit rather than throwing.
+      return this.geoAuditService.analyzeGeoAudit(id)
+    }
+
+    const latestCrawlJob = await this.prisma.crawlJob.findFirst({
+      where: { projectId: id },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true },
+    })
+
+    if (latestCrawlJob) {
+      return this.geoAuditService.analyzeAndPersistGeoAudit(id, latestCrawlJob.id, project.domain)
+    }
+
+    // No crawl exists yet — return a pure preview, nothing persisted.
+    return this.geoAuditService.analyzeGeoAudit(project.domain)
+  }
+
+  // GET /projects/:id/geo/ai-overview-tracking
+  @Get('projects/:id/geo/ai-overview-tracking')
+  getAiOverviewTracking(@Param('id') id: string, @CurrentUser() _user: User) {
+    return this.geoAuditService.getAiOverviewTracking(id)
   }
 }

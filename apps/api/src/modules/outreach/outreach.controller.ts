@@ -4,6 +4,7 @@ import {
   Post,
   Body,
   Param,
+  Query,
   UseGuards,
 } from '@nestjs/common'
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger'
@@ -77,5 +78,45 @@ export class OutreachController {
   @Get('projects/:id/backlink-orders')
   getBacklinkOrders(@Param('id') id: string) {
     return this.outreachService.getBacklinkOrders(id)
+  }
+
+  @Get('projects/:id/backlinks/gauges')
+  getBacklinkGauges(@Param('id') id: string) {
+    return this.outreachService.getBacklinkGauges(id)
+  }
+
+  @Get('projects/:id/backlinks/top')
+  getTopBacklinks(@Param('id') id: string, @Query('limit') limit?: string) {
+    return this.outreachService.getTopBacklinks(id, limit ? parseInt(limit, 10) : undefined)
+  }
+
+  @Get('projects/:id/backlinks/top-pages')
+  getTopLinkedPages(@Param('id') id: string) {
+    return this.outreachService.getTopLinkedPages(id)
+  }
+
+  @Get('projects/:id/backlinks/anchors')
+  getTopAnchors(@Param('id') id: string) {
+    return this.outreachService.getTopAnchors(id)
+  }
+
+  @Get('projects/:id/backlinks/geography')
+  getBacklinkGeography(@Param('id') id: string) {
+    return this.outreachService.getBacklinkGeography(id)
+  }
+
+  @Get('projects/:id/backlinks/link-split')
+  getInternalExternalLinkSplit(@Param('id') id: string) {
+    return this.outreachService.getInternalExternalLinkSplit(id)
+  }
+
+  @Get('projects/:id/backlinks/toxic')
+  getToxicBacklinks(@Param('id') id: string) {
+    return this.outreachService.getToxicBacklinks(id)
+  }
+
+  @Get('projects/:id/backlinks/velocity')
+  getLinkVelocity(@Param('id') id: string) {
+    return this.outreachService.getLinkVelocity(id)
   }
 }

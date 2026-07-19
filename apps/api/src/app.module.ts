@@ -32,6 +32,8 @@ import { PublicModule } from './modules/public/public.module';
 import { CustomerApiModule } from './modules/customer-api/customer-api.module';
 import { HealthModule } from './modules/health/health.module';
 import { CompetitorModule } from './modules/competitor/competitor.module';
+import { PerformanceModule } from './modules/performance/performance.module';
+import { SiteIntelModule } from './modules/site-intel/site-intel.module';
 
 @Module({
   imports: [
@@ -94,6 +96,8 @@ import { CompetitorModule } from './modules/competitor/competitor.module';
     CustomerApiModule,
     HealthModule,
     CompetitorModule,
+    PerformanceModule,
+    SiteIntelModule,
   ],
   providers: [
     // Global rate limit — ThrottlerModule tek başına yetmez, guard da kayıtlı olmalı
