@@ -32,7 +32,7 @@ export interface FullScanProgress {
   startedAt: string;
   completedAt: string | null;
   steps: Record<string, Record<string, unknown>>;
-  summary: Record<string, number>;
+  summary: Record<string, number | string>;
 }
 
 export interface UpdateProjectDto {
@@ -572,6 +572,29 @@ export class ProjectService {
     return { started: true, progress };
   }
 
+  /**
+   * Polls a CrawlJob until it reaches a terminal status (DONE/FAILED) or the
+   * bound is hit. The crawl worker now also runs performance/site-intel/GEO
+   * analysis + score aggregation after the page loop, which can take longer
+   * than the raw crawl alone (Puppeteer + PageSpeed Insights calls) — the
+   * bound is generous accordingly. Returns null on timeout (caller degrades
+   * gracefully; the crawl keeps running in the background regardless).
+   */
+  private async waitForCrawlCompletion(
+    crawlJobId: string,
+    { intervalMs = 3000, maxWaitMs = 6 * 60_000 }: { intervalMs?: number; maxWaitMs?: number } = {},
+  ) {
+    const startedAt = Date.now();
+    while (Date.now() - startedAt < maxWaitMs) {
+      const job = await this.prisma.crawlJob.findUnique({ where: { id: crawlJobId } });
+      if (job && (job.status === CrawlJobStatus.DONE || job.status === CrawlJobStatus.FAILED)) {
+        return job;
+      }
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
+    return null;
+  }
+
   private async runFullScan(
     projectId: string,
     organizationId: string,
@@ -587,14 +610,40 @@ export class ProjectService {
       if (next) progress.currentStep = next;
     };
 
-    // Step 1: technical SEO crawl
+    // Step 1: technical SEO crawl — this single job also runs the newer
+    // performance/site-intel/GEO analyzers + score aggregation at the end
+    // (see crawler.worker.ts's process()). We WAIT for it to actually finish
+    // here (bounded poll) rather than just enqueueing and moving on, so the
+    // later steps' summary and the archived ScanHistory row reflect the
+    // finished, fully-populated SiteAuditReport instead of a stale snapshot
+    // taken the instant the crawl was queued.
     progress.currentStep = 'crawl';
     try {
       const crawlJob = await this.prisma.crawlJob.create({
         data: { projectId, status: CrawlJobStatus.QUEUED, triggeredBy: 'MANUAL' },
       });
       await this.crawlerQueue.add('crawl', { crawlJobId: crawlJob.id, projectId });
-      progress.steps['crawl'] = { status: 'done', jobId: crawlJob.id };
+
+      const finished = await this.waitForCrawlCompletion(crawlJob.id);
+      if (finished?.status === CrawlJobStatus.DONE) {
+        const report = await this.prisma.siteAuditReport.findUnique({ where: { crawlJobId: crawlJob.id } });
+        progress.steps['crawl'] = {
+          status: 'done',
+          jobId: crawlJob.id,
+          pagesScanned: finished.pagesScanned,
+          issuesFound: finished.issuesFound,
+          healthScore: finished.healthScore ?? 0,
+          overallScore: report?.overallScore ?? null,
+          overallGrade: report?.overallGrade ?? null,
+        };
+        progress.summary.healthScore = finished.healthScore ?? 0;
+        if (report?.overallScore != null) progress.summary.overallScore = report.overallScore;
+        if (report?.overallGrade) progress.summary.overallGrade = report.overallGrade;
+      } else {
+        // Timed out or failed — don't block the rest of the scan, the audit
+        // page will keep polling and pick up the result whenever it lands.
+        progress.steps['crawl'] = { status: finished?.status === CrawlJobStatus.FAILED ? 'error' : 'timeout', jobId: crawlJob.id };
+      }
     } catch (err: any) {
       this.logger.warn('fullScan: crawl step failed', err.message);
       progress.steps['crawl'] = { status: 'error', error: err.message };
@@ -678,7 +727,7 @@ export class ProjectService {
           geoVisibilityScore: ov.geoVisibilityScore ?? 0,
           geoMentions: ov.latestGeoSnapshot?.mentionCount ?? 0,
           geoCitations: ov.latestGeoSnapshot?.citationCount ?? 0,
-          competitorCount: progress.summary.competitors ?? 0,
+          competitorCount: Number(progress.summary.competitors ?? 0),
           data: { steps: progress.steps, summary: progress.summary } as any,
         },
       });
