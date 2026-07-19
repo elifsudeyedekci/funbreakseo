@@ -114,6 +114,8 @@ export const competitorApi = {
     api.delete(`/projects/${projectId}/competitors/${competitorId}`),
   keywords: (projectId: string, competitorId: string) =>
     api.get(`/projects/${projectId}/competitors/${competitorId}/keywords`),
+  auditCompare: (projectId: string, competitorDomain: string) =>
+    api.post(`/projects/${projectId}/competitors/audit-compare`, { competitorDomain }),
 };
 
 export const keywordApi = {
@@ -258,12 +260,34 @@ export const backlinkApi = {
   marketListings: (params?: Record<string, unknown>) => api.get('/market/listings', { params }),
   orders: (projectId: string) => api.get(`/projects/${projectId}/backlink-orders`),
   createOrder: (projectId: string, d: Record<string, unknown>) => api.post(`/projects/${projectId}/backlink-orders`, d),
+  // Ahrefs/Semrush-grade views over the stored Backlink table
+  gauges: (projectId: string) => api.get(`/projects/${projectId}/backlinks/gauges`),
+  top: (projectId: string, limit?: number) => api.get(`/projects/${projectId}/backlinks/top`, { params: { limit } }),
+  topPages: (projectId: string) => api.get(`/projects/${projectId}/backlinks/top-pages`),
+  anchors: (projectId: string) => api.get(`/projects/${projectId}/backlinks/anchors`),
+  geography: (projectId: string) => api.get(`/projects/${projectId}/backlinks/geography`),
+  linkSplit: (projectId: string) => api.get(`/projects/${projectId}/backlinks/link-split`),
+  toxic: (projectId: string) => api.get(`/projects/${projectId}/backlinks/toxic`),
+  velocity: (projectId: string) => api.get(`/projects/${projectId}/backlinks/velocity`),
 };
 
 export const auditApi = {
   get: (projectId: string) => api.get(`/projects/${projectId}/audit`),
   start: (projectId: string) => api.post(`/projects/${projectId}/audit/start`),
   history: (projectId: string) => api.get(`/projects/${projectId}/audit/history`),
+};
+
+export const performanceApi = {
+  get: (projectId: string) => api.get(`/projects/${projectId}/performance`),
+};
+
+export const siteIntelApi = {
+  get: (projectId: string) => api.get(`/projects/${projectId}/site-intel`),
+};
+
+export const geoAuditApi = {
+  get: (projectId: string) => api.get(`/projects/${projectId}/geo/audit`),
+  aiOverviewTracking: (projectId: string) => api.get(`/projects/${projectId}/geo/ai-overview-tracking`),
 };
 
 export const abTestApi = {

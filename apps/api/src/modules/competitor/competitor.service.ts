@@ -1,6 +1,11 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 import { DataForSeoService } from '../dataforseo/dataforseo.service';
+import { PerformanceService } from '../performance/performance.service';
+import { SiteIntelService } from '../site-intel/site-intel.service';
+import { GeoAuditService } from '../geo/geo-audit.service';
+import { PlanLimitService } from '../plan-limit/plan-limit.service';
+import { scoreToLetterGrade } from '@funbreakseo/shared';
 
 // Generic / non-competitor domains that pollute SERP-based competitor discovery.
 // These appear in almost every Turkish SERP but are never a real sector rival.
@@ -86,6 +91,10 @@ export class CompetitorService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly dfs: DataForSeoService,
+    private readonly performance: PerformanceService,
+    private readonly siteIntel: SiteIntelService,
+    private readonly geoAudit: GeoAuditService,
+    private readonly planLimit: PlanLimitService,
   ) {}
 
   private cleanDomain(url: string): string {
@@ -347,5 +356,112 @@ export class CompetitorService {
     const res = await this.prisma.competitor.deleteMany({ where: { id: competitorId, projectId } });
     if (res.count === 0) throw new NotFoundException('Competitor not found');
     return { message: 'Competitor removed' };
+  }
+
+  // ─── Full-audit comparison (radar chart, "you vs competitor") ──────────────
+
+  private toScore(raw: number) {
+    const score = Math.max(0, Math.min(100, Math.round(raw)));
+    return { score, grade: scoreToLetterGrade(score) };
+  }
+
+  private penaltyScore(recs: { priority: 'CRITICAL' | 'MEDIUM' | 'LOW' }[]): number {
+    let score = 100;
+    for (const r of recs) {
+      if (r.priority === 'CRITICAL') score -= 8;
+      else if (r.priority === 'MEDIUM') score -= 4;
+      else score -= 1;
+    }
+    return Math.max(0, score);
+  }
+
+  /**
+   * Runs the same performance/site-intel/GEO analyzers used for the project's
+   * own audit against an arbitrary competitor domain — pure, no DB writes for
+   * the competitor side — and returns a "you vs competitor" comparison payload
+   * ready for the radar chart + side-by-side table.
+   */
+  async compareFullAudit(projectId: string, organizationId: string, competitorDomain: string) {
+    const project = await this.getProject(projectId, organizationId);
+    await this.planLimit.assertFeatureWithinLimit(organizationId, 'COMPETITOR_COMPARE');
+
+    const latestCrawl = await this.prisma.crawlJob.findFirst({
+      where: { projectId, status: 'DONE' },
+      orderBy: { finishedAt: 'desc' },
+      include: { siteAuditReport: true },
+    });
+    if (!latestCrawl?.siteAuditReport?.overallScore) {
+      throw new NotFoundException(
+        'SCAN_REQUIRED: Karşılaştırma için önce bu proje üzerinde bir site denetimi (audit) çalıştırmalısınız.',
+      );
+    }
+    const own = latestCrawl.siteAuditReport;
+
+    const competitorHost = this.cleanDomain(competitorDomain);
+    const competitorUrl = `https://${competitorHost}`;
+
+    const [perf, intel, geo, backlinks] = await Promise.allSettled([
+      this.performance.analyze(competitorUrl),
+      this.siteIntel.analyze(competitorUrl),
+      this.geoAudit.analyzeGeoAudit(competitorUrl),
+      this.dfs.getBacklinks(competitorHost),
+    ]);
+
+    const perfReport = perf.status === 'fulfilled' ? perf.value : null;
+    const intelReport = intel.status === 'fulfilled' ? intel.value : null;
+    const geoReport = geo.status === 'fulfilled' ? geo.value : null;
+    const backlinkProfile = backlinks.status === 'fulfilled' ? backlinks.value : null;
+
+    const psiMobile = perfReport?.psi?.mobile?.score;
+    const psiDesktop = perfReport?.psi?.desktop?.score;
+    const compPerfScore =
+      typeof psiMobile === 'number' && typeof psiDesktop === 'number'
+        ? psiMobile * 0.6 + psiDesktop * 0.4
+        : (psiMobile ?? psiDesktop ?? (perfReport ? this.penaltyScore(perfReport.recommendations) : 50));
+
+    const compUsabilityScore = intelReport
+      ? this.penaltyScore([
+          ...intelReport.usability.recommendations,
+          ...intelReport.social.recommendations,
+          ...intelReport.technology.recommendations,
+          ...intelReport.localSeo.recommendations,
+        ])
+      : 50;
+
+    const compBacklinkScore = backlinkProfile ? Math.min(100, Math.round((backlinkProfile.domain_rank ?? 0) / 10)) : 0;
+    const compGeoScore = geoReport?.eeat?.score ?? 0;
+
+    const competitorCategoryScores = {
+      onPage: this.toScore(50), // no full crawl run for competitor — on-page needs a multi-page crawl we don't run here
+      geo: this.toScore(compGeoScore),
+      backlink: this.toScore(compBacklinkScore),
+      usability: this.toScore(compUsabilityScore),
+      performance: this.toScore(compPerfScore),
+    };
+    const competitorOverall = Math.round(
+      competitorCategoryScores.onPage.score * 0.25 +
+        competitorCategoryScores.geo.score * 0.15 +
+        competitorCategoryScores.backlink.score * 0.2 +
+        competitorCategoryScores.usability.score * 0.2 +
+        competitorCategoryScores.performance.score * 0.2,
+    );
+
+    await this.planLimit.recordFeatureUsage(organizationId, 'COMPETITOR_COMPARE', projectId);
+
+    return {
+      you: {
+        domain: project.domain,
+        overallScore: own.overallScore,
+        overallGrade: own.overallGrade,
+        categoryScores: own.categoryScores,
+      },
+      competitor: {
+        domain: competitorHost,
+        overallScore: competitorOverall,
+        overallGrade: scoreToLetterGrade(competitorOverall),
+        categoryScores: competitorCategoryScores,
+        note: 'onPage skoru rakip için tahmini — tam sayfa taraması yalnızca kendi projeniz için çalıştırılır.',
+      },
+    };
   }
 }

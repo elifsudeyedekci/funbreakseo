@@ -16,6 +16,11 @@ class CompareDto {
   competitorDomain!: string;
 }
 
+class AuditCompareDto {
+  @IsString()
+  competitorDomain!: string;
+}
+
 @ApiTags('Competitors')
 @ApiBearerAuth('access-token')
 @UseGuards(JwtAuthGuard)
@@ -58,6 +63,16 @@ export class CompetitorController {
     @Body() body: CompareDto,
   ) {
     return this.competitorService.compareWithCompetitor(projectId, user.organizationId!, body.competitorDomain);
+  }
+
+  @Post('audit-compare')
+  @ApiOperation({ summary: 'Full site-audit comparison (radar chart, you vs competitor) — plan-limited' })
+  auditCompare(
+    @CurrentUser() user: User,
+    @Param('projectId') projectId: string,
+    @Body() body: AuditCompareDto,
+  ) {
+    return this.competitorService.compareFullAudit(projectId, user.organizationId!, body.competitorDomain);
   }
 
   @Post()

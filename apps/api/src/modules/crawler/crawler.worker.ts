@@ -4,6 +4,7 @@ import { Injectable, Logger } from '@nestjs/common'
 import { IssueCategory, IssueSeverity, CrawlJobStatus } from '@prisma/client'
 import axios, { AxiosResponse } from 'axios'
 import { PrismaService } from '../../prisma.service'
+import { AuditAggregatorService } from './audit-aggregator.service'
 
 // ---------------------------------------------------------------------------
 // HTML parsing helpers (regex-based, no external parser dependency)
@@ -95,6 +96,131 @@ function hasMixedContent(html: string): boolean {
 }
 
 // ---------------------------------------------------------------------------
+// On-page SEO extras (site-level — computed once, on the representative/
+// homepage crawl, and stored on SiteAuditReport.onPageJson)
+// ---------------------------------------------------------------------------
+
+function countHeadingLevels(html: string): Record<'H1' | 'H2' | 'H3' | 'H4' | 'H5' | 'H6', number> {
+  const counts = { H1: 0, H2: 0, H3: 0, H4: 0, H5: 0, H6: 0 }
+  for (const level of [1, 2, 3, 4, 5, 6] as const) {
+    const re = new RegExp(`<h${level}[\\s>]`, 'gi')
+    counts[`H${level}` as const] = (html.match(re) || []).length
+  }
+  return counts
+}
+
+function extractHeadingTexts(html: string, level: number): string[] {
+  const re = new RegExp(`<h${level}[^>]*>([\\s\\S]*?)<\\/h${level}>`, 'gi')
+  const texts: string[] = []
+  let m: RegExpExecArray | null
+  while ((m = re.exec(html)) !== null) {
+    texts.push(m[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim())
+  }
+  return texts
+}
+
+function extractHreflang(html: string): { lang: string; url: string }[] {
+  const re = /<link[^>]+rel=["']alternate["'][^>]+hreflang=["']([^"']+)["'][^>]+href=["']([^"']*)["']/gi
+  const reReversed = /<link[^>]+rel=["']alternate["'][^>]+href=["']([^"']*)["'][^>]+hreflang=["']([^"']+)["']/gi
+  const out: { lang: string; url: string }[] = []
+  let m: RegExpExecArray | null
+  while ((m = re.exec(html)) !== null) out.push({ lang: m[1], url: m[2] })
+  while ((m = reReversed.exec(html)) !== null) out.push({ lang: m[2], url: m[1] })
+  return out
+}
+
+function extractLangAttribute(html: string): string | null {
+  const m = html.match(/<html[^>]+lang=["']([^"']+)["']/i)
+  return m ? m[1].trim() : null
+}
+
+function extractSchemaTypes(html: string): string[] {
+  const types = new Set<string>()
+  const re = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi
+  let m: RegExpExecArray | null
+  while ((m = re.exec(html)) !== null) {
+    try {
+      const parsed = JSON.parse(m[1].trim())
+      const nodes = Array.isArray(parsed) ? parsed : parsed['@graph'] ? parsed['@graph'] : [parsed]
+      for (const node of nodes) {
+        const t = node?.['@type']
+        if (typeof t === 'string') types.add(t)
+        else if (Array.isArray(t)) t.forEach((x) => typeof x === 'string' && types.add(x))
+      }
+    } catch {
+      // malformed JSON-LD block — skip
+    }
+  }
+  return Array.from(types)
+}
+
+function detectAnalytics(html: string): { ga4: boolean; gtm: boolean; universalAnalytics: boolean } {
+  return {
+    ga4: /gtag\(|G-[A-Z0-9]{6,}/.test(html),
+    gtm: /googletagmanager\.com\/gtm\.js|GTM-[A-Z0-9]+/.test(html),
+    universalAnalytics: /UA-\d{4,}-\d+/.test(html),
+  }
+}
+
+function normaliseUrlForCompare(u: string): string {
+  return u.replace(/\/$/, '').replace(/^https?:\/\//, '').replace(/^www\./, '').toLowerCase()
+}
+
+function extractInternalLinkTargets(html: string, baseUrl: string): string[] {
+  const links = html.match(/href=["']([^"'#?]*)/gi) || []
+  let baseOrigin = ''
+  try {
+    const u = new URL(baseUrl)
+    baseOrigin = `${u.protocol}//${u.host}`
+  } catch {
+    return []
+  }
+  const out: string[] = []
+  for (const link of links) {
+    const href = link.replace(/href=["']/i, '')
+    if (!href) continue
+    try {
+      const abs = href.startsWith('http') ? href : new URL(href, baseOrigin).toString()
+      if (new URL(abs).host === new URL(baseOrigin).host) out.push(abs)
+    } catch {
+      // malformed URL — skip
+    }
+  }
+  return out
+}
+
+async function checkRobotsTxt(
+  domain: string,
+): Promise<{ url: string; found: boolean; blocking: boolean }> {
+  const url = `${domain.replace(/\/$/, '')}/robots.txt`
+  try {
+    const res = await axios.get<string>(url, {
+      timeout: 5_000,
+      headers: { 'User-Agent': 'FunBreakSEO-Crawler/1.0' },
+      validateStatus: () => true,
+    })
+    if (res.status !== 200 || typeof res.data !== 'string') {
+      return { url, found: false, blocking: false }
+    }
+    const lines = res.data.split('\n').map((l) => l.trim())
+    let inWildcardBlock = false
+    let blocking = false
+    for (const line of lines) {
+      const lower = line.toLowerCase()
+      if (lower.startsWith('user-agent:')) {
+        inWildcardBlock = lower.includes('*')
+      } else if (inWildcardBlock && lower.startsWith('disallow:')) {
+        const path = line.split(':').slice(1).join(':').trim()
+        if (path === '/' ) blocking = true
+      }
+    }
+    return { url, found: true, blocking }
+  } catch {
+    return { url, found: false, blocking: false }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Data shapes
 // ---------------------------------------------------------------------------
 
@@ -105,6 +231,7 @@ interface PageData {
   loadTimeMs: number
   finalUrl: string
   redirectCount: number
+  xRobotsTagNoindex: boolean
 }
 
 interface PageAnalysis {
@@ -147,7 +274,10 @@ interface IssueRecord {
 export class CrawlerWorker extends WorkerHost {
   private readonly logger = new Logger(CrawlerWorker.name)
 
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditAggregator: AuditAggregatorService,
+  ) {
     super()
   }
 
@@ -192,7 +322,7 @@ export class CrawlerWorker extends WorkerHost {
       }
 
       // Step 1: Discover URLs
-      const urls = await this.discoverUrls(domain)
+      const { urls, sitemapFound, sitemapUrl } = await this.discoverUrls(domain)
       this.logger.log(`[Job ${job.id}] Discovered ${urls.length} URLs`)
 
       // Step 2: Crawl each URL and run SEO analysis
@@ -202,6 +332,15 @@ export class CrawlerWorker extends WorkerHost {
       let totalIssues = 0
       let pagesScanned = 0
       let cumulativeScore = 0
+
+      // On-page extras (captured from the representative/homepage page) +
+      // crawl-list data (broken links, redirect chains, orphan pages) — all
+      // feed SiteAuditReport.onPageJson / crawlListJson after the loop.
+      let onPageExtras: Record<string, unknown> | null = null
+      const linkedToUrls = new Set<string>()
+      const brokenLinks: { url: string; statusCode: number }[] = []
+      const redirectChains: { url: string; hops: number }[] = []
+      const homepageUrl = domain.replace(/\/$/, '') + '/'
 
       for (let i = 0; i < urls.length; i++) {
         const url = urls[i]
@@ -220,11 +359,46 @@ export class CrawlerWorker extends WorkerHost {
             loadTimeMs: 0,
             finalUrl: url,
             redirectCount: 0,
+            xRobotsTagNoindex: false,
           }
         }
 
         const analysis = this.analysePage(pageData)
         const issues = this.runRules(pageData, analysis, titlesSeen, metasSeen, domain)
+
+        // Crawl-list bookkeeping — cheap, safe even if pageData.html is empty.
+        if (pageData.statusCode >= 400 || pageData.statusCode === 0) {
+          brokenLinks.push({ url: pageData.url, statusCode: pageData.statusCode })
+        }
+        if (pageData.redirectCount >= 2) {
+          redirectChains.push({ url: pageData.url, hops: pageData.redirectCount })
+        }
+        if (pageData.html) {
+          for (const target of extractInternalLinkTargets(pageData.html, domain)) {
+            linkedToUrls.add(normaliseUrlForCompare(target))
+          }
+        }
+
+        // On-page extras — captured once, from the first URL (representative
+        // page; for sitemap-driven crawls that's usually the homepage).
+        if (i === 0 && pageData.html) {
+          const headingCounts = countHeadingLevels(pageData.html)
+          onPageExtras = {
+            serpPreview: { url: pageData.url, title: analysis.title, description: analysis.metaDescription },
+            headingDistribution: headingCounts,
+            h1Text: analysis.h1Text,
+            h2Texts: extractHeadingTexts(pageData.html, 2),
+            hreflang: extractHreflang(pageData.html),
+            lang: extractLangAttribute(pageData.html),
+            canonicalUrl: analysis.canonicalUrl,
+            noindexMeta: !analysis.isIndexable,
+            noindexHeader: pageData.xRobotsTagNoindex,
+            schemaTypes: extractSchemaTypes(pageData.html),
+            analytics: detectAnalytics(pageData.html),
+            wordCount: analysis.wordCount,
+            sslValid: analysis.isHttps,
+          }
+        }
 
         try {
           // Persist CrawledPage
@@ -313,7 +487,78 @@ export class CrawlerWorker extends WorkerHost {
         `[Job ${job.id}] Crawl DONE — pages=${pagesScanned}, issues=${totalIssues}, healthScore=${healthScore}`,
       )
 
-      // Step 6: Notify (Socket.io gateway would pick this up in a real setup)
+      // Step 6: On-page extras + crawl-list (broken links / redirect chains /
+      // orphan pages) + keyword consistency matrix → SiteAuditReport.onPageJson
+      // / crawlListJson. Never lets a failure here fail the whole crawl.
+      try {
+        const robots = await checkRobotsTxt(domain)
+
+        const keywords = await this.prisma.keyword.findMany({
+          where: { projectId },
+          orderBy: [{ isStarred: 'desc' }, { createdAt: 'asc' }],
+          take: 15,
+          select: { phrase: true },
+        })
+        const extras = (onPageExtras ?? {}) as any
+        const title: string = (extras.serpPreview?.title ?? '').toLowerCase()
+        const meta: string = (extras.serpPreview?.description ?? '').toLowerCase()
+        const h1: string = (extras.h1Text ?? '').toLowerCase()
+        const h2Texts: string[] = (extras.h2Texts ?? []).map((t: string) => t.toLowerCase())
+        const keywordMatrix = keywords.map((k) => {
+          const phrase = k.phrase.toLowerCase()
+          return {
+            phrase: k.phrase,
+            inTitle: title.includes(phrase),
+            inMeta: meta.includes(phrase),
+            inH1: h1.includes(phrase),
+            inH2: h2Texts.some((t) => t.includes(phrase)),
+          }
+        })
+
+        // Orphan pages only meaningful when the crawl was sitemap-driven
+        // (multiple URLs discovered) — a single-homepage fallback crawl has
+        // nothing to compare against.
+        const orphanPages =
+          sitemapFound && urls.length > 1
+            ? urls.filter(
+                (u) =>
+                  normaliseUrlForCompare(u) !== normaliseUrlForCompare(homepageUrl) &&
+                  !linkedToUrls.has(normaliseUrlForCompare(u)),
+              )
+            : []
+
+        const onPageJson = {
+          ...(onPageExtras ?? {}),
+          keywordMatrix,
+          sitemap: { found: sitemapFound, url: sitemapUrl },
+          robotsTxt: robots,
+        }
+        const crawlListJson = {
+          urls,
+          brokenLinks,
+          redirectChains,
+          orphanPages,
+        }
+
+        await this.prisma.siteAuditReport.upsert({
+          where: { crawlJobId },
+          update: { onPageJson, crawlListJson },
+          create: { crawlJobId, projectId, onPageJson, crawlListJson },
+        })
+      } catch (extrasErr: any) {
+        this.logger.warn(`[Job ${job.id}] On-page extras / crawl-list step failed: ${extrasErr.message}`)
+      }
+
+      // Step 7: Kick off the other audit modules (performance, site
+      // intelligence, GEO) and the final score/grade aggregation. Best-effort
+      // — a failure here must not flip a successfully-crawled job to FAILED.
+      try {
+        await this.auditAggregator.runPostCrawlAnalysis(projectId, crawlJobId, domain)
+      } catch (aggErr: any) {
+        this.logger.warn(`[Job ${job.id}] Post-crawl audit aggregation failed: ${aggErr.message}`)
+      }
+
+      // Step 8: Notify (Socket.io gateway would pick this up in a real setup)
       this.logger.log(
         `[Job ${job.id}] EMIT crawler:done { crawlJobId: "${crawlJobId}", projectId: "${projectId}", healthScore: ${healthScore} }`,
       )
@@ -336,7 +581,9 @@ export class CrawlerWorker extends WorkerHost {
   // URL discovery
   // -------------------------------------------------------------------------
 
-  private async discoverUrls(domain: string): Promise<string[]> {
+  private async discoverUrls(
+    domain: string,
+  ): Promise<{ urls: string[]; sitemapFound: boolean; sitemapUrl: string }> {
     const sitemapUrl = `${domain.replace(/\/$/, '')}/sitemap.xml`
     try {
       const response = await axios.get<string>(sitemapUrl, {
@@ -354,13 +601,13 @@ export class CrawlerWorker extends WorkerHost {
 
       if (urls.length > 0) {
         this.logger.log(`Sitemap found at ${sitemapUrl} — ${urls.length} URLs`)
-        return urls
+        return { urls, sitemapFound: true, sitemapUrl }
       }
     } catch (err: any) {
       this.logger.warn(`Sitemap fetch failed (${sitemapUrl}): ${err.message} — falling back to homepage`)
     }
 
-    return [domain.replace(/\/$/, '') + '/']
+    return { urls: [domain.replace(/\/$/, '') + '/'], sitemapFound: false, sitemapUrl }
   }
 
   // -------------------------------------------------------------------------
@@ -394,6 +641,7 @@ export class CrawlerWorker extends WorkerHost {
     }
 
     const loadTimeMs = Date.now() - start
+    const xRobotsTag = String(response.headers?.['x-robots-tag'] ?? '')
 
     return {
       url,
@@ -402,6 +650,7 @@ export class CrawlerWorker extends WorkerHost {
       loadTimeMs,
       finalUrl,
       redirectCount,
+      xRobotsTagNoindex: /noindex/i.test(xRobotsTag),
     }
   }
 
