@@ -4,18 +4,39 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
-import { Search, CheckCircle, AlertCircle, TrendingUp, ArrowRight } from 'lucide-react';
+import { Search, AlertCircle, TrendingUp, ArrowRight, Lock, Sparkles } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { publicApi } from '@/lib/api';
+import {
+  LetterGradeRing,
+  CategoryRingRow,
+  SerpPreview,
+  PriorityRecommendationList,
+  type CategoryRingItem,
+} from '@/components/audit';
+
+interface CategoryScore {
+  score: number;
+  grade: string;
+}
 
 interface AuditResult {
   domain: string;
   healthScore: number;
+  overallGrade: string;
+  categoryScores: {
+    onPage: CategoryScore;
+    geo: CategoryScore;
+    performance: CategoryScore;
+    usability: CategoryScore;
+    backlink: { locked: true };
+  };
   criticalIssues: Array<{ message: string; category: string }>;
   keywordIdeas: Array<{ keyword: string; volume: number }>;
   geoScore: number;
   summary: string;
+  serpPreview: { url: string; title: string; description: string } | null;
 }
 
 export default function FreeAuditPage() {
@@ -54,9 +75,23 @@ export default function FreeAuditPage() {
     }
   }
 
-  const scoreColor = result
-    ? result.healthScore >= 80 ? 'text-emerald-400' : result.healthScore >= 60 ? 'text-yellow-400' : 'text-red-400'
-    : '';
+  const categoryRingItems: CategoryRingItem[] = result
+    ? [
+        { key: 'onPage', label: t('categoryOnPage'), score: result.categoryScores.onPage.score, grade: result.categoryScores.onPage.grade },
+        { key: 'geo', label: t('categoryGeo'), score: result.categoryScores.geo.score, grade: result.categoryScores.geo.grade },
+        { key: 'performance', label: t('categoryPerformance'), score: result.categoryScores.performance.score, grade: result.categoryScores.performance.grade },
+        { key: 'usability', label: t('categoryUsability'), score: result.categoryScores.usability.score, grade: result.categoryScores.usability.grade },
+      ]
+    : [];
+
+  const upsellBullets = [
+    t('upsellRadar'),
+    t('upsellBacklink'),
+    t('upsellScreenshots'),
+    t('upsellCompetitor'),
+    t('upsellPdf'),
+    t('upsellRecommendations'),
+  ];
 
   return (
     <>
@@ -111,16 +146,51 @@ export default function FreeAuditPage() {
             <div className="space-y-6 animate-fade-in">
               {/* Score */}
               <div className="rounded-2xl border border-white/10 bg-white/2 p-6 text-center">
-                <p className="text-white/50 text-sm mb-2">{result.domain} — {t('scoreLabel')}</p>
-                <div className={`text-7xl font-bold ${scoreColor} mb-2`}>{result.healthScore}</div>
-                <div className="h-3 bg-white/10 rounded-full overflow-hidden max-w-xs mx-auto mb-3">
-                  <div
-                    className={`h-full rounded-full ${result.healthScore >= 80 ? 'bg-emerald-500' : result.healthScore >= 60 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                    style={{ width: `${result.healthScore}%` }}
+                <p className="text-white/50 text-sm mb-4">{result.domain} — {t('scoreLabel')}</p>
+                <div className="flex justify-center mb-4">
+                  <LetterGradeRing score={result.healthScore} grade={result.overallGrade} size="lg" label={t('gradeLabel')} />
+                </div>
+                <p className="text-white/60 text-sm max-w-lg mx-auto">{result.summary}</p>
+              </div>
+
+              {/* Category rings */}
+              <div className="rounded-2xl border border-white/10 bg-white/2 p-5">
+                <div className="flex flex-wrap items-start gap-3">
+                  <CategoryRingRow categories={categoryRingItems} />
+                  <div className="flex flex-shrink-0 flex-col items-center gap-2 rounded-2xl border border-white/10 bg-white/2 p-4 w-[140px] opacity-70">
+                    <div className="relative flex items-center justify-center" style={{ width: 96, height: 96 }}>
+                      <svg width={96} height={96} viewBox="0 0 96 96">
+                        <circle cx={48} cy={48} r={40} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={8} strokeDasharray="6 6" />
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Lock className="h-6 w-6 text-white/30" />
+                      </div>
+                    </div>
+                    <p className="text-xs text-white/40 text-center leading-tight">{t('categoryBacklink')}</p>
+                    <Link
+                      href={localePath('/kayit')}
+                      className="text-[10px] text-indigo-400 hover:text-indigo-300 text-center leading-tight"
+                    >
+                      {t('backlinkLockedText')}
+                    </Link>
+                  </div>
+                </div>
+                <div className="mt-4 rounded-xl border border-purple-500/20 bg-purple-500/5 px-4 py-3 text-xs text-white/60">
+                  {t('geoHint')}
+                </div>
+              </div>
+
+              {/* SERP preview */}
+              {result.serpPreview && (
+                <div className="rounded-2xl border border-white/10 bg-white/2 p-5">
+                  <h2 className="text-sm font-semibold text-white mb-3">{t('serpPreviewTitle')}</h2>
+                  <SerpPreview
+                    url={result.serpPreview.url}
+                    title={result.serpPreview.title}
+                    description={result.serpPreview.description}
                   />
                 </div>
-                <p className="text-white/60 text-sm">{result.summary}</p>
-              </div>
+              )}
 
               {/* Critical issues */}
               {result.criticalIssues.length > 0 && (
@@ -129,17 +199,18 @@ export default function FreeAuditPage() {
                     <AlertCircle className="h-4 w-4 text-red-400" />
                     {t('criticalTitle')} ({result.criticalIssues.length})
                   </h2>
-                  <ul className="space-y-2">
-                    {result.criticalIssues.slice(0, 5).map((issue, i) => (
-                      <li key={i} className="flex items-start gap-2 text-sm text-white/70">
-                        <span className="h-1.5 w-1.5 rounded-full bg-red-400 mt-2 flex-shrink-0" />
-                        <span>{issue.message} <span className="text-xs text-white/30">({issue.category})</span></span>
-                      </li>
-                    ))}
-                    {result.criticalIssues.length > 5 && (
-                      <li className="text-xs text-white/30">+{result.criticalIssues.length - 5} {t('moreIssues')}</li>
-                    )}
-                  </ul>
+                  <PriorityRecommendationList
+                    items={result.criticalIssues.slice(0, 5).map((issue, i) => ({
+                      code: `${issue.category}-${i}`,
+                      title: issue.message,
+                      category: issue.category,
+                      priority: 'MEDIUM' as const,
+                      howToFix: '',
+                    }))}
+                  />
+                  {result.criticalIssues.length > 5 && (
+                    <p className="text-xs text-white/30 mt-2">+{result.criticalIssues.length - 5} {t('moreIssues')}</p>
+                  )}
                 </div>
               )}
 
@@ -161,18 +232,20 @@ export default function FreeAuditPage() {
                 </div>
               )}
 
-              {/* GEO teaser */}
-              <div className="rounded-2xl border border-purple-500/20 bg-purple-500/5 p-5">
-                <h2 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
-                  <span className="text-purple-400">{t('geoTitle')}</span>
-                  <span className="text-purple-400 font-bold">{result.geoScore}/100</span>
+              {/* Premium upsell */}
+              <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-5">
+                <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-indigo-400" />
+                  {t('upsellTitle')}
                 </h2>
-                <p className="text-xs text-white/50 mb-3">
-                  {t('geoHint')}
-                </p>
-                <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                  <div className="h-full rounded-full bg-purple-500" style={{ width: `${result.geoScore}%` }} />
-                </div>
+                <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {upsellBullets.map((bullet, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-white/70">
+                      <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 mt-2 flex-shrink-0" />
+                      <span>{bullet}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
 
               {/* CTA */}

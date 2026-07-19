@@ -5,9 +5,93 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations, useLocale } from 'next-intl';
 import { useParams } from 'next/navigation';
 import { RefreshCw } from 'lucide-react';
-import { outreachApi } from '@/lib/api';
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+} from 'recharts';
+import { outreachApi, backlinkApi } from '@/lib/api';
+import { GaugeHalfCircle, DonutChart, InfoTooltip, AccordionSection } from '@/components/audit';
 
 type Tab = 'profile' | 'market' | 'orders';
+
+interface GaugesResponse {
+  domainStrength: number;
+  pageStrength: number;
+  counters: {
+    total: number;
+    referringDomains: number;
+    dofollow: number;
+    nofollow: number;
+    edu: number;
+    gov: number;
+    ipCount: number;
+    subnetCount: number;
+  };
+}
+
+interface TopBacklinkItem {
+  domainRating: number;
+  sourceUrl: string;
+  sourceTitle: string;
+  anchorText: string;
+  isDofollow: boolean;
+  sourceDomain: string;
+}
+
+interface TopPageItem {
+  url: string;
+  backlinkCount: number;
+}
+
+interface AnchorItem {
+  anchor: string;
+  count: number;
+}
+
+interface GeographyResponse {
+  byTld: { tld: string; count: number }[];
+  byCountry: { country: string; count: number }[];
+}
+
+interface LinkSplitResponse {
+  internalLinks: number | null;
+  externalDofollow: number | null;
+  externalNofollow: number | null;
+  note?: string;
+}
+
+interface ToxicBacklinkItem {
+  id?: string;
+  sourceDomain?: string;
+  sourceUrl?: string;
+  anchorText?: string;
+  toxicScore: number;
+  domainRating: number;
+  disavowRecommended: true;
+}
+
+interface VelocityPoint {
+  date: string;
+  totalBacklinks: number;
+  referringDomains: number;
+  newBacklinks: number;
+  lostBacklinks: number;
+}
+
+function drColorClass(dr: number | null | undefined): string {
+  if (dr == null) return 'text-white/30';
+  if (dr >= 70) return 'text-emerald-400';
+  if (dr >= 50) return 'text-green-400';
+  if (dr >= 30) return 'text-yellow-400';
+  return 'text-red-400';
+}
+
+const CHART_TOOLTIP_STYLE = {
+  background: '#111118',
+  border: '1px solid rgba(255,255,255,0.1)',
+  borderRadius: '8px',
+  color: '#fff',
+  fontSize: 12,
+};
 
 export default function BacklinksPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -17,6 +101,7 @@ export default function BacklinksPage() {
 
   const queryClient = useQueryClient();
   const [blFilter, setBlFilter] = useState<'all' | 'dofollow' | 'nofollow'>('all');
+  const [syncErrorMsg, setSyncErrorMsg] = useState<string | null>(null);
 
   const { data: backlinkData, isLoading } = useQuery({
     queryKey: ['backlinks', projectId],
@@ -30,9 +115,72 @@ export default function BacklinksPage() {
   const backlinks = backlinkData?.items as Array<{ id: string; sourceDomain: string; targetUrl: string; domainRating: number; anchorText: string; isDofollow: boolean; status: string }> | undefined;
   const summary = backlinkData?.summary as { total: number; referringDomains: number; dofollow: number; avgDR: number } | null | undefined;
 
+  const { data: gauges, isLoading: gaugesLoading } = useQuery({
+    queryKey: ['backlink-gauges', projectId],
+    queryFn: () => backlinkApi.gauges(projectId).then((r) => r.data as GaugesResponse),
+    enabled: tab === 'profile',
+  });
+
+  const { data: topBacklinks } = useQuery({
+    queryKey: ['backlink-top', projectId],
+    queryFn: () => backlinkApi.top(projectId, 15).then((r) => (Array.isArray(r.data) ? r.data : r.data?.data ?? []) as TopBacklinkItem[]),
+    enabled: tab === 'profile',
+  });
+
+  const { data: topPages } = useQuery({
+    queryKey: ['backlink-top-pages', projectId],
+    queryFn: () => backlinkApi.topPages(projectId).then((r) => (Array.isArray(r.data) ? r.data : r.data?.data ?? []) as TopPageItem[]),
+    enabled: tab === 'profile',
+  });
+
+  const { data: anchors } = useQuery({
+    queryKey: ['backlink-anchors', projectId],
+    queryFn: () => backlinkApi.anchors(projectId).then((r) => (Array.isArray(r.data) ? r.data : r.data?.data ?? []) as AnchorItem[]),
+    enabled: tab === 'profile',
+  });
+
+  const { data: geography } = useQuery({
+    queryKey: ['backlink-geography', projectId],
+    queryFn: () => backlinkApi.geography(projectId).then((r) => r.data as GeographyResponse),
+    enabled: tab === 'profile',
+  });
+
+  const { data: linkSplit } = useQuery({
+    queryKey: ['backlink-link-split', projectId],
+    queryFn: () => backlinkApi.linkSplit(projectId).then((r) => r.data as LinkSplitResponse),
+    enabled: tab === 'profile',
+  });
+
+  const { data: toxic } = useQuery({
+    queryKey: ['backlink-toxic', projectId],
+    queryFn: () => backlinkApi.toxic(projectId).then((r) => (Array.isArray(r.data) ? r.data : r.data?.data ?? []) as ToxicBacklinkItem[]),
+    enabled: tab === 'profile',
+  });
+
+  const { data: velocity } = useQuery({
+    queryKey: ['backlink-velocity', projectId],
+    queryFn: () => backlinkApi.velocity(projectId).then((r) => (Array.isArray(r.data) ? r.data : r.data?.data ?? []) as VelocityPoint[]),
+    enabled: tab === 'profile',
+  });
+
   const syncMutation = useMutation({
     mutationFn: () => outreachApi.syncBacklinks(projectId).then(r => r.data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['backlinks', projectId] }),
+    onSuccess: () => {
+      setSyncErrorMsg(null);
+      queryClient.invalidateQueries({ queryKey: ['backlinks', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['backlink-gauges', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['backlink-top', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['backlink-top-pages', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['backlink-anchors', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['backlink-geography', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['backlink-link-split', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['backlink-toxic', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['backlink-velocity', projectId] });
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? '';
+      setSyncErrorMsg(msg.startsWith('LIMIT_REACHED') ? t('syncLimitReached') : t('syncError'));
+    },
   });
 
   const { data: market, isLoading: marketLoading } = useQuery({
@@ -57,10 +205,10 @@ export default function BacklinksPage() {
     <div className="p-6 space-y-6">
       <h1 className="text-2xl font-bold text-white">{t('title')}</h1>
       <div className="flex gap-1 border-b border-white/10">
-        {tabs.map((t) => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-            className={['flex items-center px-4 py-2.5 text-sm font-medium border-b-2 transition-colors', tab === t.id ? 'border-indigo-500 text-white' : 'border-transparent text-white/50 hover:text-white'].join(' ')}>
-            {t.label}
+        {tabs.map((tItem) => (
+          <button key={tItem.id} onClick={() => setTab(tItem.id)}
+            className={['flex items-center px-4 py-2.5 text-sm font-medium border-b-2 transition-colors', tab === tItem.id ? 'border-indigo-500 text-white' : 'border-transparent text-white/50 hover:text-white'].join(' ')}>
+            {tItem.label}
           </button>
         ))}
       </div>
@@ -122,6 +270,11 @@ export default function BacklinksPage() {
           )}
           {/* Sync status message (no duplicate count — the cards above are the
               single source of truth, so the number never flips on reload). */}
+          {syncErrorMsg && (
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-sm text-amber-400">
+              {syncErrorMsg}
+            </div>
+          )}
           {syncMutation.data && (
             syncMutation.data.error === 'SUBSCRIPTION_REQUIRED' ? (
               <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-sm text-amber-400">
@@ -137,6 +290,63 @@ export default function BacklinksPage() {
               </div>
             )
           )}
+
+          {/* Domain / Page Strength gauges */}
+          <AccordionSection title={t('gaugesTitle')} defaultOpen>
+            {gaugesLoading ? (
+              <div className="h-40 flex items-center justify-center text-white/30 text-sm animate-pulse">…</div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 place-items-center py-2">
+                <div className="relative flex flex-col items-center">
+                  <span className="absolute top-0 right-0"><InfoTooltip text={t('domainStrengthTooltip')} /></span>
+                  <GaugeHalfCircle
+                    value={gauges?.domainStrength ?? 0}
+                    label={t('domainStrengthLabel')}
+                    thresholds={{ good: 70, warn: 40 }}
+                    size="lg"
+                  />
+                </div>
+                <div className="relative flex flex-col items-center">
+                  <span className="absolute top-0 right-0"><InfoTooltip text={t('pageStrengthTooltip')} /></span>
+                  <GaugeHalfCircle
+                    value={gauges?.pageStrength ?? 0}
+                    label={t('pageStrengthLabel')}
+                    thresholds={{ good: 70, warn: 40 }}
+                    size="lg"
+                  />
+                </div>
+              </div>
+            )}
+          </AccordionSection>
+
+          {/* Counters grid */}
+          <AccordionSection title={t('countersTitle')} defaultOpen>
+            {gauges?.counters ? (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                  { label: t('counterTotal'), value: gauges.counters.total },
+                  { label: t('counterReferringDomains'), value: gauges.counters.referringDomains },
+                  { label: t('counterDofollow'), value: gauges.counters.dofollow },
+                  { label: t('counterNofollow'), value: gauges.counters.nofollow },
+                  { label: t('counterEdu'), value: gauges.counters.edu },
+                  { label: t('counterGov'), value: gauges.counters.gov },
+                  { label: t('counterIpCount'), value: gauges.counters.ipCount, tooltip: t('counterIpTooltip') },
+                  { label: t('counterSubnetCount'), value: gauges.counters.subnetCount, tooltip: t('counterSubnetTooltip') },
+                ].map((c) => (
+                  <div key={c.label} className="rounded-2xl border border-white/10 bg-white/2 p-4 text-center">
+                    <div className="text-2xl font-bold text-white">{(c.value ?? 0).toLocaleString()}</div>
+                    <div className="text-xs text-white/40 mt-0.5 flex items-center justify-center gap-1">
+                      {c.label}
+                      {c.tooltip && <InfoTooltip text={c.tooltip} />}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-white/30 text-center py-6">{t('noBacklinks')}</p>
+            )}
+          </AccordionSection>
+
           {/* Category filter — show all by default, drill into dofollow/nofollow */}
           {(backlinks?.length ?? 0) > 0 && (
             <div className="flex items-center gap-2">
@@ -185,12 +395,7 @@ export default function BacklinksPage() {
                       </td>
                       <td className="px-4 py-3 font-bold" title="DR (Domain Rating, 0-100): Bağlantıyı veren sitenin otoritesi. 0-30 düşük, 30-50 orta, 50-70 güçlü, 70+ elit.">
                         {bl.domainRating != null ? (
-                          <span className={
-                            bl.domainRating >= 70 ? 'text-emerald-400'
-                            : bl.domainRating >= 50 ? 'text-green-400'
-                            : bl.domainRating >= 30 ? 'text-yellow-400'
-                            : 'text-red-400'
-                          }>{bl.domainRating}</span>
+                          <span className={drColorClass(bl.domainRating)}>{bl.domainRating}</span>
                         ) : <span className="text-white/30">—</span>}
                       </td>
                       <td className="px-4 py-3">
@@ -204,6 +409,166 @@ export default function BacklinksPage() {
               </table>
             </div>
           )}
+
+          {/* Top backlinks */}
+          <AccordionSection title={t('topBacklinksTitle')}>
+            {!topBacklinks || topBacklinks.length === 0 ? (
+              <p className="text-sm text-white/30 text-center py-6">{t('noTopBacklinks')}</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-white/10">
+                      {[t('colDR'), t('colSourceUrl'), t('colSourceTitle'), t('colAnchor'), t('colType')].map((h) => (
+                        <th key={h} className="text-left px-3 py-2 text-xs font-medium text-white/40">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {topBacklinks.map((b, i) => (
+                      <tr key={i} className="border-b border-white/5 hover:bg-white/2 align-top">
+                        <td className="px-3 py-2 font-bold"><span className={drColorClass(b.domainRating)}>{b.domainRating ?? '—'}</span></td>
+                        <td className="px-3 py-2 text-white/60 text-xs max-w-[220px] break-all">{b.sourceUrl}</td>
+                        <td className="px-3 py-2 text-white/50 text-xs max-w-[200px] break-words whitespace-normal">{b.sourceTitle || '—'}</td>
+                        <td className="px-3 py-2 text-white/70 text-xs max-w-[200px] break-words whitespace-normal">{b.anchorText || '—'}</td>
+                        <td className="px-3 py-2">
+                          <span className={['text-xs px-2 py-0.5 rounded-full font-medium', b.isDofollow ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/10 text-white/50'].join(' ')}>
+                            {b.isDofollow ? 'Dofollow' : 'Nofollow'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </AccordionSection>
+
+          {/* Top linked pages */}
+          <AccordionSection title={t('topPagesTitle')}>
+            {!topPages || topPages.length === 0 ? (
+              <p className="text-sm text-white/30 text-center py-6">{t('noTopPages')}</p>
+            ) : (
+              <div className="space-y-2">
+                {(() => {
+                  const max = Math.max(...topPages.map((p) => p.backlinkCount), 1);
+                  return topPages.map((p, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <span className="text-xs text-white/60 truncate flex-1" title={p.url}>{p.url}</span>
+                      <div className="h-2 bg-white/5 rounded-full overflow-hidden w-32 flex-shrink-0">
+                        <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${(p.backlinkCount / max) * 100}%` }} />
+                      </div>
+                      <span className="text-xs text-white/70 font-semibold w-10 text-right flex-shrink-0">{p.backlinkCount}</span>
+                    </div>
+                  ));
+                })()}
+              </div>
+            )}
+          </AccordionSection>
+
+          {/* Top anchor texts */}
+          <AccordionSection title={t('anchorsTitle')}>
+            {!anchors || anchors.length === 0 ? (
+              <p className="text-sm text-white/30 text-center py-6">{t('noAnchors')}</p>
+            ) : (
+              <div className="space-y-2">
+                {(() => {
+                  const max = Math.max(...anchors.map((a) => a.count), 1);
+                  return anchors.map((a, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <span className="text-xs text-white/60 truncate flex-1" title={a.anchor}>{a.anchor || '—'}</span>
+                      <div className="h-2 bg-white/5 rounded-full overflow-hidden w-32 flex-shrink-0">
+                        <div className="h-full bg-purple-500 rounded-full" style={{ width: `${(a.count / max) * 100}%` }} />
+                      </div>
+                      <span className="text-xs text-white/70 font-semibold w-10 text-right flex-shrink-0">{a.count}</span>
+                    </div>
+                  ));
+                })()}
+              </div>
+            )}
+          </AccordionSection>
+
+          {/* Geography */}
+          <AccordionSection title={t('geographyTitle')}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <p className="text-xs text-white/50 mb-2">{t('tldDistribution')}</p>
+                <DonutChart data={(geography?.byTld ?? []).map((x) => ({ label: x.tld, value: x.count }))} size="sm" />
+              </div>
+              <div>
+                <p className="text-xs text-white/50 mb-2">{t('countryDistribution')}</p>
+                {geography?.byCountry && geography.byCountry.length > 0 ? (
+                  <DonutChart data={geography.byCountry.map((x) => ({ label: x.country, value: x.count }))} size="sm" />
+                ) : (
+                  <div className="rounded-2xl border border-white/10 bg-white/2 p-8 text-center text-white/30 text-sm">
+                    {t('noCountryData')}
+                  </div>
+                )}
+              </div>
+            </div>
+          </AccordionSection>
+
+          {/* Link split */}
+          <AccordionSection title={t('linkSplitTitle')}>
+            {linkSplit && linkSplit.internalLinks == null && linkSplit.externalDofollow == null && linkSplit.externalNofollow == null ? (
+              <div className="rounded-2xl border border-white/10 bg-white/2 p-6 text-center text-white/40 text-sm">
+                {t('linkSplitHint')}
+              </div>
+            ) : (
+              <DonutChart
+                data={[
+                  { label: t('internalLinks'), value: linkSplit?.internalLinks ?? 0 },
+                  { label: t('externalDofollow'), value: linkSplit?.externalDofollow ?? 0 },
+                  { label: t('externalNofollow'), value: linkSplit?.externalNofollow ?? 0 },
+                ]}
+                size="sm"
+              />
+            )}
+          </AccordionSection>
+
+          {/* Toxic backlinks */}
+          <AccordionSection title={t('toxicTitle')}>
+            {!toxic || toxic.length === 0 ? (
+              <p className="text-sm text-white/30 text-center py-6">{t('noToxic')}</p>
+            ) : (
+              <div className="space-y-2">
+                {toxic.map((tb, i) => (
+                  <div key={tb.id ?? i} className="flex items-center justify-between gap-3 rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 flex-wrap">
+                    <div className="min-w-0">
+                      <p className="text-sm text-white font-medium truncate">{tb.sourceDomain || tb.sourceUrl}</p>
+                      <p className="text-xs text-white/40 truncate">{tb.anchorText || '—'}</p>
+                    </div>
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <span className="text-xs text-white/50 flex items-center gap-1">
+                        {t('toxicScoreLabel')}: <span className="text-red-400 font-bold">{tb.toxicScore}</span>
+                        <InfoTooltip text={t('toxicScoreTooltip')} />
+                      </span>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 font-medium">{t('disavowRecommended')}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </AccordionSection>
+
+          {/* Link velocity */}
+          <AccordionSection title={t('velocityTitle')}>
+            {!velocity || velocity.length === 0 ? (
+              <div className="h-48 flex items-center justify-center text-white/30 text-sm">{t('noVelocityData')}</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={220}>
+                <LineChart data={velocity}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <XAxis dataKey="date" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} tickFormatter={(v) => String(v).slice(5)} />
+                  <YAxis allowDecimals={false} tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} />
+                  <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Line type="monotone" dataKey="newBacklinks" stroke="#0ca30c" strokeWidth={2} dot={{ r: 2 }} name={t('newBacklinksLabel')} />
+                  <Line type="monotone" dataKey="lostBacklinks" stroke="#d03b3b" strokeWidth={2} dot={{ r: 2 }} name={t('lostBacklinksLabel')} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </AccordionSection>
         </div>
       )}
 
