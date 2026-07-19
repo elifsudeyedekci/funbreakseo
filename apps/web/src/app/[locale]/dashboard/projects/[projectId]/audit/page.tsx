@@ -22,6 +22,7 @@ import {
 import {
   OnPageSection,
   GeoSection,
+  BacklinkSummarySection,
   PerformanceSection,
   UsabilitySection,
   SocialSection,
@@ -335,6 +336,10 @@ export default function AuditPage() {
 
             <AccordionSection title="GEO / AI Görünürlük">
               <GeoSection data={report.geoJson} aiOverviewTracking={isPremium ? aiOverview : undefined} />
+            </AccordionSection>
+
+            <AccordionSection title="Backlink Özeti">
+              <BacklinkSummarySection projectId={projectId} />
             </AccordionSection>
 
             <AccordionSection title="Performans">

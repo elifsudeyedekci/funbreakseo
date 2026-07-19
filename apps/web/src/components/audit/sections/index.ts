@@ -25,5 +25,8 @@ export type { LocalSeoSectionProps, LocalSeoJson } from './LocalSeoSection';
 export { CrawlListSection } from './CrawlListSection';
 export type { CrawlListSectionProps, CrawlListJson, CrawledPageRow } from './CrawlListSection';
 
+export { BacklinkSummarySection } from './BacklinkSummarySection';
+export type { BacklinkSummarySectionProps } from './BacklinkSummarySection';
+
 export { CompetitorCompareSection } from './CompetitorCompareSection';
 export type { CompetitorCompareSectionProps } from './CompetitorCompareSection';
