@@ -86,3 +86,44 @@ export function calcOpportunityScore(volume: number, difficulty: number, intent:
   const weight = intentWeight[intent as keyof typeof intentWeight] || 1.0;
   return Math.round((volume * (100 - difficulty) * weight) / 1000);
 }
+
+// ---------------------------------------------------------------------------
+// Site-audit scoring — shared by the post-crawl aggregator, the competitor
+// comparison endpoint, and the free-analysis preview so all three agree on
+// what a "score" and a "grade" mean.
+// ---------------------------------------------------------------------------
+
+import type { CategoryScore } from '../types';
+import { scoreToLetterGrade } from '../types';
+
+export function toCategoryScore(raw: number): CategoryScore {
+  const score = Math.max(0, Math.min(100, Math.round(raw)));
+  return { score, grade: scoreToLetterGrade(score) };
+}
+
+/** 100 minus a weighted penalty per recommendation priority — used when no direct 0-100 score exists for a category. */
+export function penaltyScore(recs: { priority: 'CRITICAL' | 'MEDIUM' | 'LOW' }[]): number {
+  let score = 100;
+  for (const r of recs) {
+    if (r.priority === 'CRITICAL') score -= 8;
+    else if (r.priority === 'MEDIUM') score -= 4;
+    else score -= 1;
+  }
+  return Math.max(0, score);
+}
+
+export function weightedOverallScore(categoryScores: {
+  onPage: CategoryScore;
+  geo: CategoryScore;
+  backlink: CategoryScore;
+  usability: CategoryScore;
+  performance: CategoryScore;
+}): number {
+  return Math.round(
+    categoryScores.onPage.score * 0.25 +
+      categoryScores.geo.score * 0.15 +
+      categoryScores.backlink.score * 0.2 +
+      categoryScores.usability.score * 0.2 +
+      categoryScores.performance.score * 0.2,
+  );
+}

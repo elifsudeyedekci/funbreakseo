@@ -4,6 +4,7 @@ import { PrismaService } from '../../prisma.service';
 import { EmailService } from '../email-notification/email.service';
 import { ConfigService } from '@nestjs/config';
 import { DataForSeoService } from '../dataforseo/dataforseo.service';
+import { scoreToLetterGrade } from '@funbreakseo/shared';
 
 @Injectable()
 export class PublicService {
@@ -167,10 +168,13 @@ export class PublicService {
       return {
         domain,
         healthScore: 0,
+        overallGrade: 'F-',
+        categoryScores: this.emptyCategoryScores(),
         criticalIssues: [{ message: 'Geçerli bir alan adı girin (örn. example.com)', category: 'TECHNICAL' }],
         keywordIdeas: [],
         geoScore: 0,
         summary: 'Geçersiz alan adı.',
+        serpPreview: null,
       };
     }
 
@@ -191,6 +195,16 @@ export class PublicService {
     }
 
     return result;
+  }
+
+  private emptyCategoryScores() {
+    return {
+      onPage: { score: 0, grade: 'F-' },
+      geo: { score: 0, grade: 'F-' },
+      performance: { score: 0, grade: 'F-' },
+      usability: { score: 0, grade: 'F-' },
+      backlink: { locked: true },
+    };
   }
 
   /**
@@ -237,12 +251,15 @@ export class PublicService {
         return {
           domain,
           healthScore: 0,
+          overallGrade: 'F-',
+          categoryScores: this.emptyCategoryScores(),
           criticalIssues: [
             { message: 'Siteye erişilemedi — sunucu yanıt vermiyor veya alan adı hatalı', category: 'TECHNICAL' },
           ],
           keywordIdeas: [],
           geoScore: 0,
           summary: 'Siteye erişilemedi. Alan adını kontrol edip tekrar deneyin.',
+          serpPreview: null,
         };
       }
     }
@@ -289,7 +306,8 @@ export class PublicService {
     }
 
     // Viewport (mobil)
-    if (!/name=["']viewport["']/i.test(html)) {
+    const hasViewport = /name=["']viewport["']/i.test(html);
+    if (!hasViewport) {
       criticalIssues.push({ message: 'Viewport meta etiketi yok — mobil uyum sorunu', category: 'MOBILE' });
       score -= 8;
     }
@@ -392,7 +410,34 @@ export class PublicService {
           ? 'Sitenizde iyileştirilebilecek önemli SEO fırsatları var. Sorunları giderirseniz sıralamanız yükselebilir.'
           : 'Sitenizde kritik SEO sorunları var. Bu sorunlar görünürlüğünüzü ciddi şekilde sınırlıyor.';
 
-    return { domain, healthScore, criticalIssues, keywordIdeas, geoScore, summary };
+    // Lightweight category rings — derived ONLY from signals already gathered
+    // above (no extra network calls) so the free/anonymous endpoint's latency
+    // and DataForSEO cost stay exactly what they were before. Backlinks need
+    // a real DataForSEO lookup we deliberately don't run on an anonymous,
+    // rate-limited route — the ring is returned locked instead of faked.
+    const performanceScore =
+      loadTimeMs === 0 ? 50 : loadTimeMs < 1000 ? 95 : loadTimeMs < 2000 ? 85 : loadTimeMs < 3000 ? 70 : loadTimeMs < 5000 ? 50 : 30;
+    const usabilityScore = (hasViewport ? 70 : 30) + (imgsWithoutAlt === 0 ? 15 : 0) + (hasSchema ? 15 : 0);
+
+    const categoryScores = {
+      onPage: { score: healthScore, grade: scoreToLetterGrade(healthScore) },
+      geo: { score: geoScore, grade: scoreToLetterGrade(geoScore) },
+      performance: { score: performanceScore, grade: scoreToLetterGrade(performanceScore) },
+      usability: { score: Math.min(100, usabilityScore), grade: scoreToLetterGrade(Math.min(100, usabilityScore)) },
+      backlink: { locked: true },
+    };
+
+    return {
+      domain,
+      healthScore,
+      overallGrade: scoreToLetterGrade(healthScore),
+      categoryScores,
+      criticalIssues,
+      keywordIdeas,
+      geoScore,
+      summary,
+      serpPreview: { url: `https://${domain}`, title: title || domain, description: description || '' },
+    };
   }
 
   async getTestimonials(locale?: string) {
