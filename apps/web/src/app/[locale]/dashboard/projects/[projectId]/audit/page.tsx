@@ -176,7 +176,7 @@ export default function AuditPage() {
   // every 3s even while the full report payload only refetches every 4s.
   const { data: scanStatus } = useQuery({
     queryKey: ['scan-status', projectId],
-    queryFn: () => crawlerApi.scanStatus(projectId).then((r) => r.data as { progress: number; step: string; status: string }),
+    queryFn: () => crawlerApi.scanStatus(projectId).then((r) => r.data as { progress: number; step: string; stepKey: string; status: string }),
     refetchInterval: (query) => {
       const s = query.state.data?.status;
       return s === 'RUNNING' || s === 'PENDING' ? 3000 : false;
@@ -341,6 +341,7 @@ export default function AuditPage() {
         visible={overlayVisible}
         progress={scanStatus?.progress ?? 3}
         step={scanStatus?.step ?? RUNNING_MESSAGES[msgIndex]}
+        stepKey={scanStatus?.stepKey ?? 'crawl'}
         phase={overlayPhase}
       />
 

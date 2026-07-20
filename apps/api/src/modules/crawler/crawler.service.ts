@@ -128,45 +128,57 @@ export class CrawlerService {
     }
   }
 
-  private static readonly STEP_LABELS: Record<string, string> = {
-    crawl: 'Sayfalar taranıyor',
-    analyzing: 'Performans, GEO ve backlink analiz ediliyor',
+  /**
+   * Ordered post-crawl analysis sub-steps — matches the keys AuditAggregatorService
+   * writes to CrawlJob.currentStep as it works through each module sequentially
+   * (see audit-aggregator.service.ts). Keeping the key + label + progress% together
+   * here means the frontend stepper (ScanProgressOverlay) only needs `stepKey` to
+   * render a checklist — no fragile guessing from the label text.
+   */
+  private static readonly STEP_LABELS: Record<string, { label: string; progress: number }> = {
+    crawl: { label: 'Sayfalar taranıyor', progress: 0 },
+    'analyzing:performance': { label: 'Performans ölçülüyor (PageSpeed, Core Web Vitals)', progress: 78 },
+    'analyzing:technology': { label: 'Teknoloji ve domain bilgileri taranıyor', progress: 85 },
+    'analyzing:geo': { label: 'GEO / AI görünürlüğü analiz ediliyor', progress: 90 },
+    'analyzing:backlink': { label: 'Backlink verileri senkronize ediliyor', progress: 95 },
+    'analyzing:finalize': { label: 'Sonuçlar birleştiriliyor', progress: 98 },
   }
 
   /**
    * Lightweight, frequently-polled progress signal for the audit page's live
    * progress bar — separate from getLatestAudit() (which returns the full
    * report and is heavier). Progress during the 'crawl' phase is a real
-   * pagesScanned/totalPagesQueued ratio (weighted to 75% of the bar); the
-   * 'analyzing' phase (performance/site-intel/GEO, run in parallel — no
-   * per-item count to report) holds at a fixed 85% plateau rather than
-   * faking finer-grained movement.
+   * pagesScanned/totalPagesQueued ratio (weighted to 70% of the bar); each
+   * post-crawl module now runs sequentially and writes its own currentStep
+   * key, so the analyzing phase advances step by step instead of sitting on
+   * a fixed plateau.
    */
-  async getScanStatus(projectId: string): Promise<{ progress: number; step: string; status: CrawlJobStatus; crawlJobId: string | null }> {
+  async getScanStatus(projectId: string): Promise<{ progress: number; step: string; stepKey: string; status: CrawlJobStatus; crawlJobId: string | null }> {
     const latest = await this.prisma.crawlJob.findFirst({
       where: { projectId },
       orderBy: { createdAt: 'desc' },
       select: { id: true, status: true, currentStep: true, pagesScanned: true, totalPagesQueued: true },
     })
-    if (!latest) return { progress: 0, step: 'Henüz taranmadı', status: CrawlJobStatus.QUEUED, crawlJobId: null }
+    if (!latest) return { progress: 0, step: 'Henüz taranmadı', stepKey: 'none', status: CrawlJobStatus.QUEUED, crawlJobId: null }
 
     if (latest.status === CrawlJobStatus.DONE) {
-      return { progress: 100, step: 'Tamamlandı', status: latest.status, crawlJobId: latest.id }
+      return { progress: 100, step: 'Tamamlandı', stepKey: 'done', status: latest.status, crawlJobId: latest.id }
     }
     if (latest.status === CrawlJobStatus.FAILED) {
-      return { progress: 100, step: 'Hata oluştu', status: latest.status, crawlJobId: latest.id }
+      return { progress: 100, step: 'Hata oluştu', stepKey: 'failed', status: latest.status, crawlJobId: latest.id }
     }
 
-    if (latest.currentStep === 'analyzing') {
-      return { progress: 85, step: CrawlerService.STEP_LABELS.analyzing, status: latest.status, crawlJobId: latest.id }
+    if (latest.currentStep && latest.currentStep.startsWith('analyzing:')) {
+      const meta = CrawlerService.STEP_LABELS[latest.currentStep] ?? CrawlerService.STEP_LABELS['analyzing:finalize']
+      return { progress: meta.progress, step: meta.label, stepKey: latest.currentStep, status: latest.status, crawlJobId: latest.id }
     }
 
     const total = latest.totalPagesQueued
     const scanned = latest.pagesScanned ?? 0
     const pagePercent = total ? Math.min(100, Math.round((scanned / total) * 100)) : 0
-    const progress = total ? Math.min(75, Math.round(pagePercent * 0.75)) : 5
-    const step = total ? `${CrawlerService.STEP_LABELS.crawl} (${scanned}/${total})` : CrawlerService.STEP_LABELS.crawl
-    return { progress, step, status: latest.status, crawlJobId: latest.id }
+    const progress = total ? Math.min(70, Math.round(pagePercent * 0.7)) : 5
+    const step = total ? `${CrawlerService.STEP_LABELS.crawl.label} (${scanned}/${total})` : CrawlerService.STEP_LABELS.crawl.label
+    return { progress, step, stepKey: 'crawl', status: latest.status, crawlJobId: latest.id }
   }
 
   async getCrawlHistory(projectId: string) {

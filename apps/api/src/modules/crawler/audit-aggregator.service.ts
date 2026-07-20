@@ -30,19 +30,62 @@ export class AuditAggregatorService {
     private readonly outreach: OutreachService,
   ) {}
 
+  /**
+   * Runs sequentially (not Promise.all) so CrawlJob.currentStep can advance
+   * one real step at a time — the audit page's progress overlay polls this
+   * field to render a step-by-step checklist instead of a single "analyzing"
+   * plateau. Each module is still best-effort: one failing must never stop
+   * the rest or fail the overall crawl.
+   */
   async runPostCrawlAnalysis(projectId: string, crawlJobId: string, domain: string): Promise<void> {
-    const results = await Promise.allSettled([
-      this.performance.analyzeAndPersist(projectId, crawlJobId, domain),
-      this.siteIntel.analyzeAndPersist(projectId, crawlJobId, domain),
-      this.geoAudit.analyzeAndPersistGeoAudit(projectId, crawlJobId, domain),
-    ])
-    const labels = ['performance', 'site-intel', 'geo-audit']
-    results.forEach((r, i) => {
-      if (r.status === 'rejected') {
-        this.logger.warn(`[${labels[i]}] analyzeAndPersist failed: ${r.reason?.message ?? r.reason}`)
+    const setStep = async (step: string) => {
+      try {
+        await this.prisma.crawlJob.update({ where: { id: crawlJobId }, data: { currentStep: step } })
+      } catch {
+        // best-effort — a missed step label just means the overlay lags one step behind
       }
-    })
+    }
 
+    await setStep('analyzing:performance')
+    try {
+      await this.performance.analyzeAndPersist(projectId, crawlJobId, domain)
+    } catch (e) {
+      this.logger.warn(`[performance] analyzeAndPersist failed: ${(e as Error).message}`)
+    }
+
+    await setStep('analyzing:technology')
+    try {
+      await this.siteIntel.analyzeAndPersist(projectId, crawlJobId, domain)
+    } catch (e) {
+      this.logger.warn(`[site-intel] analyzeAndPersist failed: ${(e as Error).message}`)
+    }
+
+    await setStep('analyzing:geo')
+    try {
+      await this.geoAudit.analyzeAndPersistGeoAudit(projectId, crawlJobId, domain)
+    } catch (e) {
+      this.logger.warn(`[geo-audit] analyzeAndPersist failed: ${(e as Error).message}`)
+    }
+
+    // First-scan-only backlink sync: a brand-new project with zero backlinks
+    // synced yet would otherwise show an empty backlink section right after
+    // signup, which reads as "broken" rather than "no data collected yet".
+    // Projects that already have backlinks keep using the plan-limited
+    // manual sync button on the backlinks page — auto-resyncing on every
+    // single full scan would burn through the DataForSEO quota for nothing,
+    // and competitor backlink lookups stay a separate, user-triggered action
+    // on the competitors page (not part of this pipeline at all).
+    try {
+      const existingBacklinks = await this.prisma.backlink.count({ where: { projectId } })
+      if (existingBacklinks === 0) {
+        await setStep('analyzing:backlink')
+        await this.outreach.syncBacklinks(projectId)
+      }
+    } catch (e) {
+      this.logger.warn(`[backlink] first-scan sync failed: ${(e as Error).message}`)
+    }
+
+    await setStep('analyzing:finalize')
     await this.finalize(projectId, crawlJobId)
   }
 

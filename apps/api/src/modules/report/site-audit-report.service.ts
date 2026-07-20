@@ -331,6 +331,29 @@ function kpiCard(label: string, value: string, opts: { accent?: 'blue' | 'green'
   return `<div class="kpi kpi-${accent}"><div class="label">${escapeHtml(label)}</div><div class="value">${value}</div>${opts.delta ? `<div class="delta">${opts.delta}</div>` : ''}</div>`;
 }
 
+type IconKind = 'summary' | 'recs' | 'onpage' | 'shots' | 'backlink' | 'performance' | 'geo' | 'social' | 'tech' | 'local' | 'ga4' | 'gsc';
+
+const ICON_PATHS: Record<IconKind, { color: string; paths: string }> = {
+  summary: { color: '#1d4ed8', paths: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4" fill="#1d4ed8" stroke="none"/>' },
+  recs: { color: '#f59e0b', paths: '<path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.5c.7.7 1 1.6 1 2.5h6c0-.9.3-1.8 1-2.5A7 7 0 0 0 12 2Z"/>' },
+  onpage: { color: '#1d4ed8', paths: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M9 13h6"/><path d="M9 17h6"/>' },
+  shots: { color: '#0f172a', paths: '<rect x="2" y="4" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/>' },
+  backlink: { color: '#4f46e5', paths: '<path d="M9 17H7a5 5 0 0 1 0-10h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><path d="M8 12h8"/>' },
+  performance: { color: '#f97316', paths: '<path d="m12 12 4-4"/><path d="M4 13a8 8 0 1 1 16 0"/><path d="M2 21h20"/>' },
+  geo: { color: '#8b5cf6', paths: '<path d="M12 3l1.6 4.9L18 9.5l-4.4 1.6L12 16l-1.6-4.9L6 9.5l4.4-1.6Z"/><path d="M19 15l.7 2.1L22 18l-2.3.9L19 21l-.7-2.1L16 18l2.3-.9Z"/>' },
+  social: { color: '#db2777', paths: '<circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="M8.3 10.6l7.4-4.2"/><path d="M8.3 13.4l7.4 4.2"/>' },
+  tech: { color: '#475569', paths: '<path d="M12 2 4 6v6c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10V6Z"/>' },
+  local: { color: '#0d9488', paths: '<path d="M12 22s7-7.4 7-12.5A7 7 0 0 0 5 9.5C5 14.6 12 22 12 22Z"/><circle cx="12" cy="9.5" r="2.5"/>' },
+  ga4: { color: '#f59e0b', paths: '<path d="M4 4v16h16"/><rect x="7" y="13" width="2.6" height="5" fill="#f59e0b" stroke="none"/><rect x="11.7" y="9" width="2.6" height="9" fill="#f59e0b" stroke="none"/><rect x="16.4" y="6" width="2.6" height="12" fill="#f59e0b" stroke="none"/>' },
+  gsc: { color: '#4285F4', paths: '<circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.35-4.35"/>' },
+};
+
+/** Small colored line-icon prefixed to a primary section's <h2>, one per data source/module. */
+function sectionIcon(kind: IconKind, size = 18): string {
+  const { color, paths } = ICON_PATHS[kind];
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0">${paths}</svg>`;
+}
+
 @Injectable()
 export class SiteAuditReportService {
   private readonly logger = new Logger(SiteAuditReportService.name);
@@ -581,21 +604,22 @@ ${inner}
 
     const summaryPage = pageWrap(`
   <div class="section">
-    <h2>Genel Özet</h2>
+    <h2>${sectionIcon('summary')}Genel Özet</h2>
     <p class="sub">Bu rapor sitenizin teknik SEO, GEO/AI görünürlük, backlink, kullanılabilirlik ve performans durumunu tek seferde özetler; ardından (bağlıysa) Google Analytics ve Search Console verilerinizle devam eder.</p>
     <p class="sub">${d.crawlJob.pagesScanned}${d.crawlJob.totalPagesQueued ? `/${d.crawlJob.totalPagesQueued}` : ''} sayfa tarandı · ${d.crawlJob.issuesFound} sorun tespit edildi · <span class="prio high" style="display:inline-block">${critCount} Kritik</span> <span class="prio mid" style="display:inline-block">${midCount} Orta</span> <span class="prio low" style="display:inline-block">${lowCount} Düşük</span></p>
     <div class="cat-rings">${categoryRings}</div>
   </div>
   <div class="section" style="text-align:center">
-    <h2>Kategori Karşılaştırması</h2>
+    <h2 style="justify-content:center">${sectionIcon('summary')}Kategori Karşılaştırması</h2>
     <p class="sub">5 kategorinin tek grafikte karşılaştırması</p>
-    ${radarSvg(radarCategories)}
+    <div class="chart-center">${radarSvg(radarCategories)}</div>
+    <p class="chart-caption">Merkeze yakın noktalar zayıf, dış çembere yakın noktalar güçlü kategorileri gösterir.</p>
   </div>
 `);
 
     const recsPage = pageWrap(`
   <div class="section">
-    <h2>Öncelikli Öneriler</h2>
+    <h2>${sectionIcon('recs')}Öncelikli Öneriler</h2>
     <p class="sub">Sitenizde tespit edilen tüm sorunlar, önem sırasına göre (Kritik → Orta → Düşük). Kritik maddeler görünürlüğünüzü en çok etkileyenlerdir.</p>
     ${recRows || '<p class="muted">Öneri bulunamadı — tebrikler!</p>'}
   </div>
@@ -629,7 +653,7 @@ ${inner}
 
     const onPagePage = pageWrap(`
   <div class="section">
-    <h2>SERP Önizlemesi</h2>
+    <h2>${sectionIcon('onpage')}SERP Önizlemesi</h2>
     <p class="sub">Siteniz Google arama sonuçlarında şu şekilde görünüyor.</p>
     <div class="serp"><div class="serp-favicon"></div><div><div class="url">${serpUrl}</div><div class="title">${serpTitle}</div><div class="desc">${serpDesc}</div></div></div>
   </div>
@@ -648,7 +672,7 @@ ${inner}
     const screenshotsPage = (d.screenshots.desktop || d.screenshots.mobile || d.screenshots.tablet)
       ? pageWrap(`
   <div class="section">
-    <h2>Cihaz Görünümleri</h2>
+    <h2>${sectionIcon('shots')}Cihaz Görünümleri</h2>
     <p class="sub">Sitenizin masaüstü ve mobil cihazlarda gerçek görünümü.</p>
     <div class="shots">
       ${d.screenshots.desktop ? `<div class="shot-frame shot-desktop"><img src="${d.screenshots.desktop}" /></div><div class="shot-caption">Masaüstü</div>` : ''}
@@ -672,7 +696,7 @@ ${inner}
 
     const backlinkPage = pageWrap(`
   <div class="section">
-    <h2>Backlink &amp; Otorite</h2>
+    <h2>${sectionIcon('backlink')}Backlink &amp; Otorite</h2>
     <p class="sub">Backlinkler, diğer sitelerin sizin sitenize verdiği bağlantılardır — Google için bir güven oyu gibidir.</p>
     <div class="gauge-row">${halfGaugeSvg(d.backlink.domainStrength, 'Domain Strength')}${halfGaugeSvg(d.backlink.pageStrength, 'Page Strength')}</div>
     <div class="kpis">
@@ -693,7 +717,7 @@ ${inner}
   ${d.backlink.tld && d.backlink.tld.length > 0 ? `<div class="section">
     <h2>TLD Dağılımı</h2>
     <p class="sub">Backlinklerinizin geldiği alan adı uzantıları (.com, .tr, .org vb.).</p>
-    ${donutChartSvg(d.backlink.tld.slice(0, 8).map((t) => ({ label: `.${t.tld}`, value: t.count })))}
+    <div class="chart-center">${donutChartSvg(d.backlink.tld.slice(0, 8).map((t) => ({ label: `.${t.tld}`, value: t.count })))}</div>
   </div>` : ''}
 `);
 
@@ -710,7 +734,7 @@ ${inner}
 
     const perfPage = pageWrap(`
   <div class="section">
-    <h2>Performans</h2>
+    <h2>${sectionIcon('performance')}Performans</h2>
     <p class="sub">Sayfa hızı, kullanıcı deneyimi ve Google sıralaması için doğrudan etkilidir.</p>
     <div class="kpis">
       ${kpiCard('Sunucu Yanıt Süresi', perf.serverResponseMs != null ? `${(perf.serverResponseMs / 1000).toFixed(2)}s` : '—', { accent: 'blue' })}
@@ -737,7 +761,7 @@ ${inner}
       .join('');
     const geoPage = pageWrap(`
   <div class="section">
-    <h2>GEO / AI Görünürlük</h2>
+    <h2>${sectionIcon('geo')}GEO / AI Görünürlük</h2>
     <p class="sub">ChatGPT, Perplexity, Gemini gibi AI asistanların sitenizi ne kadar iyi anlayıp alıntılayabileceğini ölçer.</p>
     <div class="kpis">
       ${kpiCard('Kimlik Şeması', d.geo?.identitySchema?.found ? escapeHtml(d.geo.identitySchema.type) : 'Yok', { accent: d.geo?.identitySchema?.found ? 'green' : 'red' })}
@@ -757,13 +781,13 @@ ${inner}
     const localSeo = d.localSeo ?? {};
     const socialLocalPage = pageWrap(`
   <div class="section">
-    <h2>Sosyal Medya</h2>
+    <h2>${sectionIcon('social')}Sosyal Medya</h2>
     <p class="sub">Sosyal medya profilleri ve paylaşım etiketleri (Open Graph/Twitter Card) marka görünürlüğünü destekler.</p>
     <table><tr><th>Platform</th><th>Bağlantı Var mı</th></tr>${socialRows || '<tr><td colspan="2" class="muted">Veri yok</td></tr>'}</table>
     <table style="margin-top:10px"><tr><td>Open Graph etiketleri</td><td class="num">${social.openGraph?.title ? 'Var' : 'Yok'}</td></tr><tr><td>Twitter/X Card</td><td class="num">${social.twitterCard?.type ? 'Var' : 'Yok'}</td></tr><tr><td>Facebook Pixel</td><td class="num">${social.facebookPixel ? 'Var' : 'Yok'}</td></tr></table>
   </div>
   <div class="section">
-    <h2>Yerel SEO</h2>
+    <h2>${sectionIcon('local')}Yerel SEO</h2>
     <p class="sub">Yerel işletmeler için Google'ın işletmenizi doğru tanıması adına önemlidir.</p>
     <table>
       <tr><td>LocalBusiness / Organization Şeması</td><td class="num">${localSeo.found ? escapeHtml(localSeo.schemaType) : 'Yok'}</td></tr>
@@ -801,7 +825,7 @@ ${inner}
 
     const techDomainPage = pageWrap(`
   <div class="section">
-    <h2>Teknoloji Yığını</h2>
+    <h2>${sectionIcon('tech')}Teknoloji Yığını</h2>
     <p class="sub">Sitenizde tespit edilen CMS, framework, analytics ve diğer araçlar.</p>
     <table><tr><th>Kategori</th><th>Teknoloji</th></tr>${techRows || '<tr><td colspan="2" class="muted">Tespit edilemedi</td></tr>'}</table>
   </div>
@@ -831,7 +855,7 @@ ${inner}
           const topChannels = [...g.channels].sort((a, b) => b.sessions - a.sessions).slice(0, 6);
           const p1 = pageWrap(`
   <div class="section">
-    <h2>Google Analytics (GA4)</h2>
+    <h2>${sectionIcon('ga4')}Google Analytics (GA4)</h2>
     <p class="sub">Sitenize gelen ziyaretçilerin sayısı, davranışı ve nereden geldiği.</p>
     <div class="kpis">
       ${kpiCard('Kullanıcı', fmt(g.current.users), { accent: 'blue', delta: deltaHtml(g.current.users, g.previous.users) })}
@@ -842,32 +866,35 @@ ${inner}
   </div>
   <div class="section">
     <h2>Günlük Görüntüleme Trendi</h2>
-    ${lineChartSvg([{ label: 'Sayfa Görüntüleme', color: '#1d4ed8', points: g.daily.map((x) => x.pageViews) }], dayLabels)}
+    <div class="chart-center">${lineChartSvg([{ label: 'Sayfa Görüntüleme', color: '#1d4ed8', points: g.daily.map((x) => x.pageViews) }], dayLabels)}</div>
+    <p class="chart-caption">Son dönemdeki günlük sayfa görüntüleme sayınızın seyri.</p>
   </div>
   <div class="section">
     <h2>Kullanıcı vs Yeni Kullanıcı</h2>
-    ${lineChartSvg(
+    <div class="chart-center">${lineChartSvg(
       [
         { label: 'Toplam Kullanıcı', color: '#1d4ed8', points: g.daily.map((x) => x.users) },
         { label: 'Yeni Kullanıcı', color: '#16a34a', points: g.daily.map((x) => x.newUsers) },
       ],
       dayLabels,
-    )}
+    )}</div>
+    <p class="chart-caption">Yeni kullanıcı çizgisinin toplam kullanıcıya yakınlığı, sitenizin ne kadar yeni ziyaretçi çektiğini gösterir.</p>
   </div>
 `);
           const p2 = pageWrap(`
   <div class="section">
     <h2>Trafik Kaynağı Dağılımı</h2>
-    ${donutChartSvg(topChannels.map((c) => ({ label: c.channel, value: c.sessions })))}
+    <p class="sub">Ziyaretçileriniz hangi kanaldan geliyor.</p>
+    <div class="chart-center">${donutChartSvg(topChannels.map((c) => ({ label: c.channel, value: c.sessions })))}</div>
   </div>
   <div class="two-col">
     <div class="section">
       <h2>Cihaz Dağılımı</h2>
-      ${donutChartSvg(g.devices.map((x) => ({ label: x.device, value: x.sessions })))}
+      <div class="chart-center">${donutChartSvg(g.devices.map((x) => ({ label: x.device, value: x.sessions })))}</div>
     </div>
     <div class="section">
       <h2>Ülkeye Göre Oturum</h2>
-      ${barChartSvg(g.countries.slice(0, 8).map((x) => ({ label: x.country.toUpperCase(), value: x.sessions })), 280)}
+      <div class="chart-center">${barChartSvg(g.countries.slice(0, 8).map((x) => ({ label: x.country.toUpperCase(), value: x.sessions })), 280)}</div>
     </div>
   </div>
   <div class="section">
@@ -880,7 +907,7 @@ ${inner}
         })()
       : pageWrap(`
   <div class="section">
-    <h2>Google Analytics (GA4)</h2>
+    <h2>${sectionIcon('ga4')}Google Analytics (GA4)</h2>
     <p class="muted">GA4 henüz bağlanmadı. Panelden Google hesabınızı bağlayarak trafik verilerinizi bu rapora dahil edebilirsiniz.</p>
   </div>
 `);
@@ -892,7 +919,7 @@ ${inner}
           const gscLabels = s.daily.map((x) => x.date);
           const p1 = pageWrap(`
   <div class="section">
-    <h2>Google Search Console</h2>
+    <h2>${sectionIcon('gsc')}Google Search Console</h2>
     <p class="sub">Google aramalarında sitenizin gösterim ve tıklanma performansı.</p>
     <div class="kpis">
       ${kpiCard('Tıklama', fmt(s.current.clicks), { accent: 'blue', delta: deltaHtml(s.current.clicks, s.previous.clicks) })}
@@ -903,34 +930,36 @@ ${inner}
   </div>
   <div class="section">
     <h2>Tıklama — Bu Ay vs Önceki Ay</h2>
-    ${lineChartSvg(
+    <div class="chart-center">${lineChartSvg(
       [
         { label: 'Bu Ay', color: '#1d4ed8', points: s.daily.map((x) => x.clicks) },
         { label: 'Önceki Ay', color: '#94a3b8', points: s.dailyPrevious.map((x) => x.clicks) },
       ],
       gscLabels,
-    )}
+    )}</div>
+    <p class="chart-caption">Mavi çizgi bu ayı, gri çizgi önceki ayı gösterir — aradaki fark arama trafiğinizin yönünü ortaya koyar.</p>
   </div>
   <div class="section">
     <h2>Gösterim — Bu Ay vs Önceki Ay</h2>
-    ${lineChartSvg(
+    <div class="chart-center">${lineChartSvg(
       [
         { label: 'Bu Ay', color: '#7c3aed', points: s.daily.map((x) => x.impressions) },
         { label: 'Önceki Ay', color: '#94a3b8', points: s.dailyPrevious.map((x) => x.impressions) },
       ],
       gscLabels,
-    )}
+    )}</div>
+    <p class="chart-caption">Google'da sitenizin kaç kez arama sonuçlarında gösterildiğinin bu ay/önceki ay karşılaştırması.</p>
   </div>
 `);
           const p2 = pageWrap(`
   <div class="two-col">
     <div class="section">
       <h2>Cihaz Dağılımı</h2>
-      ${barChartSvg(s.devices.slice(0, 5).map((x) => ({ label: x.device, value: x.clicks })), 280)}
+      <div class="chart-center">${barChartSvg(s.devices.slice(0, 5).map((x) => ({ label: x.device, value: x.clicks })), 280)}</div>
     </div>
     <div class="section">
       <h2>Ülke Dağılımı</h2>
-      ${barChartSvg(s.countries.slice(0, 6).map((x) => ({ label: x.country.toUpperCase(), value: x.clicks })), 280)}
+      <div class="chart-center">${barChartSvg(s.countries.slice(0, 6).map((x) => ({ label: x.country.toUpperCase(), value: x.clicks })), 280)}</div>
     </div>
   </div>
   <div class="section">
@@ -948,7 +977,7 @@ ${inner}
         })()
       : pageWrap(`
   <div class="section">
-    <h2>Google Search Console</h2>
+    <h2>${sectionIcon('gsc')}Google Search Console</h2>
     <p class="muted">Search Console henüz bağlanmadı. Panelden bağlayarak arama performansı verilerinizi bu rapora dahil edebilirsiniz.</p>
   </div>
 `);
@@ -992,10 +1021,14 @@ ${inner}
   .pagefoot { display: flex; justify-content: space-between; padding: 10px 44px; font-size: 9px; color: #94a3b8;
               border-top: 1px solid #e2e8f0; }
 
-  h2 { font-size: 16px; color: #1d4ed8; margin: 0 0 10px; font-weight: 800; padding-bottom: 8px;
-       border-bottom: 2px solid #e0e7ff; letter-spacing: -0.1px; }
+  h2 { display: flex; align-items: center; gap: 9px; font-size: 16px; color: #1d4ed8; margin: 0 0 10px; font-weight: 800;
+       padding-bottom: 8px; border-bottom: 2px solid #e0e7ff; letter-spacing: -0.1px; }
   .sub { color: #64748b; font-size: 11px; margin-bottom: 16px; }
-  .section { margin-bottom: 24px; }
+  .section { margin-bottom: 18px; background: #f8fafc; border: 1px solid #eef1f6; border-radius: 14px; padding: 20px 22px; }
+  .two-col .section { margin-bottom: 0; }
+
+  .chart-center { display: flex; justify-content: center; }
+  .chart-caption { text-align: center; color: #64748b; font-size: 10px; margin-top: 10px; max-width: 460px; margin-left: auto; margin-right: auto; }
 
   .cat-rings { display: flex; gap: 16px; justify-content: center; margin-bottom: 8px; }
   .cat-ring { text-align: center; }
@@ -1004,11 +1037,11 @@ ${inner}
   .gauge-row { display: flex; gap: 30px; justify-content: center; margin-bottom: 18px; }
 
   table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 11px; border: 1px solid #e2e8f0;
-          border-radius: 10px; overflow: hidden; }
+          border-radius: 10px; overflow: hidden; background: #fff; }
   th { background: #0f172a; color: #fff; text-align: left; padding: 9px 12px; font-weight: 600; font-size: 10.5px; letter-spacing: 0.02em; }
   td { padding: 8px 12px; border-bottom: 1px solid #eef2f7; }
   tr:last-child td { border-bottom: none; }
-  tr:nth-child(even) td { background: #f8fafc; }
+  tr:nth-child(even) td { background: #f1f5fb; }
   td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
   td.url { word-break: break-all; max-width: 340px; }
   .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
