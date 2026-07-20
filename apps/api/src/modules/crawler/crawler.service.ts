@@ -128,6 +128,47 @@ export class CrawlerService {
     }
   }
 
+  private static readonly STEP_LABELS: Record<string, string> = {
+    crawl: 'Sayfalar taranıyor',
+    analyzing: 'Performans, GEO ve backlink analiz ediliyor',
+  }
+
+  /**
+   * Lightweight, frequently-polled progress signal for the audit page's live
+   * progress bar — separate from getLatestAudit() (which returns the full
+   * report and is heavier). Progress during the 'crawl' phase is a real
+   * pagesScanned/totalPagesQueued ratio (weighted to 75% of the bar); the
+   * 'analyzing' phase (performance/site-intel/GEO, run in parallel — no
+   * per-item count to report) holds at a fixed 85% plateau rather than
+   * faking finer-grained movement.
+   */
+  async getScanStatus(projectId: string): Promise<{ progress: number; step: string; status: CrawlJobStatus; crawlJobId: string | null }> {
+    const latest = await this.prisma.crawlJob.findFirst({
+      where: { projectId },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, status: true, currentStep: true, pagesScanned: true, totalPagesQueued: true },
+    })
+    if (!latest) return { progress: 0, step: 'Henüz taranmadı', status: CrawlJobStatus.QUEUED, crawlJobId: null }
+
+    if (latest.status === CrawlJobStatus.DONE) {
+      return { progress: 100, step: 'Tamamlandı', status: latest.status, crawlJobId: latest.id }
+    }
+    if (latest.status === CrawlJobStatus.FAILED) {
+      return { progress: 100, step: 'Hata oluştu', status: latest.status, crawlJobId: latest.id }
+    }
+
+    if (latest.currentStep === 'analyzing') {
+      return { progress: 85, step: CrawlerService.STEP_LABELS.analyzing, status: latest.status, crawlJobId: latest.id }
+    }
+
+    const total = latest.totalPagesQueued
+    const scanned = latest.pagesScanned ?? 0
+    const pagePercent = total ? Math.min(100, Math.round((scanned / total) * 100)) : 0
+    const progress = total ? Math.min(75, Math.round(pagePercent * 0.75)) : 5
+    const step = total ? `${CrawlerService.STEP_LABELS.crawl} (${scanned}/${total})` : CrawlerService.STEP_LABELS.crawl
+    return { progress, step, status: latest.status, crawlJobId: latest.id }
+  }
+
   async getCrawlHistory(projectId: string) {
     return this.prisma.crawlJob.findMany({
       where: { projectId },

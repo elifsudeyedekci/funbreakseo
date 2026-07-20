@@ -33,6 +33,7 @@ export interface SiteAuditReportData {
     counters: Record<string, number>;
     top: Array<{ domainRating: number; sourceDomain: string; anchorText: string; isDofollow: boolean }>;
     anchors: Array<{ anchor: string; count: number }>;
+    tld: Array<{ tld: string; count: number }>;
   };
   /** Unified monthly report data — merged in so ONE report covers technical audit + GA4 + GSC (no separate report pipeline). */
   ga4: {
@@ -40,11 +41,16 @@ export interface SiteAuditReportData {
     current: { users: number; sessions: number; pageViews: number; bounceRate: number; avgSessionDurationSec: number };
     previous: { users: number; sessions: number; pageViews: number; bounceRate: number; avgSessionDurationSec: number };
     channels: Array<{ channel: string; sessions: number; users: number }>;
+    daily: Array<{ date: string; sessions: number; users: number; newUsers: number; pageViews: number }>;
+    devices: Array<{ device: string; sessions: number }>;
+    countries: Array<{ country: string; sessions: number }>;
   } | null;
   gsc: {
     connected: boolean;
     current: { clicks: number; impressions: number; ctr: number; position: number };
     previous: { clicks: number; impressions: number; ctr: number; position: number };
+    daily: Array<{ date: string; clicks: number; impressions: number }>;
+    dailyPrevious: Array<{ date: string; clicks: number; impressions: number }>;
     topQueries: Array<{ query: string; clicks: number; impressions: number; ctr: number; position: number }>;
     topPages: Array<{ page: string; clicks: number; impressions: number }>;
     devices: Array<{ device: string; clicks: number; impressions: number }>;
@@ -193,6 +199,101 @@ function barGauge(label: string, score: number): string {
   </div>`;
 }
 
+const CHART_PALETTE = ['#1d4ed8', '#16a34a', '#ca8a04', '#dc2626', '#7c3aed', '#0891b2', '#db2777', '#65a30d'];
+
+/** Multi-series line chart — inline SVG polylines, no chart library needed. */
+function lineChartSvg(
+  series: { label: string; color: string; points: number[] }[],
+  labels: string[],
+  width = 620,
+  height = 190,
+): string {
+  const P = 32;
+  const maxVal = Math.max(1, ...series.flatMap((s) => s.points));
+  const n = labels.length;
+  if (n === 0) return '<p class="muted">Veri yok</p>';
+  const x = (i: number) => P + (n > 1 ? (i / (n - 1)) * (width - 2 * P) : 0);
+  const y = (v: number) => height - P - (v / maxVal) * (height - 2 * P - 14);
+  const lines = series
+    .map((s) => {
+      const dPath = s.points.map((v, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+      return `<path d="${dPath}" fill="none" stroke="${s.color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>`;
+    })
+    .join('');
+  const legend = series
+    .map((s, i) => `<text x="${P + i * 150}" y="14" font-size="10" font-weight="700" fill="${s.color}">— ${escapeHtml(s.label)}</text>`)
+    .join('');
+  const axisLine = `<line x1="${P}" y1="${height - P}" x2="${width - P}" y2="${height - P}" stroke="#e2e8f0"/>`;
+  const step = Math.max(1, Math.ceil(n / 7));
+  const xLabels = labels
+    .map((l, i) => (i % step === 0 ? `<text x="${x(i).toFixed(1)}" y="${height - 6}" font-size="9" fill="#94a3b8" text-anchor="middle">${escapeHtml(l.slice(5))}</text>` : ''))
+    .join('');
+  return `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${legend}${axisLine}${lines}${xLabels}</svg>`;
+}
+
+/** Donut (annular pie) chart with a side legend — inline SVG arcs. */
+function donutChartSvg(data: { label: string; value: number; color?: string }[], size = 170): string {
+  const withColor = data.map((d, i) => ({ ...d, color: d.color ?? CHART_PALETTE[i % CHART_PALETTE.length] }));
+  const total = withColor.reduce((s, d) => s + d.value, 0);
+  if (total <= 0) return '<p class="muted">Veri yok</p>';
+  const r = size / 2 - 8;
+  const innerR = r * 0.55;
+  const cx = size / 2;
+  const cy = size / 2;
+  let angle = -Math.PI / 2;
+  const arcs = withColor
+    .filter((d) => d.value > 0)
+    .map((d) => {
+      const frac = d.value / total;
+      const start = angle;
+      const end = angle + frac * Math.PI * 2 - (withColor.length > 1 ? 0.02 : 0);
+      angle = start + frac * Math.PI * 2;
+      const large = end - start > Math.PI ? 1 : 0;
+      const x1 = cx + r * Math.cos(start);
+      const y1 = cy + r * Math.sin(start);
+      const x2 = cx + r * Math.cos(end);
+      const y2 = cy + r * Math.sin(end);
+      const ix1 = cx + innerR * Math.cos(end);
+      const iy1 = cy + innerR * Math.sin(end);
+      const ix2 = cx + innerR * Math.cos(start);
+      const iy2 = cy + innerR * Math.sin(start);
+      return `<path d="M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${x2.toFixed(2)} ${y2.toFixed(2)} L ${ix1.toFixed(2)} ${iy1.toFixed(2)} A ${innerR} ${innerR} 0 ${large} 0 ${ix2.toFixed(2)} ${iy2.toFixed(2)} Z" fill="${d.color}"/>`;
+    })
+    .join('');
+  const legend = withColor
+    .map(
+      (d) =>
+        `<div style="display:flex;align-items:center;gap:6px;font-size:10px;margin-bottom:4px;color:#475569"><span style="width:8px;height:8px;border-radius:50%;background:${d.color};display:inline-block;flex-shrink:0"></span>${escapeHtml(d.label)} — ${((d.value / total) * 100).toFixed(0)}%</div>`,
+    )
+    .join('');
+  return `<div style="display:flex;align-items:center;gap:16px"><svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${arcs}</svg><div>${legend}</div></div>`;
+}
+
+/** Horizontal bar chart — inline SVG rects, one row per datum. */
+function barChartSvg(data: { label: string; value: number }[], width = 520, barH = 20, color = '#1d4ed8'): string {
+  if (data.length === 0) return '<p class="muted">Veri yok</p>';
+  const max = Math.max(1, ...data.map((d) => d.value));
+  const labelW = 130;
+  const rows = data
+    .map((d, i) => {
+      const w = ((d.value / max) * (width - labelW - 50));
+      const y = i * (barH + 8);
+      return `<text x="0" y="${y + barH * 0.68}" font-size="10" fill="#475569">${escapeHtml(d.label)}</text>
+      <rect x="${labelW}" y="${y}" width="${Math.max(2, w)}" height="${barH - 4}" rx="3" fill="${color}"/>
+      <text x="${labelW + w + 6}" y="${y + barH * 0.68}" font-size="10" fill="#0f172a" font-weight="700">${fmt(d.value)}</text>`;
+    })
+    .join('');
+  const height = data.length * (barH + 8);
+  return `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${rows}</svg>`;
+}
+
+/** Background shade for a heatmap-style table cell, proportional to value/max. */
+function heatCell(value: number, max: number): string {
+  if (max <= 0) return '';
+  const opacity = 0.08 + 0.42 * Math.min(1, value / max);
+  return `background:rgba(29,78,216,${opacity.toFixed(2)})`;
+}
+
 @Injectable()
 export class SiteAuditReportService {
   private readonly logger = new Logger(SiteAuditReportService.name);
@@ -285,7 +386,7 @@ export class SiteAuditReportService {
     }
     const report = crawlJob.siteAuditReport;
 
-    const [gauges, top, anchors, monthly] = await Promise.all([
+    const [gauges, top, anchors, geography, monthly] = await Promise.all([
       this.outreach.getBacklinkGauges(projectId).catch(() => ({
         domainStrength: 0,
         pageStrength: 0,
@@ -293,6 +394,7 @@ export class SiteAuditReportService {
       })),
       this.outreach.getTopBacklinks(projectId, 10).catch(() => []),
       this.outreach.getTopAnchors(projectId, 10).catch(() => []),
+      this.outreach.getBacklinkGeography(projectId).catch(() => ({ byTld: [] as Array<{ tld: string; count: number }>, byCountry: [] })),
       // Same GA4+GSC data that used to power a separate monthly report — now
       // folded into this one unified report instead of a parallel pipeline.
       this.monthlyReport.buildReportData(projectId).catch((err) => {
@@ -333,15 +435,26 @@ export class SiteAuditReportService {
         counters: gauges.counters as Record<string, number>,
         top: top as any,
         anchors: anchors as any,
+        tld: geography.byTld as any,
       },
       ga4: monthly
-        ? { connected: monthly.analytics.connected, current: monthly.analytics.current, previous: monthly.analytics.previous, channels: monthly.analytics.channels }
+        ? {
+            connected: monthly.analytics.connected,
+            current: monthly.analytics.current,
+            previous: monthly.analytics.previous,
+            channels: monthly.analytics.channels,
+            daily: monthly.analytics.daily,
+            devices: monthly.analytics.devices,
+            countries: monthly.analytics.countries,
+          }
         : null,
       gsc: monthly
         ? {
             connected: monthly.gscConnected,
             current: monthly.organic.current,
             previous: monthly.organic.previous,
+            daily: monthly.organic.daily,
+            dailyPrevious: monthly.organic.dailyPrevious,
             topQueries: monthly.organic.topQueries,
             topPages: monthly.organic.topPages,
             devices: monthly.organic.devices,
@@ -513,6 +626,11 @@ export class SiteAuditReportService {
     <h2>En Sık Kullanılan Anchor Metinleri</h2>
     <table><tr><th>Anchor</th><th>Adet</th></tr>${anchorRows || '<tr><td colspan="2" class="muted">Veri yok</td></tr>'}</table>
   </div>
+  ${d.backlink.tld && d.backlink.tld.length > 0 ? `<div class="section">
+    <h2>TLD Dağılımı</h2>
+    <p class="sub">Backlinklerinizin geldiği alan adı uzantıları (.com, .tr, .org vb.).</p>
+    ${donutChartSvg(d.backlink.tld.slice(0, 8).map((t) => ({ label: `.${t.tld}`, value: t.count })))}
+  </div>` : ''}
 </div>`;
 
     // ── Sayfa: Performans (her zaman elde olan verileri gösterir) ───────
@@ -541,8 +659,10 @@ export class SiteAuditReportService {
   </div>
   <div class="section">
     <h2>PageSpeed Insights</h2>
-    ${psi.mobile ? barGauge('PageSpeed — Mobil', psi.mobile.score) : ''}
-    ${psi.desktop ? barGauge('PageSpeed — Masaüstü', psi.desktop.score) : ''}
+    <div class="gauge-row">
+      ${psi.mobile ? halfGaugeSvg(psi.mobile.score, 'PageSpeed — Mobil') : ''}
+      ${psi.desktop ? halfGaugeSvg(psi.desktop.score, 'PageSpeed — Masaüstü') : ''}
+    </div>
     ${(psi.mobile || psi.desktop) ? `<table><tr><th></th><th>LCP</th><th>INP</th><th>CLS</th></tr>${cwvRow('Mobil', cwv.mobile)}${cwvRow('Masaüstü', cwv.desktop)}</table>` : '<p class="muted">PageSpeed Insights verisi bu tarama için mevcut değil (GOOGLE_PSI_API_KEY tanımlı değil veya kota aşıldı) — yukarıdaki temel performans ölçümleri yine de gerçek Puppeteer taramasından alınmıştır.</p>'}
   </div>
 </div>`;
@@ -644,24 +764,61 @@ export class SiteAuditReportService {
 
     // ── Sayfa: Google Analytics (GA4) ────────────────────────────────────
     const ga4Page = d.ga4?.connected
-      ? `<div class="page">
+      ? (() => {
+          const g = d.ga4!;
+          const dayLabels = g.daily.map((x) => x.date);
+          const channelMax = Math.max(1, ...g.channels.map((c) => c.sessions));
+          const topChannels = [...g.channels].sort((a, b) => b.sessions - a.sessions).slice(0, 6);
+          return `<div class="page">
   ${pagehead}
   <div class="section">
     <h2>Google Analytics (GA4)</h2>
     <p class="sub">Sitenize gelen ziyaretçilerin sayısı, davranışı ve nereden geldiği.</p>
     <div class="kpis">
-      <div class="kpi"><div class="label">Kullanıcı</div><div class="value">${fmt(d.ga4.current.users)}</div><div class="delta">${deltaHtml(d.ga4.current.users, d.ga4.previous.users)}</div></div>
-      <div class="kpi"><div class="label">Oturum</div><div class="value">${fmt(d.ga4.current.sessions)}</div><div class="delta">${deltaHtml(d.ga4.current.sessions, d.ga4.previous.sessions)}</div></div>
-      <div class="kpi"><div class="label">Görüntüleme</div><div class="value">${fmt(d.ga4.current.pageViews)}</div><div class="delta">${deltaHtml(d.ga4.current.pageViews, d.ga4.previous.pageViews)}</div></div>
-      <div class="kpi"><div class="label">Hemen Çıkma</div><div class="value">%${d.ga4.current.bounceRate.toFixed(1)}</div><div class="delta">${deltaHtml(d.ga4.current.bounceRate, d.ga4.previous.bounceRate)}</div></div>
+      <div class="kpi"><div class="label">Kullanıcı</div><div class="value">${fmt(g.current.users)}</div><div class="delta">${deltaHtml(g.current.users, g.previous.users)}</div></div>
+      <div class="kpi"><div class="label">Oturum</div><div class="value">${fmt(g.current.sessions)}</div><div class="delta">${deltaHtml(g.current.sessions, g.previous.sessions)}</div></div>
+      <div class="kpi"><div class="label">Görüntüleme</div><div class="value">${fmt(g.current.pageViews)}</div><div class="delta">${deltaHtml(g.current.pageViews, g.previous.pageViews)}</div></div>
+      <div class="kpi"><div class="label">Hemen Çıkma</div><div class="value">%${g.current.bounceRate.toFixed(1)}</div><div class="delta">${deltaHtml(g.current.bounceRate, g.previous.bounceRate)}</div></div>
     </div>
   </div>
   <div class="section">
-    <h2>Trafik Kaynakları</h2>
-    <p class="sub">"AI Assistant" satırı ChatGPT/Perplexity gibi AI araçlarından gelen trafiği gösterir — GEO çalışmalarınızın somut kanıtıdır.</p>
-    <table><tr><th>Kaynak</th><th>Oturum</th><th>Kullanıcı</th></tr>${d.ga4.channels.map((ch) => `<tr${ch.channel.startsWith('AI Assistant') ? ' style="background:#eef2ff"' : ''}><td>${escapeHtml(ch.channel)}</td><td class="num">${fmt(ch.sessions)}</td><td class="num">${fmt(ch.users)}</td></tr>`).join('') || '<tr><td colspan="3" class="muted">Veri yok</td></tr>'}</table>
+    <h2>Günlük Görüntüleme Trendi</h2>
+    ${lineChartSvg([{ label: 'Sayfa Görüntüleme', color: '#1d4ed8', points: g.daily.map((x) => x.pageViews) }], dayLabels)}
   </div>
-</div>`
+  <div class="section">
+    <h2>Kullanıcı vs Yeni Kullanıcı</h2>
+    ${lineChartSvg(
+      [
+        { label: 'Toplam Kullanıcı', color: '#1d4ed8', points: g.daily.map((x) => x.users) },
+        { label: 'Yeni Kullanıcı', color: '#16a34a', points: g.daily.map((x) => x.newUsers) },
+      ],
+      dayLabels,
+    )}
+  </div>
+</div>
+<div class="page">
+  ${pagehead}
+  <div class="section">
+    <h2>Trafik Kaynağı Dağılımı</h2>
+    ${donutChartSvg(topChannels.map((c) => ({ label: c.channel, value: c.sessions })))}
+  </div>
+  <div class="two-col">
+    <div class="section">
+      <h2>Cihaz Dağılımı</h2>
+      ${donutChartSvg(g.devices.map((x) => ({ label: x.device, value: x.sessions })))}
+    </div>
+    <div class="section">
+      <h2>Ülkeye Göre Oturum</h2>
+      ${barChartSvg(g.countries.slice(0, 8).map((x) => ({ label: x.country.toUpperCase(), value: x.sessions })), 280)}
+    </div>
+  </div>
+  <div class="section">
+    <h2>Trafik Kaynakları — Detay</h2>
+    <p class="sub">"AI Assistant" satırı ChatGPT/Perplexity gibi AI araçlarından gelen trafiği gösterir — GEO çalışmalarınızın somut kanıtıdır.</p>
+    <table><tr><th>Kaynak</th><th>Oturum</th><th>Kullanıcı</th></tr>${g.channels.map((ch) => `<tr style="${heatCell(ch.sessions, channelMax)}${ch.channel.startsWith('AI Assistant') ? ';outline:1px solid #6366f1' : ''}"><td>${escapeHtml(ch.channel)}</td><td class="num">${fmt(ch.sessions)}</td><td class="num">${fmt(ch.users)}</td></tr>`).join('') || '<tr><td colspan="3" class="muted">Veri yok</td></tr>'}</table>
+  </div>
+</div>`;
+        })()
       : `<div class="page">
   ${pagehead}
   <div class="section">
@@ -672,37 +829,67 @@ export class SiteAuditReportService {
 
     // ── Sayfa: Google Search Console ────────────────────────────────────
     const gscPage = d.gsc?.connected
-      ? `<div class="page">
+      ? (() => {
+          const s = d.gsc!;
+          const gscLabels = s.daily.map((x) => x.date);
+          return `<div class="page">
   ${pagehead}
   <div class="section">
     <h2>Google Search Console</h2>
     <p class="sub">Google aramalarında sitenizin gösterim ve tıklanma performansı.</p>
     <div class="kpis">
-      <div class="kpi"><div class="label">Tıklama</div><div class="value">${fmt(d.gsc.current.clicks)}</div><div class="delta">${deltaHtml(d.gsc.current.clicks, d.gsc.previous.clicks)}</div></div>
-      <div class="kpi"><div class="label">Gösterim</div><div class="value">${fmt(d.gsc.current.impressions)}</div><div class="delta">${deltaHtml(d.gsc.current.impressions, d.gsc.previous.impressions)}</div></div>
-      <div class="kpi"><div class="label">CTR</div><div class="value">%${d.gsc.current.ctr.toFixed(1)}</div><div class="delta">${deltaHtml(d.gsc.current.ctr, d.gsc.previous.ctr)}</div></div>
-      <div class="kpi"><div class="label">Ort. Pozisyon</div><div class="value">${d.gsc.current.position.toFixed(1)}</div><div class="delta">${deltaHtml(d.gsc.previous.position, d.gsc.current.position)}</div></div>
+      <div class="kpi"><div class="label">Tıklama</div><div class="value">${fmt(s.current.clicks)}</div><div class="delta">${deltaHtml(s.current.clicks, s.previous.clicks)}</div></div>
+      <div class="kpi"><div class="label">Gösterim</div><div class="value">${fmt(s.current.impressions)}</div><div class="delta">${deltaHtml(s.current.impressions, s.previous.impressions)}</div></div>
+      <div class="kpi"><div class="label">CTR</div><div class="value">%${s.current.ctr.toFixed(1)}</div><div class="delta">${deltaHtml(s.current.ctr, s.previous.ctr)}</div></div>
+      <div class="kpi"><div class="label">Ort. Pozisyon</div><div class="value">${s.current.position.toFixed(1)}</div><div class="delta">${deltaHtml(s.previous.position, s.current.position)}</div></div>
     </div>
   </div>
   <div class="section">
-    <h2>Cihaz &amp; Ülke Dağılımı</h2>
-    <div class="two-col">
-      <table><tr><th>Cihaz</th><th>Tıklama</th></tr>${d.gsc.devices.slice(0, 5).map((x) => `<tr><td>${escapeHtml(x.device)}</td><td class="num">${fmt(x.clicks)}</td></tr>`).join('') || '<tr><td colspan="2" class="muted">Veri yok</td></tr>'}</table>
-      <table><tr><th>Ülke</th><th>Tıklama</th></tr>${d.gsc.countries.slice(0, 6).map((x) => `<tr><td>${escapeHtml(x.country.toUpperCase())}</td><td class="num">${fmt(x.clicks)}</td></tr>`).join('') || '<tr><td colspan="2" class="muted">Veri yok</td></tr>'}</table>
+    <h2>Tıklama — Bu Ay vs Önceki Ay</h2>
+    ${lineChartSvg(
+      [
+        { label: 'Bu Ay', color: '#1d4ed8', points: s.daily.map((x) => x.clicks) },
+        { label: 'Önceki Ay', color: '#94a3b8', points: s.dailyPrevious.map((x) => x.clicks) },
+      ],
+      gscLabels,
+    )}
+  </div>
+  <div class="section">
+    <h2>Gösterim — Bu Ay vs Önceki Ay</h2>
+    ${lineChartSvg(
+      [
+        { label: 'Bu Ay', color: '#7c3aed', points: s.daily.map((x) => x.impressions) },
+        { label: 'Önceki Ay', color: '#94a3b8', points: s.dailyPrevious.map((x) => x.impressions) },
+      ],
+      gscLabels,
+    )}
+  </div>
+</div>
+<div class="page">
+  ${pagehead}
+  <div class="two-col">
+    <div class="section">
+      <h2>Cihaz Dağılımı</h2>
+      ${barChartSvg(s.devices.slice(0, 5).map((x) => ({ label: x.device, value: x.clicks })), 280)}
     </div>
+    <div class="section">
+      <h2>Ülke Dağılımı</h2>
+      ${barChartSvg(s.countries.slice(0, 6).map((x) => ({ label: x.country.toUpperCase(), value: x.clicks })), 280)}
+    </div>
+  </div>
+  <div class="section">
+    <h2>En İyi Sorgular</h2>
+    <table><tr><th>Sorgu</th><th>Tıklama</th><th>Gösterim</th><th>CTR</th><th>Pozisyon</th></tr>${s.topQueries.slice(0, 15).map((q) => `<tr><td>${escapeHtml(q.query)}</td><td class="num">${fmt(q.clicks)}</td><td class="num">${fmt(q.impressions)}</td><td class="num">%${q.ctr.toFixed(1)}</td><td class="num" style="color:${posColor(q.position)};font-weight:700">${q.position.toFixed(1)}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">Veri yok</td></tr>'}</table>
   </div>
 </div>
 <div class="page">
   ${pagehead}
   <div class="section">
-    <h2>En İyi Sorgular</h2>
-    <table><tr><th>Sorgu</th><th>Tıklama</th><th>Gösterim</th><th>CTR</th><th>Pozisyon</th></tr>${d.gsc.topQueries.slice(0, 15).map((q) => `<tr><td>${escapeHtml(q.query)}</td><td class="num">${fmt(q.clicks)}</td><td class="num">${fmt(q.impressions)}</td><td class="num">%${q.ctr.toFixed(1)}</td><td class="num" style="color:${posColor(q.position)};font-weight:700">${q.position.toFixed(1)}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">Veri yok</td></tr>'}</table>
-  </div>
-  <div class="section">
     <h2>En Çok Tıklanan Sayfalar</h2>
-    <table><tr><th>Sayfa</th><th>Tıklama</th><th>Gösterim</th></tr>${d.gsc.topPages.slice(0, 10).map((p) => `<tr><td class="url">${escapeHtml(p.page.replace(/^https?:\/\/[^/]+/, '') || '/')}</td><td class="num">${fmt(p.clicks)}</td><td class="num">${fmt(p.impressions)}</td></tr>`).join('') || '<tr><td colspan="3" class="muted">Veri yok</td></tr>'}</table>
+    <table><tr><th>Sayfa</th><th>Tıklama</th><th>Gösterim</th></tr>${s.topPages.slice(0, 10).map((p) => `<tr><td class="url">${escapeHtml(p.page.replace(/^https?:\/\/[^/]+/, '') || '/')}</td><td class="num">${fmt(p.clicks)}</td><td class="num">${fmt(p.impressions)}</td></tr>`).join('') || '<tr><td colspan="3" class="muted">Veri yok</td></tr>'}</table>
   </div>
-</div>`
+</div>`;
+        })()
       : `<div class="page">
   ${pagehead}
   <div class="section">

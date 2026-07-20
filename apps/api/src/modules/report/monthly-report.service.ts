@@ -41,11 +41,15 @@ export interface MonthlyReportData {
     current: Ga4Totals;
     previous: Ga4Totals;
     channels: Array<{ channel: string; sessions: number; users: number }>;
+    daily: Array<{ date: string; sessions: number; users: number; newUsers: number; pageViews: number }>;
+    devices: Array<{ device: string; sessions: number }>;
+    countries: Array<{ country: string; sessions: number }>;
   };
   organic: {
     current: GscTotals;
     previous: GscTotals;
     daily: Array<{ date: string; clicks: number; impressions: number }>;
+    dailyPrevious: Array<{ date: string; clicks: number; impressions: number }>;
     topQueries: Array<{ query: string; clicks: number; impressions: number; ctr: number; position: number }>;
     topPages: Array<{ page: string; clicks: number; impressions: number }>;
     devices: Array<{ device: string; clicks: number; impressions: number }>;
@@ -263,6 +267,7 @@ export class MonthlyReportService {
     let currentTotals: GscTotals = { clicks: 0, impressions: 0, ctr: 0, position: 0 };
     let previousTotals: GscTotals = { clicks: 0, impressions: 0, ctr: 0, position: 0 };
     let daily: MonthlyReportData['organic']['daily'] = [];
+    let dailyPrevious: MonthlyReportData['organic']['dailyPrevious'] = [];
     let topQueries: MonthlyReportData['organic']['topQueries'] = [];
     let topPages: MonthlyReportData['organic']['topPages'] = [];
     let devices: MonthlyReportData['organic']['devices'] = [];
@@ -272,10 +277,13 @@ export class MonthlyReportService {
       const range = { startDate: d(periodStart), endDate: d(periodEnd) };
       const prevRange = { startDate: d(prevStart), endDate: d(prevEnd) };
 
-      const [curRows, prevRows, dateRows, queryRows, pageRows, deviceRows, countryRows] = await Promise.all([
+      const [curRows, prevRows, dateRows, prevDateRows, queryRows, pageRows, deviceRows, countryRows] = await Promise.all([
         this.queryGsc(project.domain, token, { ...range }),
         this.queryGsc(project.domain, token, { ...prevRange }),
         this.queryGsc(project.domain, token, { ...range, dimensions: ['date'], rowLimit: 40 }),
+        // Previous-period daily too — powers the "this month vs last month"
+        // dual-line clicks/impressions chart.
+        this.queryGsc(project.domain, token, { ...prevRange, dimensions: ['date'], rowLimit: 40 }),
         this.queryGsc(project.domain, token, { ...range, dimensions: ['query'], rowLimit: 25 }),
         this.queryGsc(project.domain, token, { ...range, dimensions: ['page'], rowLimit: 15 }),
         this.queryGsc(project.domain, token, { ...range, dimensions: ['device'], rowLimit: 5 }),
@@ -285,6 +293,9 @@ export class MonthlyReportService {
       currentTotals = this.sumRows(curRows);
       previousTotals = this.sumRows(prevRows);
       daily = dateRows
+        .map((r) => ({ date: r.keys[0], clicks: r.clicks, impressions: r.impressions }))
+        .sort((a, b) => a.date.localeCompare(b.date));
+      dailyPrevious = prevDateRows
         .map((r) => ({ date: r.keys[0], clicks: r.clicks, impressions: r.impressions }))
         .sort((a, b) => a.date.localeCompare(b.date));
       topQueries = queryRows.map((r) => ({
@@ -305,6 +316,9 @@ export class MonthlyReportService {
     let ga4Current = zeroGa4;
     let ga4Previous = zeroGa4;
     let ga4Channels: MonthlyReportData['analytics']['channels'] = [];
+    let ga4Daily: MonthlyReportData['analytics']['daily'] = [];
+    let ga4Devices: MonthlyReportData['analytics']['devices'] = [];
+    let ga4Countries: MonthlyReportData['analytics']['countries'] = [];
 
     if (token) {
       const propertyId = await this.resolveGa4PropertyId(project.id, project.domain, token);
@@ -316,7 +330,7 @@ export class MonthlyReportService {
           { name: 'bounceRate' },
           { name: 'averageSessionDuration' },
         ];
-        const [curRows, prevRows, channelRows, sourceRows] = await Promise.all([
+        const [curRows, prevRows, channelRows, sourceRows, dailyRows, deviceRows, countryRows] = await Promise.all([
           this.queryGa4(propertyId, token, {
             dateRanges: [{ startDate: d(periodStart), endDate: d(periodEnd) }],
             metrics,
@@ -344,6 +358,29 @@ export class MonthlyReportService {
             orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
             limit: 50,
           }),
+          // Daily trend (sessions/users/newUsers) + device + country breakdown
+          // — power the audit page / PDF report's GA4 line and donut charts.
+          this.queryGa4(propertyId, token, {
+            dateRanges: [{ startDate: d(periodStart), endDate: d(periodEnd) }],
+            dimensions: [{ name: 'date' }],
+            metrics: [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'newUsers' }, { name: 'screenPageViews' }],
+            orderBys: [{ dimension: { dimensionName: 'date' } }],
+            limit: 40,
+          }),
+          this.queryGa4(propertyId, token, {
+            dateRanges: [{ startDate: d(periodStart), endDate: d(periodEnd) }],
+            dimensions: [{ name: 'deviceCategory' }],
+            metrics: [{ name: 'sessions' }],
+            orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+            limit: 5,
+          }),
+          this.queryGa4(propertyId, token, {
+            dateRanges: [{ startDate: d(periodStart), endDate: d(periodEnd) }],
+            dimensions: [{ name: 'country' }],
+            metrics: [{ name: 'sessions' }],
+            orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+            limit: 10,
+          }),
         ]);
 
         if (curRows.length > 0 || prevRows.length > 0) {
@@ -369,6 +406,28 @@ export class MonthlyReportService {
           if (aiSessions > 0) {
             ga4Channels.push({ channel: 'AI Assistant (ChatGPT, Perplexity vb.)', sessions: aiSessions, users: aiUsers });
           }
+
+          ga4Daily = dailyRows
+            .map((r) => {
+              const raw = r.dimensionValues?.[0]?.value ?? '';
+              const date = raw.length === 8 ? `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}` : raw;
+              return {
+                date,
+                sessions: parseFloat(r.metricValues?.[0]?.value ?? '0') || 0,
+                users: parseFloat(r.metricValues?.[1]?.value ?? '0') || 0,
+                newUsers: parseFloat(r.metricValues?.[2]?.value ?? '0') || 0,
+                pageViews: parseFloat(r.metricValues?.[3]?.value ?? '0') || 0,
+              };
+            })
+            .sort((a, b) => a.date.localeCompare(b.date));
+          ga4Devices = deviceRows.map((r) => ({
+            device: r.dimensionValues?.[0]?.value ?? '?',
+            sessions: parseFloat(r.metricValues?.[0]?.value ?? '0') || 0,
+          }));
+          ga4Countries = countryRows.map((r) => ({
+            country: r.dimensionValues?.[0]?.value ?? '?',
+            sessions: parseFloat(r.metricValues?.[0]?.value ?? '0') || 0,
+          }));
         }
       }
     }
@@ -494,11 +553,15 @@ export class MonthlyReportService {
         current: ga4Current,
         previous: ga4Previous,
         channels: ga4Channels,
+        daily: ga4Daily,
+        devices: ga4Devices,
+        countries: ga4Countries,
       },
       organic: {
         current: currentTotals,
         previous: previousTotals,
         daily,
+        dailyPrevious,
         topQueries,
         topPages,
         devices,

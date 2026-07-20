@@ -294,7 +294,7 @@ export class CrawlerWorker extends WorkerHost {
     // Mark as RUNNING
     await this.prisma.crawlJob.update({
       where: { id: crawlJobId },
-      data: { status: CrawlJobStatus.RUNNING, startedAt: new Date() },
+      data: { status: CrawlJobStatus.RUNNING, startedAt: new Date(), currentStep: 'crawl' },
     })
 
     try {
@@ -620,6 +620,11 @@ export class CrawlerWorker extends WorkerHost {
       // Step 7: Kick off the other audit modules (performance, site
       // intelligence, GEO) and the final score/grade aggregation. Best-effort
       // — a failure here must not flip a successfully-crawled job to FAILED.
+      try {
+        await this.prisma.crawlJob.update({ where: { id: crawlJobId }, data: { currentStep: 'analyzing' } })
+      } catch {
+        // non-fatal — /scan/status just won't show the more specific label
+      }
       try {
         await this.auditAggregator.runPostCrawlAnalysis(projectId, crawlJobId, domain)
       } catch (aggErr: any) {

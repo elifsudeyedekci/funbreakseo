@@ -187,6 +187,14 @@ export class ReportController {
     return this.reportService.deleteScheduledReport(reportId);
   }
 
+  /** GA4 + GSC analiz verisi (JSON) — audit sayfasındaki GA4/GSC bölümleri raporla birebir aynı veriyi kullanır */
+  @Get('analytics-data')
+  async getAnalyticsData(@Param('id') projectId: string, @CurrentUser() user: User) {
+    await this.assertAccess(projectId, user);
+    const data = await this.siteAuditReport.buildData(projectId);
+    return { ga4: data.ga4, gsc: data.gsc };
+  }
+
   @Get(':reportId')
   getReport(@Param('id') projectId: string, @Param('reportId') reportId: string) {
     return this.reportService.getReport(projectId, reportId);

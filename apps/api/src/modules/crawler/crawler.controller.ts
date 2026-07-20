@@ -101,4 +101,10 @@ export class CrawlerController {
   getAuditHistory(@Param('id') id: string) {
     return this.crawlerService.getCrawlHistory(id)
   }
+
+  @Get('projects/:id/scan/status')
+  @ApiOperation({ summary: 'Lightweight live progress signal for the audit page progress bar' })
+  getScanStatus(@Param('id') id: string) {
+    return this.crawlerService.getScanStatus(id)
+  }
 }

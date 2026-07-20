@@ -33,3 +33,6 @@ export type { DomainInfoWidgetProps } from './DomainInfoWidget';
 
 export { CompetitorCompareSection } from './CompetitorCompareSection';
 export type { CompetitorCompareSectionProps } from './CompetitorCompareSection';
+
+export { AnalyticsSection } from './AnalyticsSection';
+export type { AnalyticsSectionProps } from './AnalyticsSection';

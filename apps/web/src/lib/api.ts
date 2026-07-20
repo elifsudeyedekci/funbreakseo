@@ -148,6 +148,7 @@ export const crawlerApi = {
   issues: (id: string, p?: Record<string, unknown>) => api.get(`/crawls/${id}/issues`, { params: p }),
   pages: (id: string) => api.get(`/crawls/${id}/pages`),
   markFixed: (issueId: string) => api.post(`/issues/${issueId}/mark-fixed`),
+  scanStatus: (projectId: string) => api.get(`/projects/${projectId}/scan/status`),
 };
 
 export const contentApi = {
@@ -227,6 +228,7 @@ export const reportsApi = {
   scheduled: (projectId: string) => api.get(`/projects/${projectId}/reports/scheduled`),
   createSchedule: (projectId: string, d: Record<string, unknown>) => api.post(`/projects/${projectId}/reports/schedules`, d),
   deleteSchedule: (projectId: string, scheduleId: string) => api.delete(`/projects/${projectId}/reports/schedules/${scheduleId}`),
+  analyticsData: (projectId: string) => api.get(`/projects/${projectId}/reports/analytics-data`),
 };
 
 export const developerApi = {

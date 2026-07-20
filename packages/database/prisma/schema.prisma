@@ -966,6 +966,10 @@ model CrawlJob {
   /// discovery finishes, lets the UI show a real "%pagesScanned/totalPagesQueued"
   /// progress bar instead of a fake indeterminate animation.
   totalPagesQueued Int?
+  /// Coarse phase marker ('crawl' | 'analyzing') for the /scan/status
+  /// endpoint's live progress bar — 'analyzing' covers the post-crawl
+  /// performance/site-intel/GEO phase, which has no page-count signal.
+  currentStep  String?
   issuesFound  Int            @default(0)
   healthScore  Int?
   triggeredBy  CrawlTrigger   @default(MANUAL)

@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'next/navigation';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { Play, RefreshCw, Download, Printer, Lock } from 'lucide-react';
 import { api, auditApi, geoAuditApi, crawlerApi, projectApi } from '@/lib/api';
@@ -30,6 +30,7 @@ import {
   CrawlListSection,
   CompetitorCompareSection,
   DomainInfoWidget,
+  AnalyticsSection,
 } from '@/components/audit/sections';
 
 const RUNNING_MESSAGES = [
@@ -147,6 +148,8 @@ function PremiumLock({ children, unlocked, feature }: { children: React.ReactNod
 export default function AuditPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const t = useTranslations('auditPage');
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const { subscription } = useAuthStore();
   const planSlug = (subscription?.plan?.slug ?? 'starter') as keyof typeof DEFAULT_PLAN_LIMITS;
   const isPremium = DEFAULT_PLAN_LIMITS[planSlug]?.fullAuditReport ?? false;
@@ -166,6 +169,34 @@ export default function AuditPage() {
   const audit = data;
   const isRunning = audit?.status === 'RUNNING' || audit?.status === 'PENDING';
   const report = audit?.siteAuditReport ?? null;
+
+  // Real, backend-computed progress (%complete + current step label) —
+  // polled independently of the (heavier) main audit query so the bar moves
+  // every 3s even while the full report payload only refetches every 4s.
+  const { data: scanStatus } = useQuery({
+    queryKey: ['scan-status', projectId],
+    queryFn: () => crawlerApi.scanStatus(projectId).then((r) => r.data as { progress: number; step: string; status: string }),
+    refetchInterval: (query) => {
+      const s = query.state.data?.status;
+      return s === 'RUNNING' || s === 'PENDING' ? 3000 : false;
+    },
+    enabled: !!projectId,
+  });
+
+  // Auto-refresh when a scan finishes — the user should never have to
+  // manually reload to see the just-completed report.
+  const wasRunningRef = useRef(false);
+  useEffect(() => {
+    const nowRunning = scanStatus?.status === 'RUNNING' || scanStatus?.status === 'PENDING';
+    if (wasRunningRef.current && !nowRunning && scanStatus?.status === 'DONE') {
+      queryClient.invalidateQueries({ queryKey: ['audit', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['crawl-pages'] });
+      queryClient.invalidateQueries({ queryKey: ['geo-ai-overview', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['backlink-gauges', projectId] });
+      router.refresh();
+    }
+    wasRunningRef.current = nowRunning;
+  }, [scanStatus?.status, projectId, queryClient, router]);
 
   useEffect(() => {
     if (!isRunning) return;
@@ -285,38 +316,23 @@ export default function AuditPage() {
         </div>
       </div>
 
-      {isRunning && (() => {
-        // Real progress while pages are being crawled (weighted to 75% of the
-        // bar); the remaining 25% covers the post-crawl analysis phase
-        // (performance/site-intel/GEO) which has no page-count signal, so it
-        // holds near the top instead of faking a number.
-        const total = audit?.totalPagesQueued;
-        const scanned = audit?.pagesScanned ?? 0;
-        const pagePercent = total ? Math.min(100, Math.round((scanned / total) * 100)) : 0;
-        const displayPercent = total ? Math.min(95, Math.round(pagePercent * 0.75)) : null;
-        return (
-          <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-5 print:hidden">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-3">
-                <RefreshCw className="h-4 w-4 text-indigo-400 animate-spin" />
-                <span className="text-sm text-white/80">{RUNNING_MESSAGES[msgIndex]}</span>
-              </div>
-              {displayPercent != null && <span className="text-sm font-bold text-indigo-300">%{displayPercent}</span>}
+      {isRunning && (
+        <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-5 print:hidden">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3">
+              <RefreshCw className="h-4 w-4 text-indigo-400 animate-spin" />
+              <span className="text-sm text-white/80">{scanStatus?.step ?? RUNNING_MESSAGES[msgIndex]}</span>
             </div>
-            <div className="h-2 rounded-full bg-white/10 overflow-hidden">
-              {displayPercent != null ? (
-                <div className="h-full bg-indigo-500 rounded-full transition-all duration-700" style={{ width: `${displayPercent}%` }} />
-              ) : (
-                <div className="h-full w-1/3 bg-indigo-500 rounded-full" style={{ animation: 'audit-progress 2.5s ease-in-out infinite' }} />
-              )}
-            </div>
-            {total ? (
-              <p className="text-xs text-white/30 mt-1.5">{scanned}/{total} sayfa tarandı</p>
-            ) : null}
-            <style>{`@keyframes audit-progress { 0% { transform: translateX(-100%); } 50% { transform: translateX(60%); } 100% { transform: translateX(220%); } }`}</style>
+            <span className="text-sm font-bold text-indigo-300">%{scanStatus?.progress ?? 3}</span>
           </div>
-        );
-      })()}
+          <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+            <div
+              className="h-full bg-indigo-500 rounded-full transition-all duration-700"
+              style={{ width: (scanStatus?.progress ?? 3) + '%' }}
+            />
+          </div>
+        </div>
+      )}
 
       {!isRunning && audit && !report && (
         <div className="rounded-2xl border border-white/10 bg-white/2 p-6 text-center text-white/40 text-sm">
@@ -390,6 +406,10 @@ export default function AuditPage() {
 
             <Section title="GEO / AI Görünürlük">
               <GeoSection data={report.geoJson} aiOverviewTracking={isPremium ? aiOverview : undefined} />
+            </Section>
+
+            <Section title="Trafik Analizi (GA4 & Search Console)">
+              <AnalyticsSection projectId={projectId} />
             </Section>
 
             <Section title="Backlink Özeti">
