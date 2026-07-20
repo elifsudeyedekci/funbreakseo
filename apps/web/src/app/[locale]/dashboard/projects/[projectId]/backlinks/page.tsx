@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations, useLocale } from 'next-intl';
 import { useParams } from 'next/navigation';
@@ -9,9 +9,21 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 import { outreachApi, backlinkApi } from '@/lib/api';
-import { GaugeHalfCircle, DonutChart, InfoTooltip, AccordionSection } from '@/components/audit';
+import { GaugeHalfCircle, DonutChart, InfoTooltip } from '@/components/audit';
 
 type Tab = 'profile' | 'market' | 'orders';
+
+/** Always-open section — no "Detayları Göster" click required. */
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/2 overflow-hidden">
+      <div className="px-5 py-4 border-b border-white/10">
+        <h3 className="text-sm font-semibold text-white">{title}</h3>
+      </div>
+      <div className="p-5">{children}</div>
+    </div>
+  );
+}
 
 interface GaugesResponse {
   domainStrength: number;
@@ -292,7 +304,7 @@ export default function BacklinksPage() {
           )}
 
           {/* Domain / Page Strength gauges */}
-          <AccordionSection title={t('gaugesTitle')} defaultOpen>
+          <Section title={t('gaugesTitle')}>
             {gaugesLoading ? (
               <div className="h-40 flex items-center justify-center text-white/30 text-sm animate-pulse">…</div>
             ) : (
@@ -317,10 +329,10 @@ export default function BacklinksPage() {
                 </div>
               </div>
             )}
-          </AccordionSection>
+          </Section>
 
           {/* Counters grid */}
-          <AccordionSection title={t('countersTitle')} defaultOpen>
+          <Section title={t('countersTitle')}>
             {gauges?.counters ? (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
@@ -345,7 +357,7 @@ export default function BacklinksPage() {
             ) : (
               <p className="text-sm text-white/30 text-center py-6">{t('noBacklinks')}</p>
             )}
-          </AccordionSection>
+          </Section>
 
           {/* Category filter — show all by default, drill into dofollow/nofollow */}
           {(backlinks?.length ?? 0) > 0 && (
@@ -411,7 +423,7 @@ export default function BacklinksPage() {
           )}
 
           {/* Top backlinks */}
-          <AccordionSection title={t('topBacklinksTitle')}>
+          <Section title={t('topBacklinksTitle')}>
             {!topBacklinks || topBacklinks.length === 0 ? (
               <p className="text-sm text-white/30 text-center py-6">{t('noTopBacklinks')}</p>
             ) : (
@@ -442,10 +454,10 @@ export default function BacklinksPage() {
                 </table>
               </div>
             )}
-          </AccordionSection>
+          </Section>
 
           {/* Top linked pages */}
-          <AccordionSection title={t('topPagesTitle')}>
+          <Section title={t('topPagesTitle')}>
             {!topPages || topPages.length === 0 ? (
               <p className="text-sm text-white/30 text-center py-6">{t('noTopPages')}</p>
             ) : (
@@ -464,10 +476,10 @@ export default function BacklinksPage() {
                 })()}
               </div>
             )}
-          </AccordionSection>
+          </Section>
 
           {/* Top anchor texts */}
-          <AccordionSection title={t('anchorsTitle')}>
+          <Section title={t('anchorsTitle')}>
             {!anchors || anchors.length === 0 ? (
               <p className="text-sm text-white/30 text-center py-6">{t('noAnchors')}</p>
             ) : (
@@ -486,10 +498,10 @@ export default function BacklinksPage() {
                 })()}
               </div>
             )}
-          </AccordionSection>
+          </Section>
 
           {/* Geography */}
-          <AccordionSection title={t('geographyTitle')}>
+          <Section title={t('geographyTitle')}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <p className="text-xs text-white/50 mb-2">{t('tldDistribution')}</p>
@@ -506,10 +518,10 @@ export default function BacklinksPage() {
                 )}
               </div>
             </div>
-          </AccordionSection>
+          </Section>
 
           {/* Link split */}
-          <AccordionSection title={t('linkSplitTitle')}>
+          <Section title={t('linkSplitTitle')}>
             {linkSplit && linkSplit.internalLinks == null && linkSplit.externalDofollow == null && linkSplit.externalNofollow == null ? (
               <div className="rounded-2xl border border-white/10 bg-white/2 p-6 text-center text-white/40 text-sm">
                 {t('linkSplitHint')}
@@ -524,10 +536,10 @@ export default function BacklinksPage() {
                 size="sm"
               />
             )}
-          </AccordionSection>
+          </Section>
 
           {/* Toxic backlinks */}
-          <AccordionSection title={t('toxicTitle')}>
+          <Section title={t('toxicTitle')}>
             {!toxic || toxic.length === 0 ? (
               <p className="text-sm text-white/30 text-center py-6">{t('noToxic')}</p>
             ) : (
@@ -549,10 +561,10 @@ export default function BacklinksPage() {
                 ))}
               </div>
             )}
-          </AccordionSection>
+          </Section>
 
           {/* Link velocity */}
-          <AccordionSection title={t('velocityTitle')}>
+          <Section title={t('velocityTitle')}>
             {!velocity || velocity.length === 0 ? (
               <div className="h-48 flex items-center justify-center text-white/30 text-sm">{t('noVelocityData')}</div>
             ) : (
@@ -568,7 +580,7 @@ export default function BacklinksPage() {
                 </LineChart>
               </ResponsiveContainer>
             )}
-          </AccordionSection>
+          </Section>
         </div>
       )}
 

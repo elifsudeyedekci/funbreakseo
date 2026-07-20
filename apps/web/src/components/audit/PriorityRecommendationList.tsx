@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Info, AlertCircle, AlertTriangle, CircleDot } from 'lucide-react';
+import { Info, AlertCircle, AlertTriangle, CircleDot, ChevronDown, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { STATUS_COLORS } from './colors';
 
@@ -14,6 +14,8 @@ export interface PriorityRecommendationItem {
   priority: RecommendationPriority;
   howToFix: string;
   affectedCount?: number;
+  /** Concrete page URLs this recommendation affects, when known. */
+  affectedUrls?: string[];
 }
 
 export interface PriorityRecommendationListProps {
@@ -54,6 +56,7 @@ const PRIORITY_CONFIG: Record<
 
 export function PriorityRecommendationList({ items, initialVisibleCount, className }: PriorityRecommendationListProps) {
   const [openCode, setOpenCode] = useState<string | null>(null);
+  const [openUrlsCode, setOpenUrlsCode] = useState<string | null>(null);
 
   const sorted = [...(items ?? [])].sort((a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]);
   const visible = typeof initialVisibleCount === 'number' ? sorted.slice(0, initialVisibleCount) : sorted;
@@ -72,6 +75,8 @@ export function PriorityRecommendationList({ items, initialVisibleCount, classNa
         const cfg = PRIORITY_CONFIG[item.priority];
         const Icon = cfg.icon;
         const isOpen = openCode === item.code;
+        const urlsOpen = openUrlsCode === item.code;
+        const hasUrls = !!item.affectedUrls && item.affectedUrls.length > 0;
         return (
           <div key={item.code} className={cn('rounded-xl border p-4', cfg.bg, cfg.border)}>
             <div className="flex items-start gap-3">
@@ -99,12 +104,45 @@ export function PriorityRecommendationList({ items, initialVisibleCount, classNa
                   </button>
                 </div>
                 {typeof item.affectedCount === 'number' && item.affectedCount > 0 && (
-                  <p className="text-xs text-white/40 mt-1">{item.affectedCount} sayfayı etkiliyor</p>
+                  hasUrls ? (
+                    <button
+                      type="button"
+                      onClick={() => setOpenUrlsCode(urlsOpen ? null : item.code)}
+                      className="mt-1 inline-flex items-center gap-1 text-xs text-white/50 hover:text-white/80 transition-colors"
+                      aria-expanded={urlsOpen}
+                    >
+                      {item.affectedCount} sayfayı etkiliyor
+                      <ChevronDown className={cn('h-3 w-3 transition-transform', urlsOpen && 'rotate-180')} />
+                    </button>
+                  ) : (
+                    <p className="text-xs text-white/40 mt-1">{item.affectedCount} sayfayı etkiliyor</p>
+                  )
+                )}
+                {urlsOpen && hasUrls && (
+                  <div className="mt-2 rounded-lg border border-white/10 bg-black/20 p-2 max-h-56 overflow-y-auto space-y-1">
+                    {item.affectedUrls!.map((url) => (
+                      <a
+                        key={url}
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 text-xs text-indigo-300 hover:text-indigo-200 hover:underline truncate"
+                      >
+                        <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                        <span className="truncate">{url}</span>
+                      </a>
+                    ))}
+                    {(item.affectedCount ?? 0) > item.affectedUrls!.length && (
+                      <p className="text-[11px] text-white/30 pt-1">
+                        + {item.affectedCount! - item.affectedUrls!.length} sayfa daha
+                      </p>
+                    )}
+                  </div>
                 )}
                 {isOpen && (
                   <div className="mt-3 pt-3 border-t border-white/10">
                     <p className="text-xs font-semibold text-white/60 mb-1">Nasıl düzeltilir?</p>
-                    <p className="text-xs text-white/50 leading-relaxed">{item.howToFix}</p>
+                    <p className="text-xs text-white/50 leading-relaxed">{item.howToFix || 'Bu öneri için detaylı açıklama premium pakette sunulur.'}</p>
                   </div>
                 )}
               </div>

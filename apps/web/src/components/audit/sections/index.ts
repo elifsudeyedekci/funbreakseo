@@ -28,5 +28,8 @@ export type { CrawlListSectionProps, CrawlListJson, CrawledPageRow } from './Cra
 export { BacklinkSummarySection } from './BacklinkSummarySection';
 export type { BacklinkSummarySectionProps } from './BacklinkSummarySection';
 
+export { DomainInfoWidget } from './DomainInfoWidget';
+export type { DomainInfoWidgetProps } from './DomainInfoWidget';
+
 export { CompetitorCompareSection } from './CompetitorCompareSection';
 export type { CompetitorCompareSectionProps } from './CompetitorCompareSection';

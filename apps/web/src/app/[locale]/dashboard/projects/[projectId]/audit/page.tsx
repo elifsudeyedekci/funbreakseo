@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { Play, RefreshCw, Download, Printer, Lock, Sparkles } from 'lucide-react';
-import { auditApi, geoAuditApi, crawlerApi, projectApi } from '@/lib/api';
+import { api, auditApi, geoAuditApi, crawlerApi, projectApi } from '@/lib/api';
 import { exportToCSV } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
 import { DEFAULT_PLAN_LIMITS } from '@funbreakseo/shared';
@@ -30,6 +30,7 @@ import {
   LocalSeoSection,
   CrawlListSection,
   CompetitorCompareSection,
+  DomainInfoWidget,
 } from '@/components/audit/sections';
 
 const RUNNING_MESSAGES = [
@@ -41,6 +42,24 @@ const RUNNING_MESSAGES = [
   'Sosyal medya ve teknoloji tespiti yapılıyor...',
   'Sonuçlar bir araya getiriliyor...',
 ];
+
+async function downloadSiteAuditPdf(projectId: string, domain: string, setBusy: (v: boolean) => void) {
+  setBusy(true);
+  try {
+    const res = await api.get(`/projects/${projectId}/reports/site-audit-pdf`, { responseType: 'blob', timeout: 120000 });
+    const contentType = (res.headers['content-type'] as string) ?? 'application/pdf';
+    const blob = new Blob([res.data], { type: contentType });
+    const objectUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = objectUrl;
+    const base = `site-denetimi-${domain || 'rapor'}`;
+    a.download = contentType.includes('pdf') ? `${base}.pdf` : `${base}.html`;
+    a.click();
+    URL.revokeObjectURL(objectUrl);
+  } finally {
+    setBusy(false);
+  }
+}
 
 interface CategoryScoreShape {
   score: number;
@@ -119,6 +138,7 @@ export default function AuditPage() {
   const isPremium = DEFAULT_PLAN_LIMITS[planSlug]?.fullAuditReport ?? false;
 
   const [msgIndex, setMsgIndex] = useState(0);
+  const [pdfBusy, setPdfBusy] = useState(false);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['audit', projectId],
@@ -190,9 +210,12 @@ export default function AuditPage() {
 
   return (
     <div className="p-6 space-y-6 print:p-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">{t('title')}</h1>
+          <h1 className="text-2xl font-bold text-white">
+            {t('title')}
+            {project?.domain && <span className="text-indigo-400"> — {project.domain}</span>}
+          </h1>
           <p className="text-white/50 text-sm mt-1">
             {report?.updatedAt
               ? `Rapor oluşturulma: ${new Date(report.updatedAt).toLocaleString('tr-TR')}`
@@ -201,7 +224,7 @@ export default function AuditPage() {
                 : t('noScan')}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 print:hidden">
           {report && report.recommendations?.length > 0 && (
             <button
               onClick={() =>
@@ -230,11 +253,12 @@ export default function AuditPage() {
             </button>
           )}
           <button
-            onClick={() => window.print()}
-            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-white/70 hover:bg-white/10 transition-all"
+            onClick={() => downloadSiteAuditPdf(projectId, project?.domain ?? '', setPdfBusy)}
+            disabled={pdfBusy || !report}
+            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-white/70 hover:bg-white/10 disabled:opacity-50 transition-all"
           >
-            <Printer className="h-4 w-4" />
-            PDF Olarak İndir
+            {pdfBusy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
+            {pdfBusy ? 'Hazırlanıyor…' : 'PDF Olarak İndir'}
           </button>
           <button
             onClick={() => crawlMutation.mutate()}
@@ -297,6 +321,15 @@ export default function AuditPage() {
               </div>
             </div>
           </div>
+
+          {/* Temel güven sinyalleri — tüm paketlerde açık (tam teknoloji
+              listesi aşağıdaki premium "Teknoloji" bölümünde). */}
+          {report.technologyJson && (
+            <div className="rounded-2xl border border-white/10 bg-white/2 p-5">
+              <h3 className="text-sm font-semibold text-white/70 mb-3">Domain Bilgileri</h3>
+              <DomainInfoWidget technology={report.technologyJson} />
+            </div>
+          )}
 
           {(report.screenshotDesktopUrl || report.screenshotMobileUrl) && (
             <div className="rounded-2xl border border-white/10 bg-white/2 p-5">

@@ -127,9 +127,17 @@ export class CompetitorService {
       where: { projectId },
       orderBy: { commonKeywords: 'desc' },
     });
-    return dbCompetitors
-      .filter((c) => !this.isGenericDomain(c.domain) && this.cleanDomain(c.domain) !== domain && c.commonKeywords >= 2)
+    const results = dbCompetitors
+      .filter((c) => !this.isGenericDomain(c.domain) && this.cleanDomain(c.domain) !== domain)
       .map((c) => ({ ...c, etv: null }));
+    // Same relaxation as findCompetitors()'s final return: a hard
+    // commonKeywords>=2 filter with no fallback could hide EVERY discovered
+    // competitor when the SERP-overlap discovery had to fall back to a
+    // frequency-1 threshold (common for smaller sites) — that mismatch was
+    // the "full scan found 23, competitors page shows 0" bug. Keep both
+    // methods reporting the same set.
+    const strict = results.filter((c) => !c.isAuto || c.commonKeywords >= 2);
+    return strict.length >= 10 ? strict : results;
   }
 
   async findCompetitors(projectId: string, organizationId: string) {

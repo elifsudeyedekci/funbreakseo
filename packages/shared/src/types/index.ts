@@ -43,6 +43,8 @@ export interface PriorityRecommendation {
   priority: 'CRITICAL' | 'MEDIUM' | 'LOW';
   howToFix: string;
   affectedCount?: number;
+  /** Concrete page URLs this recommendation affects, when known (capped server-side). */
+  affectedUrls?: string[];
 }
 
 export interface SiteAuditReportDTO {

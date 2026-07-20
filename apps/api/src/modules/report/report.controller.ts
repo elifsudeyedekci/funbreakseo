@@ -14,6 +14,7 @@ import { Response } from 'express';
 import { User } from '@prisma/client';
 import { ReportService, ReportType } from './report.service';
 import { MonthlyReportService } from './monthly-report.service';
+import { SiteAuditReportService } from './site-audit-report.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { PrismaService } from '../../prisma.service';
@@ -24,6 +25,7 @@ export class ReportController {
   constructor(
     private readonly reportService: ReportService,
     private readonly monthlyReport: MonthlyReportService,
+    private readonly siteAuditReport: SiteAuditReportService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -58,6 +60,31 @@ export class ReportController {
       res.send(pdf);
     } else {
       // Sunucuda PDF motoru kullanılamıyorsa raporu yazdırılabilir HTML olarak ver
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.send(html);
+    }
+  }
+
+  /** Tam site denetimi PDF'i — audit sayfasındaki "PDF Olarak İndir" butonu */
+  @Get('site-audit-pdf')
+  async downloadSiteAuditPdf(
+    @Param('id') projectId: string,
+    @CurrentUser() user: User,
+    @Res() res: Response,
+  ) {
+    await this.assertAccess(projectId, user);
+    const data = await this.siteAuditReport.buildData(projectId);
+    const html = this.siteAuditReport.renderHtml(data);
+    const pdf = await this.siteAuditReport.generatePdf(html);
+
+    if (pdf) {
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="site-denetimi-${data.project.domain}-${new Date().toISOString().slice(0, 10)}.pdf"`,
+      );
+      res.send(pdf);
+    } else {
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.send(html);
     }

@@ -3,12 +3,12 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
-import { Zap, Wrench, FileText, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
+import { Zap, FileText, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
 import { api } from '@/lib/api';
 
 interface ActionPlan {
   healthScore: number | null;
-  autoActions: Array<{ kind: 'CONTENT' | 'FIXABLE_ISSUE'; title: string; detail: string; suggestedKeyword?: string }>;
+  autoActions: Array<{ kind: 'CONTENT'; title: string; detail: string; suggestedKeyword?: string }>;
   manualActions: Array<{ category: string; title: string; detail: string; count: number }>;
   contentSuggestions: Array<{ keyword: string; volume: number; suggestedTitle: string }>;
   summary: { autoCount: number; manualCount: number; contentCount: number };
@@ -50,7 +50,6 @@ export function ActionPlanPanel({ projectId }: { projectId: string }) {
   if (!hasAnything) return null;
 
   const contentActions = plan.autoActions.filter((a) => a.kind === 'CONTENT');
-  const fixableActions = plan.autoActions.filter((a) => a.kind === 'FIXABLE_ISSUE');
 
   return (
     <div className="rounded-2xl border border-indigo-500/25 bg-gradient-to-b from-indigo-500/[0.07] to-transparent p-6">
@@ -91,23 +90,18 @@ export function ActionPlanPanel({ projectId }: { projectId: string }) {
               {plan.summary.autoCount}
             </span>
           </div>
-          <ul className="space-y-2.5">
-            {contentActions.slice(0, 5).map((a, i) => (
-              <li key={`c${i}`} className="text-sm">
-                <p className="text-white/80 font-medium">{a.title}</p>
-                <p className="text-xs text-white/40 mt-0.5">{a.detail}</p>
-              </li>
-            ))}
-            {fixableActions.slice(0, 4).map((a, i) => (
-              <li key={`f${i}`} className="text-sm flex items-start gap-2">
-                <Wrench className="h-3.5 w-3.5 text-white/30 mt-0.5 flex-shrink-0" />
-                <span className="text-white/60">{a.title}</span>
-              </li>
-            ))}
-            {fixableActions.length > 4 && (
-              <li className="text-xs text-white/30">+{fixableActions.length - 4} {t('moreFixable')}</li>
-            )}
-          </ul>
+          {contentActions.length === 0 ? (
+            <p className="text-sm text-white/40">Şu anda önerilen içerik üretimi yok.</p>
+          ) : (
+            <ul className="space-y-2.5">
+              {contentActions.slice(0, 5).map((a, i) => (
+                <li key={`c${i}`} className="text-sm">
+                  <p className="text-white/80 font-medium">{a.title}</p>
+                  <p className="text-xs text-white/40 mt-0.5">{a.detail}</p>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         {/* Manuel yapılması gerekenler */}

@@ -22,6 +22,7 @@ export const DEFAULT_PLAN_LIMITS = {
     backlinkSyncsPerMonth: 2,
     competitorComparisonsPerMonth: 3,
     fullAuditReport: false,
+    crawlPageLimit: 100,
   },
   growth: {
     projects: 5,
@@ -39,6 +40,7 @@ export const DEFAULT_PLAN_LIMITS = {
     backlinkSyncsPerMonth: 10,
     competitorComparisonsPerMonth: 20,
     fullAuditReport: true,
+    crawlPageLimit: 500,
   },
   pro: {
     projects: 15,
@@ -56,6 +58,7 @@ export const DEFAULT_PLAN_LIMITS = {
     backlinkSyncsPerMonth: 60,
     competitorComparisonsPerMonth: 100,
     fullAuditReport: true,
+    crawlPageLimit: 999999,
   },
   enterprise: {
     projects: 999999,
@@ -73,6 +76,7 @@ export const DEFAULT_PLAN_LIMITS = {
     backlinkSyncsPerMonth: 999999,
     competitorComparisonsPerMonth: 999999,
     fullAuditReport: true,
+    crawlPageLimit: 999999,
   },
 };
 

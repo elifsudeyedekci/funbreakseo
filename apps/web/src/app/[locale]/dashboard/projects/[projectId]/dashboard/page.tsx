@@ -7,7 +7,8 @@ import { useTranslations, useLocale } from 'next-intl';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend,
 } from 'recharts';
-import { TrendingUp, TrendingDown, Search, Brain, AlertCircle, Clock, Zap, CheckCircle2, Globe, Link2, X, Download, ArrowRight, FileBarChart } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { TrendingUp, TrendingDown, Search, Brain, AlertCircle, Clock, Zap, Globe, Link2, FileBarChart } from 'lucide-react';
 import { projectApi, keywordApi } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 
@@ -101,46 +102,25 @@ interface ScanProgress {
   summary?: Record<string, number>;
 }
 
-/** Build a standalone, printable HTML scan report and download it. */
-function downloadReport(name: string, d: OverviewData | undefined, summary?: Record<string, number>) {
-  const row = (label: string, value: string | number) =>
-    `<tr><td style="padding:8px 12px;color:#555">${label}</td><td style="padding:8px 12px;font-weight:700;text-align:right">${value}</td></tr>`;
-  const html = `<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>Tarama Raporu</title>
-<style>body{font-family:system-ui,Arial,sans-serif;max-width:760px;margin:40px auto;color:#111;padding:0 20px}
-h1{font-size:22px}h2{font-size:15px;margin-top:28px;border-bottom:2px solid #eee;padding-bottom:6px}
-table{width:100%;border-collapse:collapse;margin-top:8px}tr:nth-child(even){background:#fafafa}
-.score{font-size:40px;font-weight:800;color:${(d?.healthScore ?? 0) >= 70 ? '#16a34a' : (d?.healthScore ?? 0) >= 40 ? '#ea580c' : '#dc2626'}}
-.muted{color:#888;font-size:12px}</style></head><body>
-<h1>FunBreakSEO — Tarama Raporu</h1>
-<p class="muted">${name} · ${new Date().toLocaleString('tr-TR')}</p>
-<h2>Site Sağlığı</h2><p class="score">${d?.healthScore ?? 0}<span style="font-size:16px;color:#999">/100</span></p>
-<h2>Teknik SEO</h2><table>${row('Taranan sayfa', d?.pagesScanned ?? 0)}${row('Bulunan sorun', d?.issuesFound ?? 0)}</table>
-<h2>Anahtar Kelime</h2><table>${row('Sıralanan kelime', d?.rankedCount ?? summary?.keywords ?? 0)}${row('Ortalama pozisyon', d?.avgPosition?.toFixed(1) ?? '—')}${row('İlk sayfada (1-10)', d?.firstPageCount ?? 0)}${row('İlk 3', d?.top3Count ?? 0)}</table>
-<h2>GEO / AI Görünürlük</h2><table>${row('AI görünürlük skoru', `${d?.geoVisibilityScore ?? 0}%`)}${row('AI bahsedilme', d?.latestGeoSnapshot?.mentionCount ?? 0)}${row('Kaynak gösterilme', d?.latestGeoSnapshot?.citationCount ?? 0)}</table>
-<h2>Otorite</h2><table>${row('Backlink', d?.backlinkCount ?? summary?.backlinks ?? 0)}${row('Rakip', summary?.competitors ?? 0)}</table>
-<p class="muted" style="margin-top:30px">Bu rapor FunBreakSEO tarafından otomatik üretilmiştir.</p>
-</body></html>`;
-  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `tarama-raporu-${name}-${new Date().toISOString().slice(0, 10)}.html`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
 export default function ProjectDashboardPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const locale = useLocale();
   const t = useTranslations('projectDashboard');
+  const router = useRouter();
   const [scanning, setScanning] = useState(false);
-  const [scanModalOpen, setScanModalOpen] = useState(false);
+  const base = `/${locale}/dashboard/projects/${projectId}`;
 
+  // Kicking off a full scan sends the user straight to the (already
+  // comprehensive) audit report page instead of duplicating its content in a
+  // modal here — the audit page's own "isRunning" state picks up the crawl
+  // that's now in flight and shows live progress there.
   const fullScanMutation = useMutation({
     mutationFn: () => projectApi.fullScan(projectId).then((r) => r.data),
-    onSuccess: () => { setScanning(true); setScanModalOpen(true); setSelectedScan(null); },
+    onSuccess: () => {
+      setScanning(true);
+      router.push(`${base}/audit`);
+    },
   });
-  const base = `/${locale}/dashboard/projects/${projectId}`;
 
   const { data: scanProgress } = useQuery<ScanProgress>({
     queryKey: ['full-scan-status', projectId],
@@ -167,8 +147,9 @@ export default function ProjectDashboardPage() {
         .catch(() => []),
   });
 
-  // Scan history archive
-  const [selectedScan, setSelectedScan] = useState<ScanHistoryItem | null>(null);
+  // Scan history archive — point-in-time counters only (no full
+  // SiteAuditReport), shown as a read-only table; the audit page is the
+  // canonical place for the current, fully-detailed report.
   const { data: scanHistory = [] } = useQuery<ScanHistoryItem[]>({
     queryKey: ['scan-history', projectId],
     queryFn: () => projectApi.scanHistory(projectId).then((r) => (Array.isArray(r.data) ? r.data : (r.data?.data ?? [])) as ScanHistoryItem[]).catch(() => []),
@@ -196,229 +177,55 @@ export default function ProjectDashboardPage() {
 
   const lastCrawlDate = data?.lastCrawl?.finishedAt ?? data?.lastCrawl?.createdAt ?? null;
 
-  // Report modal renders either a selected historical scan or the live overview.
-  const reportData: OverviewData = selectedScan
-    ? {
-        healthScore: selectedScan.healthScore,
-        pagesScanned: selectedScan.pagesScanned,
-        issuesFound: selectedScan.issuesFound,
-        keywordCount: selectedScan.keywordCount,
-        rankedCount: selectedScan.rankedCount,
-        firstPageCount: selectedScan.firstPageCount,
-        avgPosition: selectedScan.avgPosition,
-        backlinkCount: selectedScan.backlinkCount,
-        geoVisibilityScore: selectedScan.geoVisibilityScore,
-        latestGeoSnapshot: { mentionCount: selectedScan.geoMentions, citationCount: selectedScan.geoCitations },
-      }
-    : (data ?? {});
-  const reportSummary: Record<string, number> = selectedScan
-    ? { keywords: selectedScan.rankedCount, backlinks: selectedScan.backlinkCount, competitors: selectedScan.competitorCount }
-    : (scanProgress?.summary ?? {});
-
   return (
     <div className="p-6 space-y-6">
       {/* Full Scan Banner */}
-      <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-4 flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-semibold text-white">Tam Tarama</h3>
-          <p className="text-xs text-white/40 mt-0.5">Teknik SEO + Anahtar Kelime + Backlink + GEO + Rakip — tek seferde hepsini çalıştır</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {(data && (data.pagesScanned ?? 0) > 0) && (
-            <button
-              onClick={() => { setSelectedScan(null); setScanModalOpen(true); }}
-              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white/70 hover:bg-white/10 transition-all"
-            >
-              <FileBarChart className="h-4 w-4" /> Son Raporu Gör
-            </button>
-          )}
-          <button
-            onClick={() => fullScanMutation.mutate()}
-            disabled={fullScanMutation.isPending || scanProgress?.status === 'running'}
-            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 transition-all"
-          >
-            {fullScanMutation.isPending || scanProgress?.status === 'running' ? (
-              <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Taranıyor…</>
-            ) : (
-              <><Zap className="h-4 w-4" /> Tam Tarama Başlat</>
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* Full Scan modal: live progress + final report (wide in-page panel) */}
-      {scanModalOpen && (
-      <div className="fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto">
-        <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={() => setScanModalOpen(false)} />
-        <div className="relative w-full max-w-5xl my-8 rounded-2xl border border-white/10 bg-[#0f0f17] p-6 space-y-5">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2"><FileBarChart className="h-5 w-5 text-indigo-400" /> Tam Tarama Raporu</h2>
-            <button onClick={() => setScanModalOpen(false)} className="p-1 rounded-lg text-white/50 hover:text-white hover:bg-white/10"><X className="h-5 w-5" /></button>
-          </div>
-
-      {selectedScan && (
-        <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/60">
-          Geçmiş tarama: <span className="text-white font-medium">{new Date(selectedScan.createdAt).toLocaleString('tr-TR')}</span>
-        </div>
-      )}
-
-      {/* Live scan progress (only for an active scan, not history view) */}
-      {!selectedScan && scanProgress && scanProgress.status !== 'idle' && (
-        <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm font-semibold text-white">
-              {scanProgress.status === 'completed' ? (
-                <><CheckCircle2 className="h-4 w-4 text-emerald-400" /> Tarama Tamamlandı</>
-              ) : (
-                <><span className="w-3.5 h-3.5 border-2 border-indigo-400/30 border-t-indigo-400 rounded-full animate-spin" /> {STEP_LABELS[scanProgress.currentStep ?? ''] ?? 'Taranıyor'}…</>
-              )}
-            </div>
-            <span className="text-sm font-bold text-indigo-300">%{scanProgress.percent ?? 0}</span>
-          </div>
-          <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
-            <div className="h-2 rounded-full bg-indigo-500 transition-all duration-500" style={{ width: `${scanProgress.percent ?? 0}%` }} />
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-            {['crawl', 'keywords', 'backlinks', 'geo', 'competitors'].map((step) => {
-              const st = scanProgress.steps?.[step];
-              const state = st?.status;
-              const cls =
-                state === 'done' ? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-400'
-                : state === 'error' ? 'border-red-500/20 bg-red-500/5 text-red-400'
-                : state === 'skipped' ? 'border-amber-500/20 bg-amber-500/5 text-amber-400'
-                : scanProgress.currentStep === step ? 'border-indigo-500/30 bg-indigo-500/10 text-indigo-300'
-                : 'border-white/10 bg-white/2 text-white/40';
-              const label = state === 'done' ? '✓' : state === 'error' ? '✕' : state === 'skipped' ? '—' : scanProgress.currentStep === step ? '…' : '·';
-              return (
-                <div key={step} className={`rounded-xl border p-2 text-center text-xs ${cls}`}>
-                  <div className="font-semibold">{STEP_LABELS[step]}</div>
-                  <div className="mt-0.5">{label}</div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Comprehensive scan result report — shown on completion (and persists as
-          long as overview data exists, so it doubles as the latest-scan report). */}
-      {(selectedScan || scanProgress?.status === 'completed' || ((reportData.pagesScanned ?? 0) > 0)) && (() => { const data = reportData; const sum = reportSummary; return (
-        <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/4 to-white/2 p-6 space-y-5">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5 text-emerald-400" />
-            <h2 className="text-lg font-bold text-white">Tarama Sonuç Raporu</h2>
-          </div>
-
-          {/* Top: health score visual + headline metrics */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-            {/* Site health gauge */}
-            <div className="rounded-2xl border border-white/10 bg-white/2 p-5 flex flex-col items-center justify-center">
-              <div className="relative h-24 w-24">
-                <svg viewBox="0 0 36 36" className="h-24 w-24 -rotate-90">
-                  <path className="text-white/10" stroke="currentColor" strokeWidth="3" fill="none"
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                  <path className={(data?.healthScore ?? 0) >= 70 ? 'text-emerald-400' : (data?.healthScore ?? 0) >= 40 ? 'text-orange-400' : 'text-red-400'}
-                    stroke="currentColor" strokeWidth="3" strokeLinecap="round" fill="none"
-                    strokeDasharray={`${data?.healthScore ?? 0}, 100`}
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-2xl font-bold text-white">{data?.healthScore ?? 0}</span>
-                </div>
-              </div>
-              <p className="text-xs text-white/50 mt-2">Site Sağlık Skoru</p>
-            </div>
-
-            {/* Technical SEO */}
-            <div className="rounded-2xl border border-orange-500/20 bg-orange-500/5 p-5">
-              <div className="flex items-center gap-2 mb-3"><AlertCircle className="h-4 w-4 text-orange-400" /><span className="text-xs font-semibold text-white">Teknik SEO</span></div>
-              <div className="space-y-1.5 text-sm">
-                <div className="flex justify-between"><span className="text-white/50">Taranan sayfa</span><span className="font-bold text-white">{data?.pagesScanned ?? 0}</span></div>
-                <div className="flex justify-between"><span className="text-white/50">Bulunan sorun</span><span className="font-bold text-white">{data?.issuesFound ?? 0}</span></div>
-              </div>
-            </div>
-
-            {/* Keywords */}
-            <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-5">
-              <div className="flex items-center gap-2 mb-3"><Search className="h-4 w-4 text-indigo-400" /><span className="text-xs font-semibold text-white">Anahtar Kelime</span></div>
-              <div className="space-y-1.5 text-sm">
-                <div className="flex justify-between"><span className="text-white/50">Sıralanan kelime</span><span className="font-bold text-white">{data?.rankedCount ?? sum?.keywords ?? 0}</span></div>
-                <div className="flex justify-between"><span className="text-white/50">Ort. pozisyon</span><span className="font-bold text-white">{data?.avgPosition?.toFixed(1) ?? '—'}</span></div>
-                <div className="flex justify-between"><span className="text-white/50">İlk sayfada</span><span className="font-bold text-white">{data?.firstPageCount ?? 0}</span></div>
-              </div>
-            </div>
-
-            {/* GEO + Backlink + Competitors */}
-            <div className="rounded-2xl border border-purple-500/20 bg-purple-500/5 p-5">
-              <div className="flex items-center gap-2 mb-3"><Brain className="h-4 w-4 text-purple-400" /><span className="text-xs font-semibold text-white">GEO & Otorite</span></div>
-              <div className="space-y-1.5 text-sm">
-                <div className="flex justify-between"><span className="text-white/50">AI görünürlük</span><span className="font-bold text-white">{data?.geoVisibilityScore ?? 0}%</span></div>
-                <div className="flex justify-between"><span className="text-white/50">AI bahsedilme</span><span className="font-bold text-white">{data?.latestGeoSnapshot?.mentionCount ?? 0}</span></div>
-                <div className="flex justify-between"><span className="text-white/50">Backlink</span><span className="font-bold text-white">{data?.backlinkCount ?? sum?.backlinks ?? 0}</span></div>
-                <div className="flex justify-between"><span className="text-white/50">Rakip</span><span className="font-bold text-white">{sum?.competitors ?? 0}</span></div>
-              </div>
-            </div>
-          </div>
-
-          {/* Pages vs issues quick bar */}
-          <div className="rounded-2xl border border-white/10 bg-white/2 p-5">
-            <h3 className="text-xs font-semibold text-white/60 mb-3">Sayfa / Sorun Dağılımı</h3>
-            <ResponsiveContainer width="100%" height={120}>
-              <BarChart data={[{ name: 'Taranan Sayfa', v: data?.pagesScanned ?? 0 }, { name: 'Bulunan Sorun', v: data?.issuesFound ?? 0 }, { name: 'Backlink', v: data?.backlinkCount ?? 0 }, { name: 'Sıralanan Kelime', v: data?.rankedCount ?? 0 }]} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                <XAxis type="number" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} allowDecimals={false} />
-                <YAxis type="category" dataKey="name" width={110} tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 10 }} />
-                <Tooltip contentStyle={{ background: '#111118', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', fontSize: 12 }} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
-                <Bar dataKey="v" fill="#6366f1" radius={[0, 4, 4, 0]} name="Adet" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Action boxes — turn findings into next steps */}
+      <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-4 space-y-3">
+        <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold text-white mb-3">Önerilen Aksiyonlar</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {(data?.backlinkCount ?? 0) < 10 && (
-                <a href={`${base}/backlinks`} className="flex items-center justify-between rounded-xl border border-sky-500/20 bg-sky-500/5 p-4 hover:bg-sky-500/10 transition-colors">
-                  <div><p className="text-sm font-semibold text-white">Otoriteniz düşük — Backlink alın</p><p className="text-xs text-white/50 mt-0.5">Sadece {data?.backlinkCount ?? 0} backlink. Backlink Market&apos;ten kaliteli bağlantı edinin.</p></div>
-                  <ArrowRight className="h-4 w-4 text-sky-400 flex-shrink-0" />
-                </a>
-              )}
-              {(data?.issuesFound ?? 0) > 0 && (
-                <a href={`${base}/crawl`} className="flex items-center justify-between rounded-xl border border-orange-500/20 bg-orange-500/5 p-4 hover:bg-orange-500/10 transition-colors">
-                  <div><p className="text-sm font-semibold text-white">{data?.issuesFound} teknik SEO sorunu — Düzeltin</p><p className="text-xs text-white/50 mt-0.5">Site sağlığınızı yükseltmek için sorunları giderin.</p></div>
-                  <ArrowRight className="h-4 w-4 text-orange-400 flex-shrink-0" />
-                </a>
-              )}
-              {(data?.geoVisibilityScore ?? 0) < 50 && (
-                <a href={`${base}/content`} className="flex items-center justify-between rounded-xl border border-purple-500/20 bg-purple-500/5 p-4 hover:bg-purple-500/10 transition-colors">
-                  <div><p className="text-sm font-semibold text-white">AI görünürlüğü zayıf — İçerik yazın</p><p className="text-xs text-white/50 mt-0.5">AI aramalarda görünmek için kapsamlı, soru-yanıt içerik üretin.</p></div>
-                  <ArrowRight className="h-4 w-4 text-purple-400 flex-shrink-0" />
-                </a>
-              )}
-              {(data?.rankedCount ?? 0) < 10 && (
-                <a href={`${base}/keywords`} className="flex items-center justify-between rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-4 hover:bg-indigo-500/10 transition-colors">
-                  <div><p className="text-sm font-semibold text-white">Az kelimede sıralanıyorsunuz — Kelime ekleyin</p><p className="text-xs text-white/50 mt-0.5">Hedef anahtar kelimeleri ekleyip takibe alın.</p></div>
-                  <ArrowRight className="h-4 w-4 text-indigo-400 flex-shrink-0" />
-                </a>
-              )}
-            </div>
+            <h3 className="text-sm font-semibold text-white">Tam Tarama</h3>
+            <p className="text-xs text-white/40 mt-0.5">Teknik SEO + Anahtar Kelime + Backlink + GEO + Rakip — tek seferde hepsini çalıştır, sonuç doğrudan denetim raporunda açılır</p>
           </div>
-
-          {/* Download report */}
-          <div className="flex justify-end">
+          <div className="flex items-center gap-2">
+            {(data && (data.pagesScanned ?? 0) > 0) && (
+              <a
+                href={`${base}/audit`}
+                className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white/70 hover:bg-white/10 transition-all"
+              >
+                <FileBarChart className="h-4 w-4" /> Son Raporu Gör
+              </a>
+            )}
             <button
-              onClick={() => downloadReport(base.split('/').pop() || 'proje', data, sum)}
-              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+              onClick={() => fullScanMutation.mutate()}
+              disabled={fullScanMutation.isPending || scanProgress?.status === 'running'}
+              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 transition-all"
             >
-              <Download className="h-4 w-4" /> Raporu İndir (HTML)
+              {fullScanMutation.isPending || scanProgress?.status === 'running' ? (
+                <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Taranıyor…</>
+              ) : (
+                <><Zap className="h-4 w-4" /> Tam Tarama Başlat</>
+              )}
             </button>
           </div>
         </div>
-      ); })()}
-        </div>
+
+        {/* Slim inline progress strip — shown only if a scan is actively
+            running while the user is still on this page (e.g. they came
+            back after starting one elsewhere). The audit page is the
+            primary place to watch progress; this is just a status echo. */}
+        {scanProgress && scanProgress.status === 'running' && (
+          <div className="pt-3 border-t border-white/10 space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-indigo-300 font-medium">{STEP_LABELS[scanProgress.currentStep ?? ''] ?? 'Taranıyor'}…</span>
+              <span className="text-white/40">%{scanProgress.percent ?? 0}</span>
+            </div>
+            <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
+              <div className="h-full rounded-full bg-indigo-500 transition-all duration-500" style={{ width: `${scanProgress.percent ?? 0}%` }} />
+            </div>
+          </div>
+        )}
       </div>
-      )}
+
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -527,7 +334,7 @@ export default function ProjectDashboardPage() {
             <FileBarChart className="h-4 w-4 text-indigo-400" />
             <h2 className="text-sm font-semibold text-white">Tarama Geçmişi</h2>
           </div>
-          <p className="text-[11px] text-white/35 mb-4">Geçmiş taramalarınız — tarihe tıklayıp o günün raporunu açın</p>
+          <p className="text-[11px] text-white/35 mb-4">Geçmiş taramalarınızın arşivlenmiş özeti — güncel, tam detaylı rapor için &quot;Son Raporu Gör&quot;ü kullanın</p>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -539,16 +346,12 @@ export default function ProjectDashboardPage() {
                   <th className="py-2 pr-4 font-medium text-center">Ort. Poz.</th>
                   <th className="py-2 pr-4 font-medium text-center">Backlink</th>
                   <th className="py-2 pr-4 font-medium text-center">GEO</th>
-                  <th className="py-2 font-medium text-right">Rapor</th>
+                  <th className="py-2 pr-4 font-medium text-center">Rakip</th>
                 </tr>
               </thead>
               <tbody>
                 {scanHistory.map((s) => (
-                  <tr
-                    key={s.id}
-                    onClick={() => { setSelectedScan(s); setScanModalOpen(true); }}
-                    className="border-b border-white/5 hover:bg-white/5 cursor-pointer"
-                  >
+                  <tr key={s.id} className="border-b border-white/5">
                     <td className="py-2 pr-4 text-white/80">{new Date(s.createdAt).toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' })}</td>
                     <td className="py-2 pr-4 text-center"><span className={s.healthScore >= 70 ? 'text-emerald-400' : s.healthScore >= 40 ? 'text-yellow-400' : 'text-red-400'}>{s.healthScore}</span></td>
                     <td className="py-2 pr-4 text-center text-white/60">{s.issuesFound}</td>
@@ -556,7 +359,7 @@ export default function ProjectDashboardPage() {
                     <td className="py-2 pr-4 text-center text-white/60">{s.avgPosition?.toFixed(1) ?? '—'}</td>
                     <td className="py-2 pr-4 text-center text-white/60">{s.backlinkCount}</td>
                     <td className="py-2 pr-4 text-center text-white/60">{s.geoVisibilityScore}%</td>
-                    <td className="py-2 text-right"><span className="inline-flex items-center gap-1 text-indigo-400 text-xs">Aç <ArrowRight className="h-3 w-3" /></span></td>
+                    <td className="py-2 pr-4 text-center text-white/60">{s.competitorCount}</td>
                   </tr>
                 ))}
               </tbody>

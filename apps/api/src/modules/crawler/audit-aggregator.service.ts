@@ -149,20 +149,50 @@ export class AuditAggregatorService {
     return Math.max(0, score)
   }
 
+  /** Cap on how many affected-page URLs we attach to a single recommendation card. */
+  private static readonly MAX_AFFECTED_URLS = 25
+
   private async crawlIssuesToRecommendations(crawlJobId: string): Promise<PriorityRecommendation[]> {
-    const grouped = await this.prisma.seoIssue.groupBy({
-      by: ['code', 'category', 'severity', 'message', 'recommendation'],
+    // Fetch full rows (not groupBy) so we can attach the concrete affected
+    // page URLs per recommendation — groupBy only gives counts.
+    const issues = await this.prisma.seoIssue.findMany({
       where: { crawlJobId },
-      _count: { code: true },
+      select: {
+        code: true,
+        category: true,
+        severity: true,
+        message: true,
+        recommendation: true,
+        crawledPage: { select: { url: true } },
+      },
     })
+
     const mapSeverity = { CRITICAL: 'CRITICAL', WARNING: 'MEDIUM', NOTICE: 'LOW' } as const
-    return grouped.map((g) => ({
-      code: g.code,
+    const byCode = new Map<
+      string,
+      { category: string; severity: keyof typeof mapSeverity; message: string; recommendation: string | null; count: number; urls: Set<string> }
+    >()
+
+    for (const issue of issues) {
+      let entry = byCode.get(issue.code)
+      if (!entry) {
+        entry = { category: issue.category, severity: issue.severity, message: issue.message, recommendation: issue.recommendation, count: 0, urls: new Set() }
+        byCode.set(issue.code, entry)
+      }
+      entry.count++
+      if (issue.crawledPage?.url && entry.urls.size < AuditAggregatorService.MAX_AFFECTED_URLS) {
+        entry.urls.add(issue.crawledPage.url)
+      }
+    }
+
+    return Array.from(byCode.entries()).map(([code, g]) => ({
+      code,
       title: g.message,
       category: g.category as PriorityRecommendation['category'],
       priority: mapSeverity[g.severity],
       howToFix: g.recommendation ?? '',
-      affectedCount: g._count.code,
+      affectedCount: g.count,
+      affectedUrls: Array.from(g.urls),
     }))
   }
 
@@ -179,6 +209,7 @@ export class AuditAggregatorService {
         priority: 'CRITICAL',
         howToFix: 'Bozuk bağlantıları düzeltin veya 301 yönlendirme ekleyin.',
         affectedCount: broken.length,
+        affectedUrls: broken.slice(0, AuditAggregatorService.MAX_AFFECTED_URLS).map((b: any) => b.url),
       })
     }
     if (redirects.length > 0) {
@@ -189,6 +220,7 @@ export class AuditAggregatorService {
         priority: 'MEDIUM',
         howToFix: 'Çoklu yönlendirmeleri tek bir doğrudan yönlendirmeye indirin.',
         affectedCount: redirects.length,
+        affectedUrls: redirects.slice(0, AuditAggregatorService.MAX_AFFECTED_URLS).map((r: any) => r.url),
       })
     }
     if (orphans.length > 0) {
@@ -197,6 +229,7 @@ export class AuditAggregatorService {
         title: `${orphans.length} sayfa hiçbir iç bağlantıdan erişilemiyor (orphan)`,
         category: 'LINKS',
         priority: 'MEDIUM',
+        affectedUrls: orphans.slice(0, AuditAggregatorService.MAX_AFFECTED_URLS),
         howToFix: 'Bu sayfalara sitenizin başka sayfalarından iç bağlantı ekleyin.',
         affectedCount: orphans.length,
       })

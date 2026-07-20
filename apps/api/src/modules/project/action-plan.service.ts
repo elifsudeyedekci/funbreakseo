@@ -5,12 +5,17 @@ import { ContentService } from '../content/content.service';
 export interface ActionPlan {
   crawlId: string | null;
   healthScore: number | null;
-  /** Sistemin otomatik çözebildikleri (tek tıkla başlatılır) */
+  /**
+   * Sistemin platformdan gerçekten otomatik yapabildikleri — şu an tek gerçek
+   * karşılığı içerik üretimidir (blog/GEO odaklı yazı). Title/meta/canonical/
+   * viewport gibi HTML düzenlemeleri müşterinin kendi sitesinde yapması
+   * gereken şeylerdir (bkz. manualActions) — burada YER ALMAZ, çünkü bunları
+   * fiilen otomatik uygulayan bir entegrasyon (ör. WordPress connector) yok.
+   */
   autoActions: Array<{
-    kind: 'CONTENT' | 'FIXABLE_ISSUE';
+    kind: 'CONTENT';
     title: string;
     detail: string;
-    issueId?: string;
     suggestedKeyword?: string;
   }>;
   /** Sistemin yapamayacakları — "bunları sizin yapmanız gerekiyor" */
@@ -20,16 +25,31 @@ export interface ActionPlan {
   summary: { autoCount: number; manualCount: number; contentCount: number };
 }
 
-/** Sunucu/altyapı seviyesinde olduğu için bizim otomatik düzeltemeyeceğimiz kategoriler */
-const MANUAL_CATEGORIES = new Set(['SPEED', 'SECURITY', 'MOBILE']);
+/**
+ * Her IssueCategory için "bunu neden/nasıl siz düzeltmelisiniz" açıklaması.
+ * Platform hiçbir SeoIssue kategorisini fiilen otomatik düzeltmiyor — hepsi
+ * müşterinin kendi sitesinde (HTML/CMS/sunucu seviyesinde) yapması gereken
+ * değişikliklerdir. Yalnızca içerik ÜRETİMİ (blog/GEO yazısı) platformdan
+ * gerçekten otomatik yapılabilir.
+ */
 const MANUAL_HINTS: Record<string, string> = {
-  SPEED:
-    'Sayfa hızı sorunları sunucu/tema seviyesinde çözülür: görselleri sıkıştırın, önbellekleme ve CDN kurun, kullanılmayan eklenti/scriptleri kaldırın.',
-  SECURITY:
-    'Güvenlik sorunları hosting/sunucu ayarı gerektirir: SSL sertifikası, HTTPS yönlendirmesi ve güvenlik başlıklarını sunucu yapılandırmanızda düzeltin.',
-  MOBILE:
-    'Mobil uyum sorunları tema/tasarım değişikliği gerektirir: responsive tema kullanın, viewport ayarını ve dokunma hedeflerini düzeltin.',
+  TITLE: 'Sayfa başlığı (title) etiketini sitenizin HTML/CMS\'inde 50-60 karakter arasında, benzersiz ve açıklayıcı olacak şekilde düzenleyin.',
+  META: 'Meta açıklamayı (description) 120-160 karakter arasında, tıklanmayı teşvik edecek şekilde sitenizde düzenleyin.',
+  HEADING: 'Sayfada tek bir H1 ve mantıklı bir H2-H6 hiyerarşisi olacak şekilde başlık yapısını düzenleyin.',
+  CONTENT: 'İçerik miktarını ve kalitesini (görsellerde alt metin, kelime sayısı) sitenizde artırın.',
+  TECHNICAL: 'Bu teknik SEO sorunu (canonical, sitemap, robots.txt, yönlendirme vb.) sitenizin sunucu/CMS ayarlarından düzeltilmelidir.',
+  SCHEMA: 'Sayfa tipine uygun Schema.org (JSON-LD) yapılandırılmış verisini sitenize ekleyin.',
+  LINKS: 'Bozuk bağlantıları düzeltin, iç bağlantı yapısını ve yönlendirmeleri sitenizde gözden geçirin.',
+  MOBILE: 'Mobil uyum sorunları tema/tasarım değişikliği gerektirir: responsive tema kullanın, viewport ayarını ve dokunma hedeflerini düzeltin.',
+  SECURITY: 'Güvenlik sorunları hosting/sunucu ayarı gerektirir: SSL sertifikası, HTTPS yönlendirmesi ve güvenlik başlıklarını sunucu yapılandırmanızda düzeltin.',
+  SPEED: 'Sayfa hızı sorunları sunucu/tema seviyesinde çözülür: görselleri sıkıştırın, önbellekleme ve CDN kurun, kullanılmayan eklenti/scriptleri kaldırın.',
+  PERFORMANCE: 'Performans sorunları (yavaş yükleme, büyük dosya boyutu, sıkıştırma eksikliği) sunucu/hosting ve tema seviyesinde çözülmelidir.',
+  USABILITY: 'Kullanılabilirlik sorunlarını (font boyutu, dokunma hedefi, favicon) sitenizin tasarımında düzeltin.',
+  SOCIAL: 'Open Graph/Twitter Card etiketlerini ve sosyal medya profil bağlantılarını sitenize ekleyin.',
+  TECHNOLOGY: 'DNS/DMARC/SPF kayıtlarını alan adı sağlayıcınızın (domain/DNS yönetim panelinin) ayarlarından düzenleyin.',
+  LOCAL_SEO: 'LocalBusiness yapılandırılmış verisini ve NAP (ad/adres/telefon) tutarlılığını sitenizde sağlayın.',
 };
+const DEFAULT_MANUAL_HINT = 'Bu sorun sitenizde manuel müdahale gerektirir.';
 
 @Injectable()
 export class ActionPlanService {
@@ -52,41 +72,33 @@ export class ActionPlanService {
     });
 
     const autoActions: ActionPlan['autoActions'] = [];
+    // Every unresolved SeoIssue is something the CUSTOMER must fix on their
+    // own site — grouped by category (not by exact message, so "Title too
+    // short" and "Title missing" both roll up under one TITLE bucket).
     const manualBuckets = new Map<string, { count: number; sample: string }>();
 
     if (latestCrawl) {
       const issues = await this.prisma.seoIssue.findMany({
         where: { crawlJobId: latestCrawl.id, fixed: false },
-        select: { id: true, category: true, severity: true, message: true, autoFixable: true },
-        take: 500,
+        select: { category: true, message: true },
+        take: 2000,
       });
 
       for (const issue of issues) {
-        if (issue.autoFixable) {
-          if (autoActions.filter((a) => a.kind === 'FIXABLE_ISSUE').length < 25) {
-            autoActions.push({
-              kind: 'FIXABLE_ISSUE',
-              title: issue.message,
-              detail: 'WordPress Connector veya JS Pixel bağlıysa tek tıkla uygulanır; değilse öneri olarak işaretlenir.',
-              issueId: issue.id,
-            });
-          }
-        } else if (MANUAL_CATEGORIES.has(issue.category)) {
-          const bucket = manualBuckets.get(issue.category) ?? { count: 0, sample: issue.message };
-          bucket.count++;
-          manualBuckets.set(issue.category, bucket);
-        }
+        const bucket = manualBuckets.get(issue.category) ?? { count: 0, sample: issue.message };
+        bucket.count++;
+        manualBuckets.set(issue.category, bucket);
       }
     }
 
-    const manualActions: ActionPlan['manualActions'] = [...manualBuckets.entries()].map(
-      ([category, { count, sample }]) => ({
+    const manualActions: ActionPlan['manualActions'] = [...manualBuckets.entries()]
+      .map(([category, { count, sample }]) => ({
         category,
         title: sample,
-        detail: MANUAL_HINTS[category] ?? 'Bu sorun sitenizde manuel müdahale gerektirir.',
+        detail: MANUAL_HINTS[category] ?? DEFAULT_MANUAL_HINT,
         count,
-      }),
-    );
+      }))
+      .sort((a, b) => b.count - a.count);
 
     // İçerik açığı: takip edilen kelimelerden içeriği olmayanlar (hacme göre)
     const [keywords, contentItems] = await Promise.all([

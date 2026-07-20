@@ -5,6 +5,7 @@ import { IssueCategory, IssueSeverity, CrawlJobStatus } from '@prisma/client'
 import axios, { AxiosResponse } from 'axios'
 import { PrismaService } from '../../prisma.service'
 import { AuditAggregatorService } from './audit-aggregator.service'
+import { PlanLimitService } from '../plan-limit/plan-limit.service'
 
 // ---------------------------------------------------------------------------
 // HTML parsing helpers (regex-based, no external parser dependency)
@@ -277,6 +278,7 @@ export class CrawlerWorker extends WorkerHost {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditAggregator: AuditAggregatorService,
+    private readonly planLimit: PlanLimitService,
   ) {
     super()
   }
@@ -298,7 +300,7 @@ export class CrawlerWorker extends WorkerHost {
     try {
       const project = await this.prisma.project.findUnique({
         where: { id: projectId },
-        select: { id: true, domain: true },
+        select: { id: true, domain: true, organizationId: true },
       })
 
       if (!project) {
@@ -308,6 +310,16 @@ export class CrawlerWorker extends WorkerHost {
       const domain = project.domain.startsWith('http')
         ? project.domain
         : `https://${project.domain}`
+
+      // Plan-based page cap (Starter=100, Growth=500, Pro/Enterprise=effectively
+      // unlimited) — previously hardcoded to 100 for every plan.
+      let maxPages = 100
+      try {
+        const limits = await this.planLimit.getPlanLimits(project.organizationId)
+        maxPages = limits.crawlPageLimit
+      } catch (limitErr: any) {
+        this.logger.warn(`[Job ${job.id}] Could not resolve plan crawl-page limit, defaulting to 100: ${limitErr.message}`)
+      }
 
       // Pre-load rule definitions — wrapped in try/catch so crawl can proceed even if table is empty
       let ruleIdByCode = new Map<string, string>()
@@ -322,8 +334,8 @@ export class CrawlerWorker extends WorkerHost {
       }
 
       // Step 1: Discover URLs
-      const { urls, sitemapFound, sitemapUrl } = await this.discoverUrls(domain)
-      this.logger.log(`[Job ${job.id}] Discovered ${urls.length} URLs`)
+      const { urls, sitemapFound, sitemapUrl } = await this.discoverUrls(domain, maxPages)
+      this.logger.log(`[Job ${job.id}] Discovered ${urls.length} URLs (plan cap: ${maxPages})`)
 
       // Step 2: Crawl each URL and run SEO analysis
       const titlesSeen = new Map<string, string>()  // title -> url
@@ -583,7 +595,12 @@ export class CrawlerWorker extends WorkerHost {
 
   private async discoverUrls(
     domain: string,
+    maxPages: number,
   ): Promise<{ urls: string[]; sitemapFound: boolean; sitemapUrl: string }> {
+    // Hard technical ceiling regardless of plan — a single crawl job also now
+    // runs Puppeteer/PageSpeed analysis afterward, so an unbounded "Pro =
+    // unlimited" crawl on a huge site must still not run indefinitely.
+    const cap = Math.max(1, Math.min(maxPages, 5000))
     const sitemapUrl = `${domain.replace(/\/$/, '')}/sitemap.xml`
     try {
       const response = await axios.get<string>(sitemapUrl, {
@@ -597,7 +614,7 @@ export class CrawlerWorker extends WorkerHost {
       const urls = matches
         .map((m) => m[1].trim())
         .filter((u) => u.startsWith('http'))
-        .slice(0, 100)
+        .slice(0, cap)
 
       if (urls.length > 0) {
         this.logger.log(`Sitemap found at ${sitemapUrl} — ${urls.length} URLs`)
