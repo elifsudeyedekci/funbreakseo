@@ -102,7 +102,7 @@ interface AuditData {
   criticalCount: number;
   warningCount: number;
   noticeCount: number;
-  status: 'PENDING' | 'RUNNING' | 'COMPLETED' | 'DONE' | 'FAILED';
+  status: 'QUEUED' | 'RUNNING' | 'DONE' | 'FAILED';
   completedAt?: string;
   pagesScanned?: number;
   totalPagesQueued?: number | null;
@@ -163,26 +163,34 @@ export default function AuditPage() {
     queryFn: () => auditApi.get(projectId).then((r) => (r.data ?? null) as AuditData | null),
     refetchInterval: (query) => {
       const status = query.state.data?.status;
-      return status === 'RUNNING' || status === 'PENDING' ? 4000 : false;
+      return status === 'RUNNING' || status === 'QUEUED' ? 4000 : false;
     },
   });
 
   const audit = data;
-  const isRunning = audit?.status === 'RUNNING' || audit?.status === 'PENDING';
   const report = audit?.siteAuditReport ?? null;
 
   // Real, backend-computed progress (%complete + current step label) —
   // polled independently of the (heavier) main audit query so the bar moves
   // every 3s even while the full report payload only refetches every 4s.
+  // This is the SOURCE OF TRUTH for "is a scan currently in flight": unlike
+  // /audit (which deliberately keeps showing the last COMPLETED report's
+  // status while a re-scan runs, so the page doesn't blank out old data),
+  // /scan/status always reflects the newest CrawlJob regardless of status.
   const { data: scanStatus } = useQuery({
     queryKey: ['scan-status', projectId],
-    queryFn: () => crawlerApi.scanStatus(projectId).then((r) => r.data as { progress: number; step: string; stepKey: string; status: string }),
+    queryFn: () => crawlerApi.scanStatus(projectId).then((r) => r.data as { progress: number; step: string; stepKey: string; status: string; crawlJobId: string | null }),
     refetchInterval: (query) => {
       const s = query.state.data?.status;
-      return s === 'RUNNING' || s === 'PENDING' ? 3000 : false;
+      return s === 'RUNNING' || s === 'QUEUED' ? 3000 : false;
     },
     enabled: !!projectId,
   });
+
+  // A real job exists (crawlJobId set — excludes the "never scanned yet"
+  // sentinel) and hasn't finished/failed.
+  const scanActive = !!scanStatus?.crawlJobId && (scanStatus?.status === 'QUEUED' || scanStatus?.status === 'RUNNING');
+  const isRunning = scanActive || audit?.status === 'RUNNING' || audit?.status === 'QUEUED';
 
   // Auto-refresh when a scan finishes — the user should never have to
   // manually reload to see the just-completed report. The overlay stays up
@@ -190,14 +198,12 @@ export default function AuditPage() {
   const [completionPhase, setCompletionPhase] = useState<'none' | 'done' | 'failed'>('none');
   const wasRunningRef = useRef(false);
   useEffect(() => {
-    const status = scanStatus?.status;
-    const nowRunning = status === 'RUNNING' || status === 'PENDING';
-    if (wasRunningRef.current && !nowRunning) {
-      if (status === 'DONE') setCompletionPhase('done');
-      else if (status === 'FAILED') setCompletionPhase('failed');
+    if (wasRunningRef.current && !scanActive) {
+      if (scanStatus?.status === 'DONE') setCompletionPhase('done');
+      else if (scanStatus?.status === 'FAILED') setCompletionPhase('failed');
     }
-    wasRunningRef.current = nowRunning;
-  }, [scanStatus?.status]);
+    wasRunningRef.current = scanActive;
+  }, [scanActive, scanStatus?.status]);
 
   useEffect(() => {
     if (completionPhase === 'none') return;
@@ -215,8 +221,7 @@ export default function AuditPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [completionPhase, projectId, queryClient, router]);
 
-  const overlayVisible =
-    scanStatus?.status === 'RUNNING' || scanStatus?.status === 'PENDING' || completionPhase !== 'none';
+  const overlayVisible = scanActive || completionPhase !== 'none';
   const overlayPhase: 'running' | 'done' | 'failed' = completionPhase !== 'none' ? completionPhase : 'running';
 
   useEffect(() => {
@@ -227,7 +232,15 @@ export default function AuditPage() {
 
   const crawlMutation = useMutation({
     mutationFn: () => auditApi.start(projectId),
-    onSuccess: () => refetch(),
+    onSuccess: () => {
+      refetch();
+      // The scan-status query's refetchInterval only re-arms once its OWN
+      // last-known status is QUEUED/RUNNING — but right before this click it
+      // was idle (DONE from the previous scan), so nothing would trigger a
+      // new poll on its own. Force one immediately so the overlay appears
+      // right away instead of waiting for the next unrelated refetch.
+      queryClient.invalidateQueries({ queryKey: ['scan-status', projectId] });
+    },
   });
 
   const { data: aiOverview } = useQuery({
