@@ -22,6 +22,9 @@ export type { CharacterLimitBarProps } from './CharacterLimitBar';
 export { DeviceScreenshotFrame } from './DeviceScreenshotFrame';
 export type { DeviceScreenshotFrameProps } from './DeviceScreenshotFrame';
 
+export { ScanProgressOverlay } from './ScanProgressOverlay';
+export type { ScanProgressOverlayProps } from './ScanProgressOverlay';
+
 export { PriorityRecommendationList } from './PriorityRecommendationList';
 export type {
   PriorityRecommendationListProps,

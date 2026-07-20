@@ -16,6 +16,7 @@ import {
   AuditRadarChart,
   PriorityRecommendationList,
   DeviceScreenshotFrame,
+  ScanProgressOverlay,
   type CategoryRingItem,
 } from '@/components/audit';
 import {
@@ -184,19 +185,39 @@ export default function AuditPage() {
   });
 
   // Auto-refresh when a scan finishes — the user should never have to
-  // manually reload to see the just-completed report.
+  // manually reload to see the just-completed report. The overlay stays up
+  // for 3s showing a success/failure state before it closes itself.
+  const [completionPhase, setCompletionPhase] = useState<'none' | 'done' | 'failed'>('none');
   const wasRunningRef = useRef(false);
   useEffect(() => {
-    const nowRunning = scanStatus?.status === 'RUNNING' || scanStatus?.status === 'PENDING';
-    if (wasRunningRef.current && !nowRunning && scanStatus?.status === 'DONE') {
+    const status = scanStatus?.status;
+    const nowRunning = status === 'RUNNING' || status === 'PENDING';
+    if (wasRunningRef.current && !nowRunning) {
+      if (status === 'DONE') setCompletionPhase('done');
+      else if (status === 'FAILED') setCompletionPhase('failed');
+    }
+    wasRunningRef.current = nowRunning;
+  }, [scanStatus?.status]);
+
+  useEffect(() => {
+    if (completionPhase === 'none') return;
+    const id = setTimeout(() => {
       queryClient.invalidateQueries({ queryKey: ['audit', projectId] });
       queryClient.invalidateQueries({ queryKey: ['crawl-pages'] });
       queryClient.invalidateQueries({ queryKey: ['geo-ai-overview', projectId] });
       queryClient.invalidateQueries({ queryKey: ['backlink-gauges', projectId] });
-      router.refresh();
-    }
-    wasRunningRef.current = nowRunning;
-  }, [scanStatus?.status, projectId, queryClient, router]);
+      queryClient.invalidateQueries({ queryKey: ['analytics-data', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['scan-status', projectId] });
+      setCompletionPhase('none');
+      if (completionPhase === 'done') router.refresh();
+    }, 3000);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [completionPhase, projectId, queryClient, router]);
+
+  const overlayVisible =
+    scanStatus?.status === 'RUNNING' || scanStatus?.status === 'PENDING' || completionPhase !== 'none';
+  const overlayPhase: 'running' | 'done' | 'failed' = completionPhase !== 'none' ? completionPhase : 'running';
 
   useEffect(() => {
     if (!isRunning) return;
@@ -316,23 +337,12 @@ export default function AuditPage() {
         </div>
       </div>
 
-      {isRunning && (
-        <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-5 print:hidden">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-3">
-              <RefreshCw className="h-4 w-4 text-indigo-400 animate-spin" />
-              <span className="text-sm text-white/80">{scanStatus?.step ?? RUNNING_MESSAGES[msgIndex]}</span>
-            </div>
-            <span className="text-sm font-bold text-indigo-300">%{scanStatus?.progress ?? 3}</span>
-          </div>
-          <div className="h-2 rounded-full bg-white/10 overflow-hidden">
-            <div
-              className="h-full bg-indigo-500 rounded-full transition-all duration-700"
-              style={{ width: (scanStatus?.progress ?? 3) + '%' }}
-            />
-          </div>
-        </div>
-      )}
+      <ScanProgressOverlay
+        visible={overlayVisible}
+        progress={scanStatus?.progress ?? 3}
+        step={scanStatus?.step ?? RUNNING_MESSAGES[msgIndex]}
+        phase={overlayPhase}
+      />
 
       {!isRunning && audit && !report && (
         <div className="rounded-2xl border border-white/10 bg-white/2 p-6 text-center text-white/40 text-sm">

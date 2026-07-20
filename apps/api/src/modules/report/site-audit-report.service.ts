@@ -96,17 +96,23 @@ function deltaHtml(cur: number, prev: number): string {
   return ch > 0 ? `<span class="up">▲ %${ch.toFixed(1)}</span>` : `<span class="down">▼ %${Math.abs(ch).toFixed(1)}</span>`;
 }
 
-/** Circular progress ring — inline SVG, matches the dashboard's ring visual language. */
+/** Circular progress ring for the cover — gold/orange gradient stroke on a dark navy background. */
 function ringSvg(score: number, grade: string, size = 120, stroke = 12): string {
   const r = size / 2 - stroke;
   const c = 2 * Math.PI * r;
   const clamped = Math.max(0, Math.min(100, score));
   const offset = c - (clamped / 100) * c;
-  const color = scoreColor(clamped);
   const center = size / 2;
   return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="transform:rotate(-90deg)">
-    <circle cx="${center}" cy="${center}" r="${r}" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="${stroke}"/>
-    <circle cx="${center}" cy="${center}" r="${r}" fill="none" stroke="#ffffff" stroke-width="${stroke}"
+    <defs>
+      <linearGradient id="coverRingGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#fde68a"/>
+        <stop offset="0.55" stop-color="#fbbf24"/>
+        <stop offset="1" stop-color="#f59e0b"/>
+      </linearGradient>
+    </defs>
+    <circle cx="${center}" cy="${center}" r="${r}" fill="none" stroke="rgba(255,255,255,0.16)" stroke-width="${stroke}"/>
+    <circle cx="${center}" cy="${center}" r="${r}" fill="none" stroke="url(#coverRingGrad)" stroke-width="${stroke}"
       stroke-dasharray="${c}" stroke-dashoffset="${offset}" stroke-linecap="round"/>
   </svg>`;
 }
@@ -128,11 +134,15 @@ function categoryRingSvg(score: number, grade: string, size = 88, stroke = 9): s
   </svg>`;
 }
 
-/** Half-circle gauge — used for Domain/Page Strength and PSI scores. */
+let halfGaugeCounter = 0;
+
+/** Half-circle gauge — used for Domain/Page Strength and PSI scores. Thick red→yellow→green gradient stroke. */
 function halfGaugeSvg(value: number, label: string, size = 170): string {
+  halfGaugeCounter += 1;
+  const gradId = `halfGaugeGrad-${halfGaugeCounter}`;
   const w = size;
   const h = size * 0.62;
-  const stroke = size * 0.09;
+  const stroke = size * 0.13;
   const r = w / 2 - stroke;
   const cx = w / 2;
   const cy = h - stroke / 2;
@@ -141,12 +151,19 @@ function halfGaugeSvg(value: number, label: string, size = 170): string {
   const arcLen = Math.PI * r;
   const offset = arcLen - (clamped / 100) * arcLen;
   const path = `M ${cx - r} ${cy} A ${r} ${r} 0 1 1 ${cx + r} ${cy}`;
-  return `<svg width="${w}" height="${h + 22}" viewBox="0 0 ${w} ${h + 22}">
+  return `<svg width="${w}" height="${h + 24}" viewBox="0 0 ${w} ${h + 24}">
+    <defs>
+      <linearGradient id="${gradId}" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#dc2626"/>
+        <stop offset="0.5" stop-color="#eab308"/>
+        <stop offset="1" stop-color="#16a34a"/>
+      </linearGradient>
+    </defs>
     <path d="${path}" fill="none" stroke="#e2e8f0" stroke-width="${stroke}" stroke-linecap="round"/>
-    <path d="${path}" fill="none" stroke="${color}" stroke-width="${stroke}" stroke-linecap="round"
+    <path d="${path}" fill="none" stroke="url(#${gradId})" stroke-width="${stroke}" stroke-linecap="round"
       stroke-dasharray="${arcLen}" stroke-dashoffset="${offset}"/>
-    <text x="${cx}" y="${cy - 4}" font-size="${size * 0.15}" font-weight="800" fill="${color}" text-anchor="middle">${Math.round(clamped)}</text>
-    <text x="${cx}" y="${h + 16}" font-size="11" fill="#64748b" text-anchor="middle">${escapeHtml(label)}</text>
+    <text x="${cx}" y="${cy - 4}" font-size="${size * 0.16}" font-weight="800" fill="${color}" text-anchor="middle">${Math.round(clamped)}</text>
+    <text x="${cx}" y="${h + 18}" font-size="11" fill="#64748b" text-anchor="middle" font-weight="600">${escapeHtml(label)}</text>
   </svg>`;
 }
 
@@ -292,6 +309,26 @@ function heatCell(value: number, max: number): string {
   if (max <= 0) return '';
   const opacity = 0.08 + 0.42 * Math.min(1, value / max);
   return `background:rgba(29,78,216,${opacity.toFixed(2)})`;
+}
+
+/** Small gold bolt mark — used bare in the per-page navy header bar. */
+function brandMarkSvg(size = 14): string {
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" style="flex-shrink:0"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8Z" fill="#fbbf24"/></svg>`;
+}
+
+/** Gold bolt mark in a rounded gradient badge — used on the cover. */
+function brandMarkBadge(size = 22): string {
+  const pad = Math.round(size * 0.36);
+  const box = size + pad * 2;
+  return `<span style="display:inline-flex;align-items:center;justify-content:center;width:${box}px;height:${box}px;border-radius:${Math.round(box * 0.28)}px;background:linear-gradient(135deg,#fbbf24,#f59e0b);flex-shrink:0">
+    <svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8Z" fill="#0f172a"/></svg>
+  </span>`;
+}
+
+/** KPI card with a colored top border denoting category (blue = neutral, green = good, orange/red = attention). */
+function kpiCard(label: string, value: string, opts: { accent?: 'blue' | 'green' | 'red' | 'orange'; delta?: string } = {}): string {
+  const accent = opts.accent ?? 'blue';
+  return `<div class="kpi kpi-${accent}"><div class="label">${escapeHtml(label)}</div><div class="value">${value}</div>${opts.delta ? `<div class="delta">${opts.delta}</div>` : ''}</div>`;
 }
 
 @Injectable()
@@ -470,19 +507,51 @@ export class SiteAuditReportService {
       ? new Date(d.crawlJob.finishedAt).toLocaleString('tr-TR')
       : new Date(d.generatedAt).toLocaleString('tr-TR');
 
-    const pagehead = `<div class="pagehead"><span class="brand">FunBreak SEO</span><span class="meta">${escapeHtml(d.project.domain)} · ${dateLabel}</span></div>`;
+    // Every content page (not the cover) gets a thin navy header bar + footer
+    // with a sequential page number. The total isn't known until every page
+    // block below has been built, so we emit a placeholder and replace it
+    // globally right before returning.
+    let pageCounter = 0;
+    const pageWrap = (inner: string): string => {
+      pageCounter += 1;
+      const n = pageCounter;
+      return `<div class="page">
+  <div class="pagehead">
+    <div class="ph-brand">${brandMarkSvg(13)}<span>FunBreak SEO</span></div>
+    <div class="ph-meta">${escapeHtml(d.project.domain)} &middot; ${dateLabel}</div>
+    <div class="ph-num">${n} / __TOTAL_PAGES__</div>
+  </div>
+  <div class="page-body">
+${inner}
+  </div>
+  <div class="pagefoot">
+    <span>FunBreak SEO &middot; funbreakseo.com &middot; Gizli</span>
+    <span>${n} / __TOTAL_PAGES__</span>
+  </div>
+</div>`;
+    };
 
     // ── Sayfa 1: Kapak ──────────────────────────────────────────────────
     const cover = `<div class="page cover">
-  <div class="logo">FunBreak <span>SEO</span></div>
-  <h1>Aylık SEO &amp; Site Denetimi Raporu</h1>
-  <div class="domain">${escapeHtml(d.project.domain)}</div>
-  <div class="date">Tarama tarihi: ${dateLabel}${d.periodLabel ? ` · Dönem: ${escapeHtml(d.periodLabel)}` : ''}</div>
-  <div class="cover-score">
-    ${ringSvg(d.overallScore, d.overallGrade, 170, 14)}
-    <div class="cover-grade">${escapeHtml(d.overallGrade)}<span class="cover-grade-sub">${Math.round(d.overallScore)}/100</span></div>
+  <div class="cover-topbar">
+    <div class="cover-logo">${brandMarkBadge(20)}<span>FunBreak <b>SEO</b></span></div>
+    <span class="cover-confidential">Gizli Rapor</span>
   </div>
-  <div class="footer">${escapeHtml(d.project.organization || 'FunBreak Global Teknoloji Ltd. Şti.')} için hazırlandı · funbreakseo.com</div>
+  <div class="cover-mid">
+    <div class="cover-titles">
+      <h1>Aylık SEO &amp; Site Denetimi Raporu</h1>
+      <div class="cover-domain">${escapeHtml(d.project.domain)}</div>
+      <div class="cover-date">Tarama tarihi: ${dateLabel}${d.periodLabel ? ` · Dönem: ${escapeHtml(d.periodLabel)}` : ''}</div>
+    </div>
+    <div class="cover-score">
+      ${ringSvg(d.overallScore, d.overallGrade, 190, 16)}
+      <div class="cover-grade">${escapeHtml(d.overallGrade)}<span class="cover-grade-sub">${Math.round(d.overallScore)}/100</span></div>
+    </div>
+  </div>
+  <div class="cover-footer">
+    <span>${escapeHtml(d.project.organization || 'FunBreak Global Teknoloji Ltd. Şti.')} için hazırlandı</span>
+    <span>funbreakseo.com</span>
+  </div>
 </div>`;
 
     // ── Sayfa 2: Genel Özet ─────────────────────────────────────────────
@@ -503,15 +572,14 @@ export class SiteAuditReportService {
 
     const priorityLabel: Record<string, string> = { CRITICAL: 'Kritik', MEDIUM: 'Orta', LOW: 'Düşük' };
     const recRows = d.recommendations
-      .map(
-        (r) =>
-          `<div class="rec"><span class="prio ${r.priority === 'CRITICAL' ? 'high' : r.priority === 'MEDIUM' ? 'mid' : 'low'}">${priorityLabel[r.priority] ?? r.priority}</span>
-          <div><div style="font-weight:600">${escapeHtml(r.title)}</div>${r.affectedCount ? `<div class="muted">${r.affectedCount} sayfayı etkiliyor</div>` : ''}${r.howToFix ? `<div class="muted" style="margin-top:2px">${escapeHtml(r.howToFix)}</div>` : ''}</div></div>`,
-      )
+      .map((r) => {
+        const cls = r.priority === 'CRITICAL' ? 'high' : r.priority === 'MEDIUM' ? 'mid' : 'low';
+        return `<div class="rec rec-${cls}"><span class="prio ${cls}">${priorityLabel[r.priority] ?? r.priority}</span>
+          <div><div style="font-weight:700">${escapeHtml(r.title)}</div>${r.affectedCount ? `<div class="muted">${r.affectedCount} sayfayı etkiliyor</div>` : ''}${r.howToFix ? `<div class="muted" style="margin-top:2px">${escapeHtml(r.howToFix)}</div>` : ''}</div></div>`;
+      })
       .join('');
 
-    const summaryPage = `<div class="page">
-  ${pagehead}
+    const summaryPage = pageWrap(`
   <div class="section">
     <h2>Genel Özet</h2>
     <p class="sub">Bu rapor sitenizin teknik SEO, GEO/AI görünürlük, backlink, kullanılabilirlik ve performans durumunu tek seferde özetler; ardından (bağlıysa) Google Analytics ve Search Console verilerinizle devam eder.</p>
@@ -523,16 +591,15 @@ export class SiteAuditReportService {
     <p class="sub">5 kategorinin tek grafikte karşılaştırması</p>
     ${radarSvg(radarCategories)}
   </div>
-</div>`;
+`);
 
-    const recsPage = `<div class="page">
-  ${pagehead}
+    const recsPage = pageWrap(`
   <div class="section">
     <h2>Öncelikli Öneriler</h2>
     <p class="sub">Sitenizde tespit edilen tüm sorunlar, önem sırasına göre (Kritik → Orta → Düşük). Kritik maddeler görünürlüğünüzü en çok etkileyenlerdir.</p>
     ${recRows || '<p class="muted">Öneri bulunamadı — tebrikler!</p>'}
   </div>
-</div>`;
+`);
 
     // ── Sayfa: Sayfa İçi SEO + SERP + Anahtar Kelime Matrisi ────────────
     const serpTitle = escapeHtml(d.onPage?.serpPreview?.title ?? d.project.domain);
@@ -560,8 +627,7 @@ export class SiteAuditReportService {
       )
       .join('');
 
-    const onPagePage = `<div class="page">
-  ${pagehead}
+    const onPagePage = pageWrap(`
   <div class="section">
     <h2>SERP Önizlemesi</h2>
     <p class="sub">Siteniz Google arama sonuçlarında şu şekilde görünüyor.</p>
@@ -576,12 +642,11 @@ export class SiteAuditReportService {
     <p class="sub">Takip ettiğiniz kelimelerin Title/Meta/H1/H2 etiketlerinde geçip geçmediği.</p>
     <table><tr><th>Kelime</th><th>Title</th><th>Meta</th><th>H1</th><th>H2</th></tr>${keywordMatrixRows}</table>
   </div>` : ''}
-</div>`;
+`);
 
     // ── Sayfa: Cihaz Görünümleri ─────────────────────────────────────────
     const screenshotsPage = (d.screenshots.desktop || d.screenshots.mobile || d.screenshots.tablet)
-      ? `<div class="page">
-  ${pagehead}
+      ? pageWrap(`
   <div class="section">
     <h2>Cihaz Görünümleri</h2>
     <p class="sub">Sitenizin masaüstü ve mobil cihazlarda gerçek görünümü.</p>
@@ -590,7 +655,7 @@ export class SiteAuditReportService {
       ${d.screenshots.mobile ? `<div class="shot-frame shot-mobile"><img src="${d.screenshots.mobile}" /></div><div class="shot-caption">Mobil</div>` : ''}
     </div>
   </div>
-</div>`
+`)
       : '';
 
     // ── Sayfa: Backlink ───────────────────────────────────────────────
@@ -605,17 +670,16 @@ export class SiteAuditReportService {
       .join('');
     const c = d.backlink.counters ?? {};
 
-    const backlinkPage = `<div class="page">
-  ${pagehead}
+    const backlinkPage = pageWrap(`
   <div class="section">
     <h2>Backlink &amp; Otorite</h2>
     <p class="sub">Backlinkler, diğer sitelerin sizin sitenize verdiği bağlantılardır — Google için bir güven oyu gibidir.</p>
     <div class="gauge-row">${halfGaugeSvg(d.backlink.domainStrength, 'Domain Strength')}${halfGaugeSvg(d.backlink.pageStrength, 'Page Strength')}</div>
     <div class="kpis">
-      <div class="kpi"><div class="label">Toplam Backlink</div><div class="value">${c.total ?? 0}</div></div>
-      <div class="kpi"><div class="label">Yönlendiren Alan</div><div class="value">${c.referringDomains ?? 0}</div></div>
-      <div class="kpi"><div class="label">Dofollow</div><div class="value">${c.dofollow ?? 0}</div></div>
-      <div class="kpi"><div class="label">Nofollow</div><div class="value">${c.nofollow ?? 0}</div></div>
+      ${kpiCard('Toplam Backlink', String(c.total ?? 0), { accent: 'blue' })}
+      ${kpiCard('Yönlendiren Alan', String(c.referringDomains ?? 0), { accent: 'blue' })}
+      ${kpiCard('Dofollow', String(c.dofollow ?? 0), { accent: 'green' })}
+      ${kpiCard('Nofollow', String(c.nofollow ?? 0), { accent: 'orange' })}
     </div>
   </div>
   <div class="section">
@@ -631,7 +695,7 @@ export class SiteAuditReportService {
     <p class="sub">Backlinklerinizin geldiği alan adı uzantıları (.com, .tr, .org vb.).</p>
     ${donutChartSvg(d.backlink.tld.slice(0, 8).map((t) => ({ label: `.${t.tld}`, value: t.count })))}
   </div>` : ''}
-</div>`;
+`);
 
     // ── Sayfa: Performans (her zaman elde olan verileri gösterir) ───────
     const perf = d.performance ?? {};
@@ -644,16 +708,15 @@ export class SiteAuditReportService {
       .map(([k, v]: [string, any]) => `<tr><td>${k.toUpperCase()}</td><td class="num">${((v ?? 0) / 1024).toFixed(0)} KB</td></tr>`)
       .join('');
 
-    const perfPage = `<div class="page">
-  ${pagehead}
+    const perfPage = pageWrap(`
   <div class="section">
     <h2>Performans</h2>
     <p class="sub">Sayfa hızı, kullanıcı deneyimi ve Google sıralaması için doğrudan etkilidir.</p>
     <div class="kpis">
-      <div class="kpi"><div class="label">Sunucu Yanıt Süresi</div><div class="value">${perf.serverResponseMs != null ? `${(perf.serverResponseMs / 1000).toFixed(2)}s` : '—'}</div></div>
-      <div class="kpi"><div class="label">Sayfa Yükleme Süresi</div><div class="value">${perf.pageLoadMs != null ? `${(perf.pageLoadMs / 1000).toFixed(1)}s` : '—'}</div></div>
-      <div class="kpi"><div class="label">İndirme Boyutu</div><div class="value">${perf.downloadSizeBytes != null ? `${(perf.downloadSizeBytes / (1024 * 1024)).toFixed(2)} MB` : '—'}</div></div>
-      <div class="kpi"><div class="label">İstek Sayısı</div><div class="value">${perf.requestCount ?? '—'}</div></div>
+      ${kpiCard('Sunucu Yanıt Süresi', perf.serverResponseMs != null ? `${(perf.serverResponseMs / 1000).toFixed(2)}s` : '—', { accent: 'blue' })}
+      ${kpiCard('Sayfa Yükleme Süresi', perf.pageLoadMs != null ? `${(perf.pageLoadMs / 1000).toFixed(1)}s` : '—', { accent: 'orange' })}
+      ${kpiCard('İndirme Boyutu', perf.downloadSizeBytes != null ? `${(perf.downloadSizeBytes / (1024 * 1024)).toFixed(2)} MB` : '—', { accent: 'blue' })}
+      ${kpiCard('İstek Sayısı', String(perf.requestCount ?? '—'), { accent: 'blue' })}
     </div>
     ${sizeRows ? `<table><tr><th>Kaynak Tipi</th><th>Boyut</th></tr>${sizeRows}</table>` : ''}
   </div>
@@ -665,27 +728,26 @@ export class SiteAuditReportService {
     </div>
     ${(psi.mobile || psi.desktop) ? `<table><tr><th></th><th>LCP</th><th>INP</th><th>CLS</th></tr>${cwvRow('Mobil', cwv.mobile)}${cwvRow('Masaüstü', cwv.desktop)}</table>` : '<p class="muted">PageSpeed Insights verisi bu tarama için mevcut değil (GOOGLE_PSI_API_KEY tanımlı değil veya kota aşıldı) — yukarıdaki temel performans ölçümleri yine de gerçek Puppeteer taramasından alınmıştır.</p>'}
   </div>
-</div>`;
+`);
 
     // ── Sayfa: GEO / AI ───────────────────────────────────────────────
     const eeat = d.geo?.eeat ?? { score: 0, factors: [] };
     const eeatRows = (eeat.factors ?? [])
       .map((f: any) => `<tr><td>${escapeHtml(f.label)}</td><td class="num">${f.present ? '✓' : '✗'}</td></tr>`)
       .join('');
-    const geoPage = `<div class="page">
-  ${pagehead}
+    const geoPage = pageWrap(`
   <div class="section">
     <h2>GEO / AI Görünürlük</h2>
     <p class="sub">ChatGPT, Perplexity, Gemini gibi AI asistanların sitenizi ne kadar iyi anlayıp alıntılayabileceğini ölçer.</p>
     <div class="kpis">
-      <div class="kpi"><div class="label">Kimlik Şeması</div><div class="value" style="font-size:14px">${d.geo?.identitySchema?.found ? escapeHtml(d.geo.identitySchema.type) : 'Yok'}</div></div>
-      <div class="kpi"><div class="label">llms.txt</div><div class="value" style="font-size:14px">${d.geo?.llmsTxt?.found ? 'Var' : 'Yok'}</div></div>
-      <div class="kpi"><div class="label">LLM Okunabilirlik</div><div class="value" style="font-size:14px">${d.geo?.llmReadability?.rating ?? '—'}</div></div>
+      ${kpiCard('Kimlik Şeması', d.geo?.identitySchema?.found ? escapeHtml(d.geo.identitySchema.type) : 'Yok', { accent: d.geo?.identitySchema?.found ? 'green' : 'red' })}
+      ${kpiCard('llms.txt', d.geo?.llmsTxt?.found ? 'Var' : 'Yok', { accent: d.geo?.llmsTxt?.found ? 'green' : 'red' })}
+      ${kpiCard('LLM Okunabilirlik', d.geo?.llmReadability?.rating ?? '—', { accent: 'blue' })}
     </div>
     ${barGauge('E-E-A-T Skoru', eeat.score ?? 0)}
     <table><tr><th>Faktör</th><th>Durum</th></tr>${eeatRows || '<tr><td colspan="2" class="muted">Veri yok</td></tr>'}</table>
   </div>
-</div>`;
+`);
 
     // ── Sayfa: Sosyal Medya + Yerel SEO ─────────────────────────────────
     const social = d.social ?? {};
@@ -693,8 +755,7 @@ export class SiteAuditReportService {
       .map((p: any) => `<tr><td style="text-transform:capitalize">${escapeHtml(p.platform)}</td><td class="num">${p.found ? '✓' : '✗'}</td></tr>`)
       .join('');
     const localSeo = d.localSeo ?? {};
-    const socialLocalPage = `<div class="page">
-  ${pagehead}
+    const socialLocalPage = pageWrap(`
   <div class="section">
     <h2>Sosyal Medya</h2>
     <p class="sub">Sosyal medya profilleri ve paylaşım etiketleri (Open Graph/Twitter Card) marka görünürlüğünü destekler.</p>
@@ -712,7 +773,7 @@ export class SiteAuditReportService {
       <tr><td>NAP Tutarlılığı</td><td class="num">${localSeo.napConsistency?.consistent === true ? 'Tutarlı' : localSeo.napConsistency?.consistent === false ? 'Tutarsız' : 'Karşılaştırılamadı'}</td></tr>
     </table>
   </div>
-</div>`;
+`);
 
     // ── Sayfa: Teknoloji + Domain Bilgileri + Alt Sayfalar ───────────────
     const tech = d.technology ?? {};
@@ -738,8 +799,7 @@ export class SiteAuditReportService {
     const orphanCount = (crawlList.orphanPages ?? []).length;
     const redirectCount = (crawlList.redirectChains ?? []).length;
 
-    const techDomainPage = `<div class="page">
-  ${pagehead}
+    const techDomainPage = pageWrap(`
   <div class="section">
     <h2>Teknoloji Yığını</h2>
     <p class="sub">Sitenizde tespit edilen CMS, framework, analytics ve diğer araçlar.</p>
@@ -753,14 +813,14 @@ export class SiteAuditReportService {
     <h2>Alt Sayfalar Özeti</h2>
     <p class="sub">Taranan tüm sayfalar ve tespit edilen bağlantı sorunları.</p>
     <div class="kpis">
-      <div class="kpi"><div class="label">Toplam URL</div><div class="value">${totalUrls}</div></div>
-      <div class="kpi"><div class="label">Kırık Link</div><div class="value">${brokenCount}</div></div>
-      <div class="kpi"><div class="label">Yönlendirme Zinciri</div><div class="value">${redirectCount}</div></div>
-      <div class="kpi"><div class="label">Orphan Sayfa</div><div class="value">${orphanCount}</div></div>
+      ${kpiCard('Toplam URL', String(totalUrls), { accent: 'blue' })}
+      ${kpiCard('Kırık Link', String(brokenCount), { accent: 'red' })}
+      ${kpiCard('Yönlendirme Zinciri', String(redirectCount), { accent: 'orange' })}
+      ${kpiCard('Orphan Sayfa', String(orphanCount), { accent: 'orange' })}
     </div>
   </div>
   <p class="muted" style="margin-top:20px">Bu rapor FunBreak SEO tarafından ${new Date(d.generatedAt).toLocaleString('tr-TR')} tarihinde otomatik oluşturulmuştur · funbreakseo.com · destek@funbreakseo.com</p>
-</div>`;
+`);
 
     // ── Sayfa: Google Analytics (GA4) ────────────────────────────────────
     const ga4Page = d.ga4?.connected
@@ -769,16 +829,15 @@ export class SiteAuditReportService {
           const dayLabels = g.daily.map((x) => x.date);
           const channelMax = Math.max(1, ...g.channels.map((c) => c.sessions));
           const topChannels = [...g.channels].sort((a, b) => b.sessions - a.sessions).slice(0, 6);
-          return `<div class="page">
-  ${pagehead}
+          const p1 = pageWrap(`
   <div class="section">
     <h2>Google Analytics (GA4)</h2>
     <p class="sub">Sitenize gelen ziyaretçilerin sayısı, davranışı ve nereden geldiği.</p>
     <div class="kpis">
-      <div class="kpi"><div class="label">Kullanıcı</div><div class="value">${fmt(g.current.users)}</div><div class="delta">${deltaHtml(g.current.users, g.previous.users)}</div></div>
-      <div class="kpi"><div class="label">Oturum</div><div class="value">${fmt(g.current.sessions)}</div><div class="delta">${deltaHtml(g.current.sessions, g.previous.sessions)}</div></div>
-      <div class="kpi"><div class="label">Görüntüleme</div><div class="value">${fmt(g.current.pageViews)}</div><div class="delta">${deltaHtml(g.current.pageViews, g.previous.pageViews)}</div></div>
-      <div class="kpi"><div class="label">Hemen Çıkma</div><div class="value">%${g.current.bounceRate.toFixed(1)}</div><div class="delta">${deltaHtml(g.current.bounceRate, g.previous.bounceRate)}</div></div>
+      ${kpiCard('Kullanıcı', fmt(g.current.users), { accent: 'blue', delta: deltaHtml(g.current.users, g.previous.users) })}
+      ${kpiCard('Oturum', fmt(g.current.sessions), { accent: 'blue', delta: deltaHtml(g.current.sessions, g.previous.sessions) })}
+      ${kpiCard('Görüntüleme', fmt(g.current.pageViews), { accent: 'blue', delta: deltaHtml(g.current.pageViews, g.previous.pageViews) })}
+      ${kpiCard('Hemen Çıkma', `%${g.current.bounceRate.toFixed(1)}`, { accent: 'orange', delta: deltaHtml(g.current.bounceRate, g.previous.bounceRate) })}
     </div>
   </div>
   <div class="section">
@@ -795,9 +854,8 @@ export class SiteAuditReportService {
       dayLabels,
     )}
   </div>
-</div>
-<div class="page">
-  ${pagehead}
+`);
+          const p2 = pageWrap(`
   <div class="section">
     <h2>Trafik Kaynağı Dağılımı</h2>
     ${donutChartSvg(topChannels.map((c) => ({ label: c.channel, value: c.sessions })))}
@@ -817,31 +875,30 @@ export class SiteAuditReportService {
     <p class="sub">"AI Assistant" satırı ChatGPT/Perplexity gibi AI araçlarından gelen trafiği gösterir — GEO çalışmalarınızın somut kanıtıdır.</p>
     <table><tr><th>Kaynak</th><th>Oturum</th><th>Kullanıcı</th></tr>${g.channels.map((ch) => `<tr style="${heatCell(ch.sessions, channelMax)}${ch.channel.startsWith('AI Assistant') ? ';outline:1px solid #6366f1' : ''}"><td>${escapeHtml(ch.channel)}</td><td class="num">${fmt(ch.sessions)}</td><td class="num">${fmt(ch.users)}</td></tr>`).join('') || '<tr><td colspan="3" class="muted">Veri yok</td></tr>'}</table>
   </div>
-</div>`;
+`);
+          return p1 + p2;
         })()
-      : `<div class="page">
-  ${pagehead}
+      : pageWrap(`
   <div class="section">
     <h2>Google Analytics (GA4)</h2>
     <p class="muted">GA4 henüz bağlanmadı. Panelden Google hesabınızı bağlayarak trafik verilerinizi bu rapora dahil edebilirsiniz.</p>
   </div>
-</div>`;
+`);
 
     // ── Sayfa: Google Search Console ────────────────────────────────────
     const gscPage = d.gsc?.connected
       ? (() => {
           const s = d.gsc!;
           const gscLabels = s.daily.map((x) => x.date);
-          return `<div class="page">
-  ${pagehead}
+          const p1 = pageWrap(`
   <div class="section">
     <h2>Google Search Console</h2>
     <p class="sub">Google aramalarında sitenizin gösterim ve tıklanma performansı.</p>
     <div class="kpis">
-      <div class="kpi"><div class="label">Tıklama</div><div class="value">${fmt(s.current.clicks)}</div><div class="delta">${deltaHtml(s.current.clicks, s.previous.clicks)}</div></div>
-      <div class="kpi"><div class="label">Gösterim</div><div class="value">${fmt(s.current.impressions)}</div><div class="delta">${deltaHtml(s.current.impressions, s.previous.impressions)}</div></div>
-      <div class="kpi"><div class="label">CTR</div><div class="value">%${s.current.ctr.toFixed(1)}</div><div class="delta">${deltaHtml(s.current.ctr, s.previous.ctr)}</div></div>
-      <div class="kpi"><div class="label">Ort. Pozisyon</div><div class="value">${s.current.position.toFixed(1)}</div><div class="delta">${deltaHtml(s.previous.position, s.current.position)}</div></div>
+      ${kpiCard('Tıklama', fmt(s.current.clicks), { accent: 'blue', delta: deltaHtml(s.current.clicks, s.previous.clicks) })}
+      ${kpiCard('Gösterim', fmt(s.current.impressions), { accent: 'blue', delta: deltaHtml(s.current.impressions, s.previous.impressions) })}
+      ${kpiCard('CTR', `%${s.current.ctr.toFixed(1)}`, { accent: 'green', delta: deltaHtml(s.current.ctr, s.previous.ctr) })}
+      ${kpiCard('Ort. Pozisyon', s.current.position.toFixed(1), { accent: 'blue', delta: deltaHtml(s.previous.position, s.current.position) })}
     </div>
   </div>
   <div class="section">
@@ -864,9 +921,8 @@ export class SiteAuditReportService {
       gscLabels,
     )}
   </div>
-</div>
-<div class="page">
-  ${pagehead}
+`);
+          const p2 = pageWrap(`
   <div class="two-col">
     <div class="section">
       <h2>Cihaz Dağılımı</h2>
@@ -881,73 +937,90 @@ export class SiteAuditReportService {
     <h2>En İyi Sorgular</h2>
     <table><tr><th>Sorgu</th><th>Tıklama</th><th>Gösterim</th><th>CTR</th><th>Pozisyon</th></tr>${s.topQueries.slice(0, 15).map((q) => `<tr><td>${escapeHtml(q.query)}</td><td class="num">${fmt(q.clicks)}</td><td class="num">${fmt(q.impressions)}</td><td class="num">%${q.ctr.toFixed(1)}</td><td class="num" style="color:${posColor(q.position)};font-weight:700">${q.position.toFixed(1)}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">Veri yok</td></tr>'}</table>
   </div>
-</div>
-<div class="page">
-  ${pagehead}
+`);
+          const p3 = pageWrap(`
   <div class="section">
     <h2>En Çok Tıklanan Sayfalar</h2>
     <table><tr><th>Sayfa</th><th>Tıklama</th><th>Gösterim</th></tr>${s.topPages.slice(0, 10).map((p) => `<tr><td class="url">${escapeHtml(p.page.replace(/^https?:\/\/[^/]+/, '') || '/')}</td><td class="num">${fmt(p.clicks)}</td><td class="num">${fmt(p.impressions)}</td></tr>`).join('') || '<tr><td colspan="3" class="muted">Veri yok</td></tr>'}</table>
   </div>
-</div>`;
+`);
+          return p1 + p2 + p3;
         })()
-      : `<div class="page">
-  ${pagehead}
+      : pageWrap(`
   <div class="section">
     <h2>Google Search Console</h2>
     <p class="muted">Search Console henüz bağlanmadı. Panelden bağlayarak arama performansı verilerinizi bu rapora dahil edebilirsiniz.</p>
   </div>
-</div>`;
+`);
 
-    return `<!DOCTYPE html>
+    const fullHtml = `<!DOCTYPE html>
 <html lang="tr">
 <head>
 <meta charset="utf-8"/>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; font-size: 12px; background: #fff; }
-  .page { page-break-after: always; padding: 36px 44px; }
+  .page { page-break-after: always; min-height: 100vh; display: flex; flex-direction: column; }
   .page:last-child { page-break-after: auto; }
+  .page-body { flex: 1; padding: 26px 44px 20px; }
 
-  .cover { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 90vh;
-           background: linear-gradient(160deg, #1d4ed8 0%, #2563eb 45%, #3b82f6 100%); color: #fff; text-align: center; padding: 60px; }
-  .cover .logo { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 40px; }
-  .cover .logo span { opacity: 0.85; font-weight: 400; }
-  .cover h1 { font-size: 28px; font-weight: 800; margin-bottom: 10px; }
-  .cover .domain { font-size: 22px; opacity: 0.95; margin-bottom: 6px; }
-  .cover .date { font-size: 13px; opacity: 0.7; margin-bottom: 30px; }
-  .cover .footer { margin-top: 40px; font-size: 11px; opacity: 0.65; }
-  .cover-score { display: flex; align-items: center; gap: 22px; }
-  .cover-grade { font-size: 56px; font-weight: 800; line-height: 1; text-align: left; }
-  .cover-grade-sub { display: block; font-size: 14px; font-weight: 400; opacity: 0.75; margin-top: 4px; }
+  /* ── Kapak ─────────────────────────────────────────────────────────── */
+  .cover { background: linear-gradient(155deg, #0f172a 0%, #172554 55%, #0f172a 100%); color: #fff;
+           padding: 44px 56px; justify-content: space-between; }
+  .cover-topbar { display: flex; align-items: center; justify-content: space-between; }
+  .cover-logo { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 700; letter-spacing: -0.2px; }
+  .cover-logo b { font-weight: 400; opacity: 0.75; }
+  .cover-confidential { font-size: 9px; letter-spacing: 0.14em; color: #fbbf24; border: 1px solid rgba(251,191,36,0.4);
+                          padding: 4px 10px; border-radius: 20px; font-weight: 700; text-transform: uppercase; }
+  .cover-mid { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 34px; }
+  .cover-titles h1 { font-size: 24px; font-weight: 800; margin-bottom: 12px; letter-spacing: -0.3px; }
+  .cover-domain { font-size: 30px; font-weight: 800; margin-bottom: 8px; }
+  .cover-date { font-size: 12px; color: #94a3b8; }
+  .cover-score { display: flex; align-items: center; gap: 26px; }
+  .cover-grade { font-size: 64px; font-weight: 800; line-height: 1; text-align: left; }
+  .cover-grade-sub { display: block; font-size: 14px; font-weight: 500; color: #94a3b8; margin-top: 6px; }
+  .cover-footer { display: flex; justify-content: space-between; font-size: 10px; color: #64748b;
+                  border-top: 1px solid rgba(255,255,255,0.1); padding-top: 16px; }
 
-  h2 { font-size: 17px; color: #1d4ed8; margin: 0 0 4px; font-weight: 700; }
+  /* ── Sayfa üst/alt şerit ──────────────────────────────────────────── */
+  .pagehead { display: flex; align-items: center; justify-content: space-between; background: #0f172a; color: #fff;
+              padding: 10px 44px; font-size: 10px; }
+  .ph-brand { display: flex; align-items: center; gap: 6px; font-weight: 700; letter-spacing: -0.1px; }
+  .ph-meta { color: #94a3b8; }
+  .ph-num { color: #64748b; font-variant-numeric: tabular-nums; }
+
+  .pagefoot { display: flex; justify-content: space-between; padding: 10px 44px; font-size: 9px; color: #94a3b8;
+              border-top: 1px solid #e2e8f0; }
+
+  h2 { font-size: 16px; color: #1d4ed8; margin: 0 0 10px; font-weight: 800; padding-bottom: 8px;
+       border-bottom: 2px solid #e0e7ff; letter-spacing: -0.1px; }
   .sub { color: #64748b; font-size: 11px; margin-bottom: 16px; }
-  .section { margin-bottom: 26px; }
-
-  .pagehead { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #1d4ed8;
-              padding-bottom: 10px; margin-bottom: 22px; }
-  .pagehead .brand { font-weight: 800; color: #1d4ed8; font-size: 13px; }
-  .pagehead .meta { color: #94a3b8; font-size: 10px; }
+  .section { margin-bottom: 24px; }
 
   .cat-rings { display: flex; gap: 16px; justify-content: center; margin-bottom: 8px; }
   .cat-ring { text-align: center; }
-  .cat-label { font-size: 10px; color: #64748b; margin-top: 4px; }
+  .cat-label { font-size: 10px; color: #64748b; margin-top: 6px; font-weight: 600; }
 
-  .gauge-row { display: flex; gap: 24px; justify-content: center; margin-bottom: 18px; }
+  .gauge-row { display: flex; gap: 30px; justify-content: center; margin-bottom: 18px; }
 
-  table { width: 100%; border-collapse: collapse; font-size: 11px; }
-  th { background: #1d4ed8; color: #fff; text-align: left; padding: 8px 10px; font-weight: 600; }
-  td { padding: 7px 10px; border-bottom: 1px solid #e8eef7; }
-  tr:nth-child(even) td { background: #f6f9fd; }
+  table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 11px; border: 1px solid #e2e8f0;
+          border-radius: 10px; overflow: hidden; }
+  th { background: #0f172a; color: #fff; text-align: left; padding: 9px 12px; font-weight: 600; font-size: 10.5px; letter-spacing: 0.02em; }
+  td { padding: 8px 12px; border-bottom: 1px solid #eef2f7; }
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) td { background: #f8fafc; }
   td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
   td.url { word-break: break-all; max-width: 340px; }
-  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 
-  .rec { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid #dbe4f0;
-         border-radius: 8px; margin-bottom: 8px; background: #f8fafc; }
-  .prio { flex-shrink: 0; font-size: 9px; font-weight: 800; padding: 4px 10px; border-radius: 20px; letter-spacing: 0.05em; }
+  .rec { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border: 1px solid #e2e8f0; border-left-width: 4px;
+         border-radius: 8px; margin-bottom: 9px; background: #fff; box-shadow: 0 1px 2px rgba(15,23,42,0.04); }
+  .rec-high { border-left-color: #dc2626; }
+  .rec-mid { border-left-color: #f97316; }
+  .rec-low { border-left-color: #94a3b8; }
+  .prio { flex-shrink: 0; font-size: 9px; font-weight: 800; padding: 5px 12px; border-radius: 20px; letter-spacing: 0.06em; }
   .prio.high { background: #fee2e2; color: #b91c1c; }
-  .prio.mid { background: #fef3c7; color: #92400e; }
+  .prio.mid { background: #ffedd5; color: #c2410c; }
   .prio.low { background: #e2e8f0; color: #475569; }
   .muted { color: #94a3b8; font-size: 10px; margin-top: 2px; }
   .up { color: #16a34a; font-weight: 700; }
@@ -959,24 +1032,30 @@ export class SiteAuditReportService {
   .gauge-track { height: 10px; border-radius: 6px; background: #e2e8f0; overflow: hidden; }
   .gauge-fill { height: 100%; border-radius: 6px; }
 
-  .serp { display: flex; gap: 10px; border: 1px solid #dbe4f0; border-radius: 8px; padding: 16px; background: #fff; max-width: 520px; }
+  .serp { display: flex; gap: 10px; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; background: #fff;
+          max-width: 520px; box-shadow: 0 1px 2px rgba(15,23,42,0.04); }
   .serp-favicon { width: 18px; height: 18px; border-radius: 50%; background: #dbe4f0; flex-shrink: 0; margin-top: 2px; }
   .serp .url { color: #16a34a; font-size: 11px; }
   .serp .title { color: #1a0dab; font-size: 16px; margin: 3px 0; font-weight: 500; }
   .serp .desc { color: #4d5156; font-size: 12px; }
 
   .kpis { display: flex; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
-  .kpi { flex: 1; min-width: 110px; border: 1px solid #dbe4f0; border-radius: 10px; padding: 14px; background: #f8fafc; text-align: center; }
-  .kpi .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: #64748b; margin-bottom: 6px; }
+  .kpi { flex: 1; min-width: 116px; border: 1px solid #e2e8f0; border-top-width: 3px; border-radius: 10px; padding: 14px;
+         background: #fff; text-align: center; box-shadow: 0 1px 3px rgba(15,23,42,0.05); }
+  .kpi-blue { border-top-color: #1d4ed8; }
+  .kpi-green { border-top-color: #16a34a; }
+  .kpi-red { border-top-color: #dc2626; }
+  .kpi-orange { border-top-color: #f97316; }
+  .kpi .label { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.06em; color: #64748b; margin-bottom: 6px; font-weight: 600; }
   .kpi .value { font-size: 20px; font-weight: 800; color: #0f172a; }
   .kpi .delta { font-size: 10px; margin-top: 3px; }
 
   .shots { display: flex; align-items: flex-end; gap: 24px; }
-  .shot-frame { border: 6px solid #1e293b; border-radius: 10px; overflow: hidden; background: #000; }
+  .shot-frame { border: 6px solid #0f172a; border-radius: 10px; overflow: hidden; background: #000; }
   .shot-frame img { display: block; width: 100%; }
   .shot-desktop { width: 420px; }
   .shot-mobile { width: 130px; border-radius: 18px; }
-  .shot-caption { font-size: 10px; color: #64748b; text-align: center; margin-top: 4px; }
+  .shot-caption { font-size: 10px; color: #64748b; text-align: center; margin-top: 4px; font-weight: 600; }
 </style>
 </head>
 <body>
@@ -994,6 +1073,8 @@ ${ga4Page}
 ${gscPage}
 </body>
 </html>`;
+
+    return fullHtml.replace(/__TOTAL_PAGES__/g, String(pageCounter));
   }
 
   async generatePdf(html: string): Promise<Buffer | null> {
