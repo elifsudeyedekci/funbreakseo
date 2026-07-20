@@ -175,6 +175,14 @@ export default function ProjectDashboardPage() {
   const todos = data?.todos ?? [];
   const ranked = rankedKeywords ?? [];
 
+  // Trend mini-cards — scanHistory comes back newest-first, reverse to oldest→newest for the charts.
+  const trendChartData = [...scanHistory].reverse().map((s) => ({
+    date: s.createdAt.slice(0, 10),
+    healthScore: s.healthScore,
+    rankedCount: s.rankedCount,
+    backlinkCount: s.backlinkCount,
+  }));
+
   const lastCrawlDate = data?.lastCrawl?.finishedAt ?? data?.lastCrawl?.createdAt ?? null;
 
   return (
@@ -282,6 +290,35 @@ export default function ProjectDashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Trend — mini line charts across archived scans (health / ranked keywords / backlinks) */}
+      {trendChartData.length > 1 && (
+        <div className="rounded-2xl border border-white/10 bg-white/2 p-5">
+          <h2 className="text-sm font-semibold text-white mb-1">Trend</h2>
+          <p className="text-[11px] text-white/35 mb-4">Geçmiş taramalar boyunca sağlık skoru, sıralanan kelime sayısı ve backlink sayısı</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {(
+              [
+                { key: 'healthScore', label: 'Sağlık Skoru', color: '#22c55e' },
+                { key: 'rankedCount', label: 'Sıralanan Kelime', color: '#6366f1' },
+                { key: 'backlinkCount', label: 'Backlink', color: '#0ea5e9' },
+              ] as const
+            ).map(({ key, label, color }) => (
+              <div key={key}>
+                <p className="text-[11px] text-white/40 mb-2">{label}</p>
+                <ResponsiveContainer width="100%" height={120}>
+                  <LineChart data={trendChartData}>
+                    <XAxis dataKey="date" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 9 }} tickFormatter={(v) => String(v).slice(5)} />
+                    <YAxis hide />
+                    <Tooltip contentStyle={{ background: '#111118', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', fontSize: 12 }} />
+                    <Line type="monotone" dataKey={key} stroke={color} strokeWidth={2} dot={{ r: 2 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Ranked keywords */}
       <div className="rounded-2xl border border-white/10 bg-white/2 p-5">

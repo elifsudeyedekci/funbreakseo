@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
-import { Play, RefreshCw, Download, Printer, Lock, Sparkles } from 'lucide-react';
+import { Play, RefreshCw, Download, Printer, Lock } from 'lucide-react';
 import { api, auditApi, geoAuditApi, crawlerApi, projectApi } from '@/lib/api';
 import { exportToCSV } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
@@ -15,7 +15,6 @@ import {
   CategoryRingRow,
   AuditRadarChart,
   PriorityRecommendationList,
-  AccordionSection,
   DeviceScreenshotFrame,
   type CategoryRingItem,
 } from '@/components/audit';
@@ -103,6 +102,8 @@ interface AuditData {
   noticeCount: number;
   status: 'PENDING' | 'RUNNING' | 'COMPLETED' | 'DONE' | 'FAILED';
   completedAt?: string;
+  pagesScanned?: number;
+  totalPagesQueued?: number | null;
   siteAuditReport: SiteAuditReportShape | null;
 }
 
@@ -113,6 +114,19 @@ const CATEGORY_LABELS: Record<'onPage' | 'geo' | 'backlink' | 'usability' | 'per
   usability: 'Kullanılabilirlik',
   performance: 'Performans',
 };
+
+/** Always-open section — no "Detayları Göster" click required. */
+function Section({ title, badge, children }: { title: string; badge?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/2 overflow-hidden">
+      <div className="px-5 py-4 border-b border-white/10 flex items-center gap-2">
+        <h3 className="text-sm font-semibold text-white">{title}</h3>
+        {badge}
+      </div>
+      <div className="p-5">{children}</div>
+    </div>
+  );
+}
 
 function PremiumLock({ children, unlocked, feature }: { children: React.ReactNode; unlocked: boolean; feature: string }) {
   if (unlocked) return <>{children}</>;
@@ -271,18 +285,38 @@ export default function AuditPage() {
         </div>
       </div>
 
-      {isRunning && (
-        <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-5 print:hidden">
-          <div className="flex items-center gap-3 mb-2">
-            <RefreshCw className="h-4 w-4 text-indigo-400 animate-spin" />
-            <span className="text-sm text-white/80">{RUNNING_MESSAGES[msgIndex]}</span>
+      {isRunning && (() => {
+        // Real progress while pages are being crawled (weighted to 75% of the
+        // bar); the remaining 25% covers the post-crawl analysis phase
+        // (performance/site-intel/GEO) which has no page-count signal, so it
+        // holds near the top instead of faking a number.
+        const total = audit?.totalPagesQueued;
+        const scanned = audit?.pagesScanned ?? 0;
+        const pagePercent = total ? Math.min(100, Math.round((scanned / total) * 100)) : 0;
+        const displayPercent = total ? Math.min(95, Math.round(pagePercent * 0.75)) : null;
+        return (
+          <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-5 print:hidden">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-3">
+                <RefreshCw className="h-4 w-4 text-indigo-400 animate-spin" />
+                <span className="text-sm text-white/80">{RUNNING_MESSAGES[msgIndex]}</span>
+              </div>
+              {displayPercent != null && <span className="text-sm font-bold text-indigo-300">%{displayPercent}</span>}
+            </div>
+            <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+              {displayPercent != null ? (
+                <div className="h-full bg-indigo-500 rounded-full transition-all duration-700" style={{ width: `${displayPercent}%` }} />
+              ) : (
+                <div className="h-full w-1/3 bg-indigo-500 rounded-full" style={{ animation: 'audit-progress 2.5s ease-in-out infinite' }} />
+              )}
+            </div>
+            {total ? (
+              <p className="text-xs text-white/30 mt-1.5">{scanned}/{total} sayfa tarandı</p>
+            ) : null}
+            <style>{`@keyframes audit-progress { 0% { transform: translateX(-100%); } 50% { transform: translateX(60%); } 100% { transform: translateX(220%); } }`}</style>
           </div>
-          <div className="h-2 rounded-full bg-white/10 overflow-hidden">
-            <div className="h-full w-1/3 bg-indigo-500 rounded-full animate-[pulse_1.8s_ease-in-out_infinite]" style={{ animation: 'audit-progress 2.5s ease-in-out infinite' }} />
-          </div>
-          <style>{`@keyframes audit-progress { 0% { transform: translateX(-100%); } 50% { transform: translateX(60%); } 100% { transform: translateX(220%); } }`}</style>
-        </div>
-      )}
+        );
+      })()}
 
       {!isRunning && audit && !report && (
         <div className="rounded-2xl border border-white/10 bg-white/2 p-6 text-center text-white/40 text-sm">
@@ -304,8 +338,6 @@ export default function AuditPage() {
 
       {report && !isRunning && (
         <>
-          <ActionPlanPanel projectId={projectId} />
-
           {/* ── Genel skor & vizualizasyon ─────────────────────────────── */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="rounded-2xl border border-white/10 bg-white/2 p-6 flex items-center justify-center">
@@ -347,68 +379,57 @@ export default function AuditPage() {
           {/* ── Öncelikli öneriler ──────────────────────────────────── */}
           <div className="rounded-2xl border border-white/10 bg-white/2 p-5">
             <h3 className="text-sm font-semibold text-white/70 mb-3">Öncelikli Öneriler</h3>
-            <PriorityRecommendationList
-              items={report.recommendations ?? []}
-              initialVisibleCount={isPremium ? undefined : 5}
-            />
-            {!isPremium && (report.recommendations?.length ?? 0) > 5 && (
-              <div className="mt-4 rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-4 flex items-center gap-3">
-                <Sparkles className="h-4 w-4 text-indigo-400 flex-shrink-0" />
-                <p className="text-xs text-white/60">
-                  {report.recommendations.length - 5} öneri daha var. Tüm öneri detaylarını görmek için paketinizi yükseltin.
-                </p>
-              </div>
-            )}
+            <PriorityRecommendationList items={report.recommendations ?? []} initialVisibleCount={5} />
           </div>
 
-          {/* ── Modüller ─────────────────────────────────────────────── */}
+          {/* ── Modüller — hepsi varsayılan açık, accordion yok ───────── */}
           <div className="space-y-3">
-            <AccordionSection title="Sayfa İçi SEO" defaultOpen>
+            <Section title="Sayfa İçi SEO">
               <OnPageSection data={report.onPageJson} />
-            </AccordionSection>
+            </Section>
 
-            <AccordionSection title="GEO / AI Görünürlük">
+            <Section title="GEO / AI Görünürlük">
               <GeoSection data={report.geoJson} aiOverviewTracking={isPremium ? aiOverview : undefined} />
-            </AccordionSection>
+            </Section>
 
-            <AccordionSection title="Backlink Özeti">
+            <Section title="Backlink Özeti">
               <BacklinkSummarySection projectId={projectId} />
-            </AccordionSection>
+            </Section>
 
-            <AccordionSection title="Performans">
+            <Section title="Performans">
               <PerformanceSection data={report.performanceJson} />
-            </AccordionSection>
+            </Section>
 
-            <AccordionSection title="Kullanılabilirlik / Cihaz Görünümleri">
+            <Section title="Kullanılabilirlik / Cihaz Görünümleri">
               <PremiumLock unlocked={isPremium} feature="Cihaz görünümleri">
                 <UsabilitySection
                   data={report.usabilityJson}
                   screenshots={{ desktop: report.screenshotDesktopUrl, mobile: report.screenshotMobileUrl, tablet: report.screenshotTabletUrl }}
                 />
               </PremiumLock>
-            </AccordionSection>
+            </Section>
 
-            <AccordionSection title="Sosyal Medya">
+            <Section title="Sosyal Medya">
               <SocialSection data={report.socialJson} />
-            </AccordionSection>
+            </Section>
 
-            <AccordionSection title="Teknoloji">
+            <Section title="Teknoloji">
               <PremiumLock unlocked={isPremium} feature="Teknoloji tespiti">
                 <TechnologySection data={report.technologyJson} />
               </PremiumLock>
-            </AccordionSection>
+            </Section>
 
-            <AccordionSection title="Yerel SEO">
+            <Section title="Yerel SEO">
               <LocalSeoSection data={report.localSeoJson} />
-            </AccordionSection>
+            </Section>
 
-            <AccordionSection title="Alt Sayfalar / Crawl Listesi">
+            <Section title="Alt Sayfalar / Crawl Listesi">
               <PremiumLock unlocked={isPremium} feature="Alt sayfa listesi">
                 <CrawlListSection data={report.crawlListJson} pages={pages} />
               </PremiumLock>
-            </AccordionSection>
+            </Section>
 
-            <AccordionSection title="Rakiple Karşılaştır" badge={<span className="text-[10px] text-indigo-300 bg-indigo-500/15 rounded-full px-2 py-0.5">Yeni</span>}>
+            <Section title="Rakiple Karşılaştır" badge={<span className="text-[10px] text-indigo-300 bg-indigo-500/15 rounded-full px-2 py-0.5">Yeni</span>}>
               <PremiumLock unlocked={isPremium} feature="Rakip karşılaştırma">
                 <CompetitorCompareSection
                   projectId={projectId}
@@ -416,8 +437,11 @@ export default function AuditPage() {
                   ownCategoryScores={report.categoryScores}
                 />
               </PremiumLock>
-            </AccordionSection>
+            </Section>
           </div>
+
+          {/* ── Aksiyon Planı — en altta ───────────────────────────────── */}
+          <ActionPlanPanel projectId={projectId} />
         </>
       )}
     </div>

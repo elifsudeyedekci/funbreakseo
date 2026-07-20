@@ -316,7 +316,7 @@ export class MonthlyReportService {
           { name: 'bounceRate' },
           { name: 'averageSessionDuration' },
         ];
-        const [curRows, prevRows, channelRows] = await Promise.all([
+        const [curRows, prevRows, channelRows, sourceRows] = await Promise.all([
           this.queryGa4(propertyId, token, {
             dateRanges: [{ startDate: d(periodStart), endDate: d(periodEnd) }],
             metrics,
@@ -332,6 +332,18 @@ export class MonthlyReportService {
             orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
             limit: 10,
           }),
+          // GA4's default channel grouping has no "AI Assistant" bucket —
+          // chatgpt.com/perplexity.ai/etc referrals land under Referral or
+          // Organic Search. Query raw session source separately so we can
+          // surface AI-assistant-driven traffic as its own row (a GEO sales
+          // signal) — additive, not a replacement of the standard grouping.
+          this.queryGa4(propertyId, token, {
+            dateRanges: [{ startDate: d(periodStart), endDate: d(periodEnd) }],
+            dimensions: [{ name: 'sessionSource' }],
+            metrics: [{ name: 'sessions' }, { name: 'totalUsers' }],
+            orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+            limit: 50,
+          }),
         ]);
 
         if (curRows.length > 0 || prevRows.length > 0) {
@@ -343,6 +355,20 @@ export class MonthlyReportService {
             sessions: parseFloat(r.metricValues?.[0]?.value ?? '0') || 0,
             users: parseFloat(r.metricValues?.[1]?.value ?? '0') || 0,
           }));
+
+          const aiSources = ['chatgpt.com', 'perplexity.ai', 'gemini.google.com', 'claude.ai', 'copilot.microsoft.com'];
+          let aiSessions = 0;
+          let aiUsers = 0;
+          for (const r of sourceRows) {
+            const source = (r.dimensionValues?.[0]?.value ?? '').toLowerCase();
+            if (aiSources.some((s) => source.includes(s))) {
+              aiSessions += parseFloat(r.metricValues?.[0]?.value ?? '0') || 0;
+              aiUsers += parseFloat(r.metricValues?.[1]?.value ?? '0') || 0;
+            }
+          }
+          if (aiSessions > 0) {
+            ga4Channels.push({ channel: 'AI Assistant (ChatGPT, Perplexity vb.)', sessions: aiSessions, users: aiUsers });
+          }
         }
       }
     }
@@ -970,56 +996,12 @@ export class MonthlyReportService {
 
   // ── Cron: her ayın 1'i 17:00 (TR saati) — aylık PDF rapor maili ─────────────
 
-  @Cron('0 17 1 * *', { timeZone: 'Europe/Istanbul' })
-  async sendMonthlyReports(): Promise<void> {
-    const projects = await this.prisma.project.findMany({
-      where: {
-        status: 'ACTIVE',
-        organization: {
-          subscription: { status: { in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIALING] } },
-        },
-      },
-      include: { organization: true },
-    });
-
-    for (const project of projects) {
-      try {
-        const data = await this.buildReportData(project.id);
-        const html = this.renderHtml(data);
-        const pdf = await this.generatePdf(html);
-
-        const owner = await this.prisma.user.findUnique({
-          where: { id: project.organization.ownerUserId },
-          select: { email: true, fullName: true },
-        });
-        if (!owner) continue;
-
-        const bodyHtml = `<div style="font-family:Segoe UI,Arial,sans-serif;max-width:560px;margin:0 auto;color:#1e293b">
-          <h2 style="color:#1d4ed8">Aylık SEO &amp; GEO Raporunuz Hazır</h2>
-          <p>Merhaba ${escapeHtml(owner.fullName ?? '')},</p>
-          <p><strong>${escapeHtml(project.domain)}</strong> için ${data.period.label} dönemi performans raporunuz ektedir.</p>
-          <p>Özet: ${Math.round(data.organic.current.clicks).toLocaleString('tr-TR')} organik tıklama · ${data.keywords.inTop10} kelime ilk sayfada · sağlık skoru ${data.technical?.healthScore ?? '—'}/100.</p>
-          <p><a href="https://funbreakseo.com/tr/dashboard/reports" style="display:inline-block;background:#1d4ed8;color:#fff;text-decoration:none;padding:10px 22px;border-radius:8px;font-weight:600">Panelde Görüntüle</a></p>
-          <p style="color:#94a3b8;font-size:12px">FunBreak SEO · funbreakseo.com</p>
-        </div>`;
-
-        if (pdf) {
-          await this.email.sendMail(
-            owner.email,
-            `Aylık SEO Raporu — ${project.domain} (${data.period.label})`,
-            bodyHtml,
-            [{ filename: `funbreakseo-rapor-${project.domain}-${data.period.start.slice(0, 7)}.pdf`, content: pdf, contentType: 'application/pdf' }],
-          );
-        } else {
-          // PDF üretilemezse raporu HTML gövde olarak gönder
-          await this.email.sendMail(owner.email, `Aylık SEO Raporu — ${project.domain} (${data.period.label})`, html);
-        }
-      } catch (e) {
-        this.logger.warn(`Aylık rapor gönderilemedi (${project.id}): ${(e as Error).message}`);
-      }
-    }
-    this.logger.log(`Aylık raporlar işlendi: ${projects.length} proje`);
-  }
+  // Monthly email sending moved to SiteAuditReportService.sendMonthlyReports()
+  // — there is now ONE report system (the full site-audit report, which
+  // already includes this GA4/GSC data merged in), not a separate monthly
+  // report pipeline. buildReportData()/renderHtml()/generatePdf() above stay
+  // here as the GA4/GSC data-fetching layer that SiteAuditReportService
+  // composes with the technical audit.
 }
 
 function escapeHtml(s: string): string {

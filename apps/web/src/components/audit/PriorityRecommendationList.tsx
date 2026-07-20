@@ -57,9 +57,11 @@ const PRIORITY_CONFIG: Record<
 export function PriorityRecommendationList({ items, initialVisibleCount, className }: PriorityRecommendationListProps) {
   const [openCode, setOpenCode] = useState<string | null>(null);
   const [openUrlsCode, setOpenUrlsCode] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
 
   const sorted = [...(items ?? [])].sort((a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]);
-  const visible = typeof initialVisibleCount === 'number' ? sorted.slice(0, initialVisibleCount) : sorted;
+  const hasMore = typeof initialVisibleCount === 'number' && sorted.length > initialVisibleCount;
+  const visible = typeof initialVisibleCount === 'number' && !expanded ? sorted.slice(0, initialVisibleCount) : sorted;
 
   if (sorted.length === 0) {
     return (
@@ -150,6 +152,15 @@ export function PriorityRecommendationList({ items, initialVisibleCount, classNa
           </div>
         );
       })}
+      {hasMore && !expanded && (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="w-full rounded-xl border border-white/10 bg-white/2 py-2.5 text-sm font-medium text-indigo-300 hover:bg-white/5 hover:text-indigo-200 transition-colors"
+        >
+          Tümünü Gör ({sorted.length})
+        </button>
+      )}
     </div>
   );
 }

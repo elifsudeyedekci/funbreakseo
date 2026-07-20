@@ -233,6 +233,140 @@ export class KeywordService {
     });
   }
 
+  // ─── Keyword cannibalization detection ───────────────────────────────────────
+
+  /**
+   * Lightweight proxy for cannibalization using data already collected (no new
+   * DataForSEO calls): if a keyword's last 20 rank checks show 2+ DISTINCT
+   * non-null ranking URLs, Google is alternating which of our own pages it
+   * shows for that query — a real cannibalization signal.
+   */
+  async detectCannibalization(projectId: string, organizationId: string) {
+    await this.assertProjectAccess(projectId, organizationId);
+
+    const keywords = await this.prisma.keyword.findMany({
+      where: { projectId },
+      select: { id: true, phrase: true },
+    });
+    if (keywords.length === 0) return [];
+
+    // Single query for all rank history (ordered desc), then group in JS —
+    // avoids N+1 findMany calls (one per keyword) for projects with many keywords.
+    const allRanks = await this.prisma.keywordRank.findMany({
+      where: { keywordId: { in: keywords.map((k) => k.id) } },
+      select: { keywordId: true, url: true, position: true, checkedAt: true },
+      orderBy: { checkedAt: 'desc' },
+    });
+    const byKeyword = new Map<string, typeof allRanks>();
+    for (const r of allRanks) {
+      const arr = byKeyword.get(r.keywordId);
+      if (arr) {
+        if (arr.length < 20) arr.push(r); // keep only the 20 most recent per keyword
+      } else {
+        byKeyword.set(r.keywordId, [r]);
+      }
+    }
+
+    const flagged: Array<{
+      keyword: string; urls: string[]; mostRecentUrl: string | null;
+      mostRecentPosition: number | null; recommendation: string;
+    }> = [];
+
+    for (const kw of keywords) {
+      const ranks = byKeyword.get(kw.id) ?? [];
+      const distinctUrls = Array.from(new Set(ranks.map((r) => r.url).filter((u): u is string => !!u)));
+      if (distinctUrls.length < 2) continue;
+      flagged.push({
+        keyword: kw.phrase,
+        urls: distinctUrls,
+        mostRecentUrl: ranks[0]?.url ?? null,
+        mostRecentPosition: ranks[0]?.position ?? null,
+        recommendation:
+          `Bu kelimede birden fazla sayfanız Google'da görünmüş: ${distinctUrls.join(', ')}. ` +
+          `En güçlü sayfayı seçip diğerlerini bu sayfaya yönlendirin veya farklı bir alt-konuya odaklayın.`,
+      });
+    }
+
+    return flagged;
+  }
+
+  // ─── Internal link opportunities ─────────────────────────────────────────────
+
+  /**
+   * Finds pages worth adding internal links to, using only signals the crawler
+   * already collected (SiteAuditReport.crawlListJson.orphanPages — a boolean
+   * "zero inbound internal links" flag, no per-page link COUNT is stored
+   * anywhere). A page is HIGH priority if it's both orphaned AND currently the
+   * ranking URL for one of our tracked keywords (a real page losing out on
+   * link equity it deserves); plain orphan pages are MEDIUM. Never fabricates
+   * a specific missing-link count we don't actually have.
+   */
+  async getInternalLinkOpportunities(
+    projectId: string,
+    organizationId: string,
+  ): Promise<Array<{ url: string; reason: string; relatedKeyword?: string; priority: 'HIGH' | 'MEDIUM' }>> {
+    await this.assertProjectAccess(projectId, organizationId);
+
+    const latestCrawl = await this.prisma.crawlJob.findFirst({
+      where: { projectId, status: 'DONE' },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!latestCrawl) return [];
+
+    const report = await this.prisma.siteAuditReport.findUnique({
+      where: { crawlJobId: latestCrawl.id },
+      select: { crawlListJson: true },
+    });
+    const crawlList = (report?.crawlListJson as { orphanPages?: string[] } | null) ?? null;
+    const orphanPages = crawlList?.orphanPages ?? [];
+    if (orphanPages.length === 0) return [];
+
+    const keywords = await this.prisma.keyword.findMany({
+      where: { projectId },
+      select: {
+        phrase: true,
+        searchVolume: true,
+        ranks: { take: 1, orderBy: { checkedAt: 'desc' }, select: { url: true } },
+      },
+    });
+
+    // Map normalized ranking URL → the highest-volume keyword ranking there
+    const normalize = (u: string) => u.replace(/^https?:\/\//, '').replace(/\/$/, '').toLowerCase();
+    const rankingUrlMap = new Map<string, { phrase: string; searchVolume: number }>();
+    for (const kw of keywords) {
+      const url = kw.ranks[0]?.url;
+      if (!url) continue;
+      const norm = normalize(url);
+      const existing = rankingUrlMap.get(norm);
+      const volume = kw.searchVolume ?? 0;
+      if (!existing || volume > existing.searchVolume) {
+        rankingUrlMap.set(norm, { phrase: kw.phrase, searchVolume: volume });
+      }
+    }
+
+    const opportunities: Array<{ url: string; reason: string; relatedKeyword?: string; priority: 'HIGH' | 'MEDIUM' }> = [];
+    for (const url of orphanPages) {
+      const match = rankingUrlMap.get(normalize(url));
+      if (match) {
+        opportunities.push({
+          url,
+          reason: `Bu sayfa "${match.phrase}" anahtar kelimesi için Google'da sıralanıyor ancak hiçbir sayfadan iç bağlantı almıyor — ekleyin.`,
+          relatedKeyword: match.phrase,
+          priority: 'HIGH',
+        });
+      } else {
+        opportunities.push({
+          url,
+          reason: 'Bu sayfaya hiçbir sayfadan iç bağlantı verilmiyor, ekleyin.',
+          priority: 'MEDIUM',
+        });
+      }
+    }
+
+    // HIGH first, stable order within each group
+    return opportunities.sort((a, b) => (a.priority === b.priority ? 0 : a.priority === 'HIGH' ? -1 : 1));
+  }
+
   // ─── Refresh metrics for all keywords in a project ──────────────────────────
 
   async refreshAllKeywordMetrics(projectId: string, organizationId: string) {

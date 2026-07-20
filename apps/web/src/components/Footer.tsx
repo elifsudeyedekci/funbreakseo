@@ -152,7 +152,7 @@ export function Footer() {
             &copy; {currentYear} {t('company')} {t('allRights')}
           </p>
           <p className="text-xs text-white/20">
-            Adres: Çifte Havuzlar Mah. Eski Londra Asfaltı Cad. Kuluçka Merkezi B2 Blok No:151/1C İç Kapı No:2B Esenler/İstanbul
+            Adres: İstanbul
           </p>
         </div>
       </div>

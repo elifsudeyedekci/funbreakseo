@@ -116,6 +116,10 @@ export const competitorApi = {
     api.get(`/projects/${projectId}/competitors/${competitorId}/keywords`),
   auditCompare: (projectId: string, competitorDomain: string) =>
     api.post(`/projects/${projectId}/competitors/audit-compare`, { competitorDomain }),
+  contentGap: (projectId: string, competitorDomain: string) =>
+    api.post(`/projects/${projectId}/competitors/content-gap`, { competitorDomain }),
+  backlinkGap: (projectId: string, competitorDomain: string) =>
+    api.post(`/projects/${projectId}/competitors/backlink-gap`, { competitorDomain }),
 };
 
 export const keywordApi = {
@@ -133,6 +137,8 @@ export const keywordApi = {
   discover: (projectId: string) => api.get(`/projects/${projectId}/keywords/discover`),
   ranked: (projectId: string, params?: { maxPosition?: number }) =>
     api.get(`/projects/${projectId}/keywords/ranked`, { params }),
+  cannibalization: (projectId: string) => api.get(`/projects/${projectId}/keywords/cannibalization`),
+  internalLinkOpportunities: (projectId: string) => api.get(`/projects/${projectId}/keywords/internal-link-opportunities`),
 };
 
 export const crawlerApi = {

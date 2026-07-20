@@ -69,7 +69,7 @@ export default function ContactPage() {
                     </div>
                     <div>
                       <p className="text-xs text-white/40 mb-0.5">Adres</p>
-                      <p className="text-white text-sm">Çifte Havuzlar Mah. Eski Londra Asfaltı Cad.<br />Kuluçka Merkezi B2 Blok No:151/1C<br />Esenler/İstanbul</p>
+                      <p className="text-white text-sm">İstanbul</p>
                     </div>
                   </div>
                 </div>

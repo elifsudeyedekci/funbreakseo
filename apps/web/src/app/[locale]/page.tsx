@@ -54,7 +54,6 @@ const organizationSchema = {
     '@type': 'PostalAddress',
     addressLocality: 'İstanbul',
     addressCountry: 'TR',
-    streetAddress: 'Çifte Havuzlar Mah. Eski Londra Asfaltı Cad. Kuluçka Merkezi B2 Blok No:151/1C',
   },
   sameAs: [
     'https://www.linkedin.com/company/funbreakseo',

@@ -333,9 +333,28 @@ export class CrawlerWorker extends WorkerHost {
         this.logger.warn('[Crawler] Could not load rule definitions (table may not exist yet), continuing without FK links', ruleErr.message)
       }
 
-      // Step 1: Discover URLs
-      const { urls, sitemapFound, sitemapUrl } = await this.discoverUrls(domain, maxPages)
-      this.logger.log(`[Job ${job.id}] Discovered ${urls.length} URLs (plan cap: ${maxPages})`)
+      // Step 1: Discover URLs. If a sitemap exists it's already a comprehensive
+      // URL list — crawl exactly that (capped by plan). If not, seed with just
+      // the homepage and grow the queue via breadth-first internal-link
+      // following as pages are crawled (see the BFS expansion inside the loop
+      // below) — previously this fell back to a single homepage URL with NO
+      // further discovery at all.
+      const { urls: seedUrls, sitemapFound, sitemapUrl } = await this.discoverUrls(domain, maxPages)
+      const cap = Math.max(1, Math.min(maxPages, 5000))
+      const urlQueue: string[] = [...seedUrls]
+      const queuedSet = new Set<string>(seedUrls.map((u) => normaliseUrlForCompare(u)))
+      this.logger.log(
+        `[Job ${job.id}] Discovered ${seedUrls.length} URLs via ${sitemapFound ? 'sitemap' : 'homepage seed (BFS will expand)'} (plan cap: ${maxPages})`,
+      )
+
+      // Publish the real denominator so the UI can show an honest %-complete
+      // bar instead of a fake indeterminate animation. For BFS crawls this
+      // grows as the queue expands (updated alongside pagesScanned below).
+      try {
+        await this.prisma.crawlJob.update({ where: { id: crawlJobId }, data: { totalPagesQueued: urlQueue.length } })
+      } catch (progressErr: any) {
+        this.logger.warn(`[Job ${job.id}] Could not publish totalPagesQueued: ${progressErr.message}`)
+      }
 
       // Step 2: Crawl each URL and run SEO analysis
       const titlesSeen = new Map<string, string>()  // title -> url
@@ -354,9 +373,9 @@ export class CrawlerWorker extends WorkerHost {
       const redirectChains: { url: string; hops: number }[] = []
       const homepageUrl = domain.replace(/\/$/, '') + '/'
 
-      for (let i = 0; i < urls.length; i++) {
-        const url = urls[i]
-        this.logger.debug(`[Job ${job.id}] Crawling (${i + 1}/${urls.length}): ${url}`)
+      for (let i = 0; i < urlQueue.length; i++) {
+        const url = urlQueue[i]
+        this.logger.debug(`[Job ${job.id}] Crawling (${i + 1}/${urlQueue.length}): ${url}`)
 
         let pageData: PageData | null = null
         try {
@@ -386,8 +405,21 @@ export class CrawlerWorker extends WorkerHost {
           redirectChains.push({ url: pageData.url, hops: pageData.redirectCount })
         }
         if (pageData.html) {
-          for (const target of extractInternalLinkTargets(pageData.html, domain)) {
+          const pageLinks = extractInternalLinkTargets(pageData.html, domain)
+          for (const target of pageLinks) {
             linkedToUrls.add(normaliseUrlForCompare(target))
+          }
+          // BFS expansion — only when no sitemap was found (a sitemap is
+          // already a comprehensive URL list; following links there would
+          // just waste crawl budget re-discovering the same pages).
+          if (!sitemapFound) {
+            for (const target of pageLinks) {
+              if (urlQueue.length >= cap) break
+              const norm = normaliseUrlForCompare(target)
+              if (queuedSet.has(norm)) continue
+              queuedSet.add(norm)
+              urlQueue.push(target)
+            }
           }
         }
 
@@ -469,6 +501,21 @@ export class CrawlerWorker extends WorkerHost {
         if (analysis.metaDescription) {
           metasSeen.set(analysis.metaDescription, pageData.url)
         }
+
+        // Throttled progress publish (every 3rd page + always the last) so the
+        // UI's %-complete bar moves without hammering the DB on huge crawls.
+        // totalPagesQueued is republished too since BFS crawls grow the queue
+        // as they go (sitemap crawls already know the true total upfront).
+        if ((i + 1) % 3 === 0 || i === urlQueue.length - 1) {
+          try {
+            await this.prisma.crawlJob.update({
+              where: { id: crawlJobId },
+              data: { pagesScanned: i + 1, totalPagesQueued: urlQueue.length },
+            })
+          } catch {
+            // best-effort — final pagesScanned write in Step 4 is authoritative
+          }
+        }
       }
 
       // Step 3: Calculate overall health score
@@ -516,23 +563,32 @@ export class CrawlerWorker extends WorkerHost {
         const meta: string = (extras.serpPreview?.description ?? '').toLowerCase()
         const h1: string = (extras.h1Text ?? '').toLowerCase()
         const h2Texts: string[] = (extras.h2Texts ?? []).map((t: string) => t.toLowerCase())
+        // Word-level, case-insensitive, partial matching: a phrase counts as
+        // present if ANY of its significant words (>=2 chars) appears in the
+        // target text — e.g. phrase "vale hizmeti" matches an H1 containing
+        // just "vale". Previously required the exact multi-word phrase as one
+        // contiguous substring, which almost always missed (near-100% ✗).
+        const significantWords = (phrase: string): string[] =>
+          phrase.toLowerCase().split(/\s+/).filter((w) => w.length >= 2)
+        const matchesAny = (text: string, words: string[]): boolean =>
+          words.length > 0 && words.some((w) => text.includes(w))
         const keywordMatrix = keywords.map((k) => {
-          const phrase = k.phrase.toLowerCase()
+          const words = significantWords(k.phrase)
           return {
             phrase: k.phrase,
-            inTitle: title.includes(phrase),
-            inMeta: meta.includes(phrase),
-            inH1: h1.includes(phrase),
-            inH2: h2Texts.some((t) => t.includes(phrase)),
+            inTitle: matchesAny(title, words),
+            inMeta: matchesAny(meta, words),
+            inH1: matchesAny(h1, words),
+            inH2: h2Texts.some((t) => matchesAny(t, words)),
           }
         })
 
-        // Orphan pages only meaningful when the crawl was sitemap-driven
-        // (multiple URLs discovered) — a single-homepage fallback crawl has
-        // nothing to compare against.
+        // Orphan pages only meaningful when more than one URL was actually
+        // crawled (sitemap-driven OR BFS-expanded) — a single-homepage crawl
+        // has nothing to compare against.
         const orphanPages =
-          sitemapFound && urls.length > 1
-            ? urls.filter(
+          urlQueue.length > 1
+            ? urlQueue.filter(
                 (u) =>
                   normaliseUrlForCompare(u) !== normaliseUrlForCompare(homepageUrl) &&
                   !linkedToUrls.has(normaliseUrlForCompare(u)),
@@ -546,7 +602,7 @@ export class CrawlerWorker extends WorkerHost {
           robotsTxt: robots,
         }
         const crawlListJson = {
-          urls,
+          urls: urlQueue,
           brokenLinks,
           redirectChains,
           orphanPages,

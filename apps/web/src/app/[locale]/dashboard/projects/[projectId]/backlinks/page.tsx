@@ -264,14 +264,18 @@ export default function BacklinksPage() {
               reloads). Spam score / domain rank come from the latest sync (not
               persisted), shown as "—" until a sync runs. */}
           {summary && (backlinks?.length ?? 0) > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
               {[
                 { label: 'Toplam Backlink', value: summary.total.toLocaleString() },
                 { label: 'Referans Domain', value: summary.referringDomains.toLocaleString() },
                 { label: 'Dofollow', value: summary.dofollow.toLocaleString() },
                 { label: 'Nofollow', value: ((summary.total ?? 0) - (summary.dofollow ?? 0)).toLocaleString() },
                 { label: 'Ortalama DR', value: summary.avgDR },
-                { label: 'Spam Skoru', value: syncMutation.data?.spamScore != null ? `${syncMutation.data.spamScore}/100` : '—' },
+                { label: 'Spam Skoru', value: `${syncMutation.data?.spamScore ?? 0}/100` },
+                { label: '.edu', value: (gauges?.counters?.edu ?? 0).toLocaleString() },
+                { label: '.gov', value: (gauges?.counters?.gov ?? 0).toLocaleString() },
+                { label: 'IP Sayısı', value: (gauges?.counters?.ipCount ?? 0).toLocaleString() },
+                { label: 'Alt Ağ (Subnet)', value: (gauges?.counters?.subnetCount ?? 0).toLocaleString() },
               ].map((c) => (
                 <div key={c.label} className="rounded-xl border border-white/10 bg-white/2 p-3 text-center">
                   <div className="text-2xl font-bold text-white">{c.value}</div>
@@ -328,34 +332,6 @@ export default function BacklinksPage() {
                   />
                 </div>
               </div>
-            )}
-          </Section>
-
-          {/* Counters grid */}
-          <Section title={t('countersTitle')}>
-            {gauges?.counters ? (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {[
-                  { label: t('counterTotal'), value: gauges.counters.total },
-                  { label: t('counterReferringDomains'), value: gauges.counters.referringDomains },
-                  { label: t('counterDofollow'), value: gauges.counters.dofollow },
-                  { label: t('counterNofollow'), value: gauges.counters.nofollow },
-                  { label: t('counterEdu'), value: gauges.counters.edu },
-                  { label: t('counterGov'), value: gauges.counters.gov },
-                  { label: t('counterIpCount'), value: gauges.counters.ipCount, tooltip: t('counterIpTooltip') },
-                  { label: t('counterSubnetCount'), value: gauges.counters.subnetCount, tooltip: t('counterSubnetTooltip') },
-                ].map((c) => (
-                  <div key={c.label} className="rounded-2xl border border-white/10 bg-white/2 p-4 text-center">
-                    <div className="text-2xl font-bold text-white">{(c.value ?? 0).toLocaleString()}</div>
-                    <div className="text-xs text-white/40 mt-0.5 flex items-center justify-center gap-1">
-                      {c.label}
-                      {c.tooltip && <InfoTooltip text={c.tooltip} />}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-white/30 text-center py-6">{t('noBacklinks')}</p>
             )}
           </Section>
 
@@ -552,7 +528,7 @@ export default function BacklinksPage() {
                     </div>
                     <div className="flex items-center gap-3 flex-shrink-0">
                       <span className="text-xs text-white/50 flex items-center gap-1">
-                        {t('toxicScoreLabel')}: <span className="text-red-400 font-bold">{tb.toxicScore}</span>
+                        {t('toxicScoreLabel')}: <span className="text-red-400 font-bold">{tb.toxicScore ?? 0}</span>
                         <InfoTooltip text={t('toxicScoreTooltip')} />
                       </span>
                       <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 font-medium">{t('disavowRecommended')}</span>

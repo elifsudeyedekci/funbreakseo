@@ -25,14 +25,28 @@ interface DataForSeoSerpResponse {
   }>
 }
 
+interface SerpFeatureFlags {
+  ai_overview: boolean
+  featured_snippet: boolean
+  paa: boolean
+  images: boolean
+  video: boolean
+  local_pack: boolean
+}
+
 interface RankCheckResult {
   position: number | null
   url: string | null
-  serpFeatures: {
-    ai_overview: boolean
-    featured_snippet: boolean
-    paa: boolean
-  }
+  serpFeatures: SerpFeatureFlags
+}
+
+const EMPTY_SERP_FEATURES: SerpFeatureFlags = {
+  ai_overview: false,
+  featured_snippet: false,
+  paa: false,
+  images: false,
+  video: false,
+  local_pack: false,
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -185,7 +199,7 @@ export class RankTrackingWorker extends WorkerHost {
         position: result.position,
         previousPosition,
         url: result.url,
-        serpFeatures: result.serpFeatures,
+        serpFeatures: result.serpFeatures as unknown as Record<string, boolean>,
         checkedAt: new Date(),
       },
     })
@@ -212,7 +226,7 @@ export class RankTrackingWorker extends WorkerHost {
       return {
         position: Math.floor(Math.random() * 50) + 1,
         url: null,
-        serpFeatures: { ai_overview: false, featured_snippet: false, paa: false },
+        serpFeatures: { ...EMPTY_SERP_FEATURES },
       }
     }
 
@@ -252,14 +266,29 @@ export class RankTrackingWorker extends WorkerHost {
           (r) => r.domain && (normalizeDomain(r.domain).includes(domain) || domain.includes(normalizeDomain(r.domain))),
         )
 
-        return {
-          position: found?.rank_absolute ?? null,
-          url: found?.url ?? null,
-          serpFeatures: {
+        // SERP feature scan — wrapped separately so a parsing quirk here can
+        // never break position/url extraction above (that's the part that
+        // actually matters for rank tracking).
+        let serpFeatures: SerpFeatureFlags = { ...EMPTY_SERP_FEATURES }
+        try {
+          serpFeatures = {
             ai_overview: results.some((r) => r.type === 'ai_overview'),
             featured_snippet: results.some((r) => r.type === 'featured_snippet'),
             paa: results.some((r) => r.type === 'people_also_ask'),
-          },
+            images: results.some((r) => r.type === 'images' || r.type === 'image_pack' || r.type === 'images_search'),
+            video: results.some((r) => r.type === 'video' || r.type === 'videos'),
+            local_pack: results.some((r) => r.type === 'local_pack' || r.type === 'map'),
+          }
+        } catch (featErr) {
+          this.logger.warn(
+            `SERP feature extraction failed for "${keyword.phrase}" (position check unaffected): ${(featErr as Error).message}`,
+          )
+        }
+
+        return {
+          position: found?.rank_absolute ?? null,
+          url: found?.url ?? null,
+          serpFeatures,
         }
       } catch (err) {
         lastError = err as Error

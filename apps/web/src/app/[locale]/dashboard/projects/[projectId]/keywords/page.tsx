@@ -12,10 +12,35 @@ import {
   getSortedRowModel,
   type SortingState,
 } from '@tanstack/react-table';
-import { Plus, TrendingUp, TrendingDown, Minus, Search, X, ChevronUp, ChevronDown, Download, Trash2, RefreshCw, Sparkles, CheckSquare, Square } from 'lucide-react';
+import { Plus, TrendingUp, TrendingDown, Minus, Search, X, ChevronUp, ChevronDown, Download, Trash2, RefreshCw, Sparkles, CheckSquare, Square, AlertTriangle, HelpCircle, Image as ImageIcon, Video, MapPin, Brain, Link2 } from 'lucide-react';
 import { keywordApi } from '@/lib/api';
 import { cn, exportToCSV } from '@/lib/utils';
+import { InfoTooltip } from '@/components/audit';
 import type { KeywordIntent } from '@funbreakseo/shared';
+
+interface CannibalizationFlag {
+  keyword: string;
+  urls: string[];
+  mostRecentUrl: string | null;
+  mostRecentPosition: number | null;
+  recommendation: string;
+}
+
+interface SerpFeatures {
+  ai_overview?: boolean;
+  featured_snippet?: boolean;
+  paa?: boolean;
+  images?: boolean;
+  video?: boolean;
+  local_pack?: boolean;
+}
+
+interface InternalLinkOpportunity {
+  url: string;
+  reason: string;
+  relatedKeyword?: string;
+  priority: 'HIGH' | 'MEDIUM';
+}
 
 interface Keyword {
   id: string;
@@ -27,6 +52,7 @@ interface Keyword {
   intent: KeywordIntent;
   labels: string[];
   updatedAt: string;
+  serpFeatures: SerpFeatures | null;
 }
 
 interface ResearchResult {
@@ -73,6 +99,7 @@ export default function KeywordsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   // GSC fetch filter
   const [gscMaxPosition, setGscMaxPosition] = useState<string>('50');
+  const [cannibalizationBannerDismissed, setCannibalizationBannerDismissed] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['keywords', projectId],
@@ -90,9 +117,38 @@ export default function KeywordsPage() {
           intent: (k.intent as KeywordIntent) ?? 'INFORMATIONAL',
           labels: k.tag ? [k.tag.name] : [],
           updatedAt: k.updatedAt,
+          serpFeatures: (k.ranks?.[0]?.serpFeatures as SerpFeatures) ?? null,
         }));
       }),
   });
+
+  // Internal link opportunities — orphan pages worth linking to (Feature 2)
+  const { data: linkOpportunities } = useQuery({
+    queryKey: ['internal-link-opportunities', projectId],
+    queryFn: () =>
+      keywordApi.internalLinkOpportunities(projectId).then((r) => {
+        const raw = r.data;
+        return (Array.isArray(raw) ? raw : (raw?.data ?? [])) as InternalLinkOpportunity[];
+      }),
+    enabled: !!projectId,
+  });
+  const [showLinkOpps, setShowLinkOpps] = useState(false);
+
+  const { data: cannibalizationData } = useQuery({
+    queryKey: ['keywords-cannibalization', projectId],
+    queryFn: () =>
+      keywordApi.cannibalization(projectId).then((r) => {
+        const raw = r.data;
+        return (Array.isArray(raw) ? raw : (raw?.data ?? [])) as CannibalizationFlag[];
+      }),
+    enabled: !!projectId,
+  });
+  const cannibalizationFlags = cannibalizationData ?? [];
+  const cannibalizationByKeyword = useMemo(() => {
+    const map = new Map<string, CannibalizationFlag>();
+    for (const f of cannibalizationFlags) map.set(f.keyword.toLowerCase().trim(), f);
+    return map;
+  }, [cannibalizationFlags]);
 
   const addMutation = useMutation({
     mutationFn: (keywords: string[]) => keywordApi.add(projectId, keywords),
@@ -270,7 +326,23 @@ export default function KeywordsPage() {
     }),
     columnHelper.accessor('keyword', {
       header: t('colKeyword'),
-      cell: (info) => <span className="font-medium text-white">{info.getValue()}</span>,
+      cell: (info) => {
+        const flag = cannibalizationByKeyword.get(info.getValue().toLowerCase().trim());
+        return (
+          <div className="flex items-center gap-1.5">
+            <span className="font-medium text-white">{info.getValue()}</span>
+            {flag && (
+              <span
+                className="inline-flex items-center gap-1 rounded-full bg-red-500/15 px-1.5 py-0.5 text-[10px] font-medium text-red-400"
+                title={`Kanibalizasyon riski: ${flag.urls.join(', ')}`}
+              >
+                <AlertTriangle className="h-3 w-3" />
+                Kanibalizasyon riski
+              </span>
+            )}
+          </div>
+        );
+      },
     }),
     columnHelper.accessor('position', {
       header: t('colPosition'),
@@ -286,6 +358,30 @@ export default function KeywordsPage() {
                 {Math.abs(delta)}
               </span>
             )}
+          </div>
+        );
+      },
+    }),
+    columnHelper.display({
+      id: 'serpFeatures',
+      header: 'SERP',
+      cell: (info) => {
+        const sf = info.row.original.serpFeatures;
+        const badges: Array<{ key: string; Icon: typeof Sparkles; title: string; color: string }> = [];
+        if (sf?.featured_snippet) badges.push({ key: 'fs', Icon: Sparkles, title: 'Öne Çıkan Snippet', color: 'text-amber-400' });
+        if (sf?.paa) badges.push({ key: 'paa', Icon: HelpCircle, title: 'İnsanlar Şunu da Sordu', color: 'text-blue-400' });
+        if (sf?.images) badges.push({ key: 'img', Icon: ImageIcon, title: 'Görsel Sonuçları', color: 'text-emerald-400' });
+        if (sf?.video) badges.push({ key: 'vid', Icon: Video, title: 'Video Sonuçları', color: 'text-red-400' });
+        if (sf?.local_pack) badges.push({ key: 'local', Icon: MapPin, title: 'Yerel Paket', color: 'text-purple-400' });
+        if (sf?.ai_overview) badges.push({ key: 'ai', Icon: Brain, title: 'AI Overview', color: 'text-pink-400' });
+        if (badges.length === 0) return <span className="text-white/20 text-xs">—</span>;
+        return (
+          <div className="flex items-center gap-1.5">
+            {badges.map(({ key, Icon, title, color }) => (
+              <span key={key} title={title} className={color}>
+                <Icon className="h-3.5 w-3.5" />
+              </span>
+            ))}
           </div>
         );
       },
@@ -501,6 +597,33 @@ export default function KeywordsPage() {
         </div>
       </div>
 
+      {/* Cannibalization warning banner */}
+      {!cannibalizationBannerDismissed && cannibalizationFlags.length > 0 && (
+        <div className="flex items-start gap-3 mb-4 rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3">
+          <AlertTriangle className="h-4 w-4 text-red-400 mt-0.5 shrink-0" />
+          <div className="flex-1 text-sm">
+            <p className="text-red-300 font-medium">
+              {cannibalizationFlags.length} kelimede kanibalizasyon riski tespit edildi
+            </p>
+            <p className="text-white/50 text-xs mt-0.5">
+              Bu kelimelerde zaman içinde birden fazla sayfanız Google&apos;da görünmüş. Aşağıdaki tabloda ilgili kelimelerin yanında{' '}
+              <span className="inline-flex items-center gap-1 text-red-400">
+                <AlertTriangle className="h-3 w-3" /> Kanibalizasyon riski
+              </span>{' '}
+              rozetini görebilirsiniz — üzerine gelerek etkilenen URL&apos;leri inceleyin.
+            </p>
+          </div>
+          <InfoTooltip text="Aynı anahtar kelime için farklı zamanlarda farklı sayfalarınızın sıralandığı tespit edildi. Bu, Google'ın hangi sayfanızı göstereceğine karar veremediği anlamına gelir ve sıralamalarınızı zayıflatabilir. En güçlü sayfayı seçip diğerlerini ona yönlendirin veya farklı bir alt-konuya odaklayın." />
+          <button
+            onClick={() => setCannibalizationBannerDismissed(true)}
+            className="text-white/30 hover:text-white shrink-0"
+            aria-label="Kapat"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       {/* Summary strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         {[
@@ -623,6 +746,49 @@ export default function KeywordsPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+      </div>
+
+      {/* Internal Link Opportunities — orphan pages worth adding internal links to */}
+      <div className="mt-6 rounded-2xl border border-white/10 bg-white/2 overflow-hidden">
+        <button
+          onClick={() => setShowLinkOpps((v) => !v)}
+          className="w-full flex items-center justify-between px-5 py-4 text-left"
+        >
+          <div className="flex items-center gap-2">
+            <Link2 className="h-4 w-4 text-indigo-400" />
+            <span className="text-sm font-semibold text-white">İç Bağlantı Fırsatları</span>
+            {linkOpportunities && linkOpportunities.length > 0 && (
+              <span className="rounded-full bg-indigo-500/20 px-2 py-0.5 text-xs text-indigo-300">{linkOpportunities.length}</span>
+            )}
+          </div>
+          {showLinkOpps ? <ChevronUp className="h-4 w-4 text-white/40" /> : <ChevronDown className="h-4 w-4 text-white/40" />}
+        </button>
+        {showLinkOpps && (
+          <div className="px-5 pb-5">
+            {!linkOpportunities || linkOpportunities.length === 0 ? (
+              <p className="text-sm text-white/30 py-2">Şu an tespit edilen bir iç bağlantı fırsatı yok — sitenizde yetim (bağlantısız) sayfa bulunmuyor ya da henüz bir teknik tarama yapılmadı.</p>
+            ) : (
+              <div className="space-y-2">
+                {linkOpportunities.map((opp, i) => (
+                  <div key={i} className="flex items-start gap-3 rounded-xl border border-white/5 bg-white/3 p-3">
+                    <span
+                      className={cn(
+                        'mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold',
+                        opp.priority === 'HIGH' ? 'bg-red-500/20 text-red-400' : 'bg-orange-500/20 text-orange-400',
+                      )}
+                    >
+                      {opp.priority === 'HIGH' ? 'YÜKSEK' : 'ORTA'}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-xs text-white/70 truncate" title={opp.url}>{opp.url}</p>
+                      <p className="text-xs text-white/40 mt-0.5">{opp.reason}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

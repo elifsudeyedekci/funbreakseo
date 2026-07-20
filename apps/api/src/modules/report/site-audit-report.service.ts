@@ -1,11 +1,19 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
+import { SubscriptionStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma.service';
 import { OutreachService } from '../outreach/outreach.service';
+import { MonthlyReportService } from './monthly-report.service';
+import { EmailService } from '../email-notification/email.service';
+
+// ---------------------------------------------------------------------------
+// Data shapes
+// ---------------------------------------------------------------------------
 
 export interface SiteAuditReportData {
   project: { domain: string; organization: string };
   generatedAt: string;
-  crawlJob: { finishedAt: string | null; pagesScanned: number; issuesFound: number };
+  crawlJob: { finishedAt: string | null; pagesScanned: number; issuesFound: number; totalPagesQueued: number | null };
   overallScore: number;
   overallGrade: string;
   categoryScores: Record<'onPage' | 'geo' | 'backlink' | 'usability' | 'performance', { score: number; grade: string }>;
@@ -14,6 +22,11 @@ export interface SiteAuditReportData {
   geo: any;
   performance: any;
   technology: any;
+  usability: any;
+  social: any;
+  localSeo: any;
+  crawlList: any;
+  screenshots: { desktop: string | null; mobile: string | null; tablet: string | null };
   backlink: {
     domainStrength: number;
     pageStrength: number;
@@ -21,6 +34,23 @@ export interface SiteAuditReportData {
     top: Array<{ domainRating: number; sourceDomain: string; anchorText: string; isDofollow: boolean }>;
     anchors: Array<{ anchor: string; count: number }>;
   };
+  /** Unified monthly report data — merged in so ONE report covers technical audit + GA4 + GSC (no separate report pipeline). */
+  ga4: {
+    connected: boolean;
+    current: { users: number; sessions: number; pageViews: number; bounceRate: number; avgSessionDurationSec: number };
+    previous: { users: number; sessions: number; pageViews: number; bounceRate: number; avgSessionDurationSec: number };
+    channels: Array<{ channel: string; sessions: number; users: number }>;
+  } | null;
+  gsc: {
+    connected: boolean;
+    current: { clicks: number; impressions: number; ctr: number; position: number };
+    previous: { clicks: number; impressions: number; ctr: number; position: number };
+    topQueries: Array<{ query: string; clicks: number; impressions: number; ctr: number; position: number }>;
+    topPages: Array<{ page: string; clicks: number; impressions: number }>;
+    devices: Array<{ device: string; clicks: number; impressions: number }>;
+    countries: Array<{ country: string; clicks: number; impressions: number }>;
+  } | null;
+  periodLabel: string;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -33,7 +63,11 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 function escapeHtml(s: string | null | undefined): string {
   if (!s) return '';
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function fmt(n: number): string {
+  return Math.round(n).toLocaleString('tr-TR');
 }
 
 function scoreColor(score: number): string {
@@ -43,8 +77,36 @@ function scoreColor(score: number): string {
   return '#dc2626';
 }
 
+function posColor(pos: number): string {
+  if (pos <= 3) return '#16a34a';
+  if (pos <= 10) return '#ca8a04';
+  return '#dc2626';
+}
+
+function deltaHtml(cur: number, prev: number): string {
+  if (!prev) return cur > 0 ? '<span class="up">Yeni</span>' : '<span class="flat">—</span>';
+  const ch = ((cur - prev) / prev) * 100;
+  if (Math.abs(ch) < 0.5) return '<span class="flat">—</span>';
+  return ch > 0 ? `<span class="up">▲ %${ch.toFixed(1)}</span>` : `<span class="down">▼ %${Math.abs(ch).toFixed(1)}</span>`;
+}
+
 /** Circular progress ring — inline SVG, matches the dashboard's ring visual language. */
 function ringSvg(score: number, grade: string, size = 120, stroke = 12): string {
+  const r = size / 2 - stroke;
+  const c = 2 * Math.PI * r;
+  const clamped = Math.max(0, Math.min(100, score));
+  const offset = c - (clamped / 100) * c;
+  const color = scoreColor(clamped);
+  const center = size / 2;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="transform:rotate(-90deg)">
+    <circle cx="${center}" cy="${center}" r="${r}" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="${stroke}"/>
+    <circle cx="${center}" cy="${center}" r="${r}" fill="none" stroke="#ffffff" stroke-width="${stroke}"
+      stroke-dasharray="${c}" stroke-dashoffset="${offset}" stroke-linecap="round"/>
+  </svg>`;
+}
+
+/** Small category ring for the summary page (uses status color, not white). */
+function categoryRingSvg(score: number, grade: string, size = 88, stroke = 9): string {
   const r = size / 2 - stroke;
   const c = 2 * Math.PI * r;
   const clamped = Math.max(0, Math.min(100, score));
@@ -60,7 +122,68 @@ function ringSvg(score: number, grade: string, size = 120, stroke = 12): string 
   </svg>`;
 }
 
-/** Horizontal progress bar — used for gauges (DS/PS, performance scores). */
+/** Half-circle gauge — used for Domain/Page Strength and PSI scores. */
+function halfGaugeSvg(value: number, label: string, size = 170): string {
+  const w = size;
+  const h = size * 0.62;
+  const stroke = size * 0.09;
+  const r = w / 2 - stroke;
+  const cx = w / 2;
+  const cy = h - stroke / 2;
+  const clamped = Math.max(0, Math.min(100, value));
+  const color = scoreColor(clamped);
+  const arcLen = Math.PI * r;
+  const offset = arcLen - (clamped / 100) * arcLen;
+  const path = `M ${cx - r} ${cy} A ${r} ${r} 0 1 1 ${cx + r} ${cy}`;
+  return `<svg width="${w}" height="${h + 22}" viewBox="0 0 ${w} ${h + 22}">
+    <path d="${path}" fill="none" stroke="#e2e8f0" stroke-width="${stroke}" stroke-linecap="round"/>
+    <path d="${path}" fill="none" stroke="${color}" stroke-width="${stroke}" stroke-linecap="round"
+      stroke-dasharray="${arcLen}" stroke-dashoffset="${offset}"/>
+    <text x="${cx}" y="${cy - 4}" font-size="${size * 0.15}" font-weight="800" fill="${color}" text-anchor="middle">${Math.round(clamped)}</text>
+    <text x="${cx}" y="${h + 16}" font-size="11" fill="#64748b" text-anchor="middle">${escapeHtml(label)}</text>
+  </svg>`;
+}
+
+/** Radar (spider) chart — hand-drawn SVG polygon, no chart library needed for server-rendered HTML. */
+function radarSvg(categories: { label: string; score: number }[], size = 280): string {
+  const center = size / 2;
+  const maxR = size / 2 - 46;
+  const n = categories.length;
+  if (n === 0) return '';
+  const angleFor = (i: number) => (Math.PI * 2 * i) / n - Math.PI / 2;
+  const pointFor = (i: number, r: number): [number, number] => {
+    const a = angleFor(i);
+    return [center + r * Math.cos(a), center + r * Math.sin(a)];
+  };
+  const rings = [0.25, 0.5, 0.75, 1]
+    .map((frac) => {
+      const pts = categories.map((_, i) => pointFor(i, maxR * frac).join(',')).join(' ');
+      return `<polygon points="${pts}" fill="none" stroke="#e2e8f0" stroke-width="1"/>`;
+    })
+    .join('');
+  const axes = categories
+    .map((_, i) => {
+      const [x, y] = pointFor(i, maxR);
+      return `<line x1="${center}" y1="${center}" x2="${x}" y2="${y}" stroke="#e2e8f0" stroke-width="1"/>`;
+    })
+    .join('');
+  const scorePts = categories
+    .map((c, i) => pointFor(i, (Math.max(0, Math.min(100, c.score)) / 100) * maxR).join(','))
+    .join(' ');
+  const labels = categories
+    .map((c, i) => {
+      const [x, y] = pointFor(i, maxR + 24);
+      return `<text x="${x}" y="${y}" font-size="10" fill="#475569" text-anchor="middle">${escapeHtml(c.label)}</text>`;
+    })
+    .join('');
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+    ${rings}${axes}
+    <polygon points="${scorePts}" fill="rgba(29,78,216,0.22)" stroke="#1d4ed8" stroke-width="2"/>
+    ${labels}
+  </svg>`;
+}
+
+/** Horizontal progress bar — used for performance/E-E-A-T scores. */
 function barGauge(label: string, score: number): string {
   const clamped = Math.max(0, Math.min(100, Math.round(score)));
   const color = scoreColor(clamped);
@@ -77,7 +200,68 @@ export class SiteAuditReportService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly outreach: OutreachService,
+    private readonly monthlyReport: MonthlyReportService,
+    private readonly email: EmailService,
   ) {}
+
+  /**
+   * The ONE monthly report email — built from each project's latest completed
+   * site audit (technical + GEO + backlink + performance) with GA4/GSC merged
+   * in via buildData(). Replaces the old, separate MonthlyReportService cron
+   * (removed) so customers get a single, consistent report instead of two.
+   * Projects with no completed scan yet are skipped (nothing to send) rather
+   * than emailing an empty report.
+   */
+  @Cron('0 17 1 * *', { timeZone: 'Europe/Istanbul' })
+  async sendMonthlyReports(): Promise<void> {
+    const projects = await this.prisma.project.findMany({
+      where: {
+        status: 'ACTIVE',
+        organization: {
+          subscription: { status: { in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIALING] } },
+        },
+      },
+      include: { organization: true },
+    });
+
+    let sent = 0;
+    for (const project of projects) {
+      try {
+        const data = await this.buildData(project.id);
+        const html = this.renderHtml(data);
+        const pdf = await this.generatePdf(html);
+
+        const owner = await this.prisma.user.findUnique({
+          where: { id: project.organization.ownerUserId },
+          select: { email: true, fullName: true },
+        });
+        if (!owner) continue;
+
+        const bodyHtml = `<div style="font-family:Segoe UI,Arial,sans-serif;max-width:560px;margin:0 auto;color:#1e293b">
+          <h2 style="color:#1d4ed8">Aylık SEO Raporunuz Hazır</h2>
+          <p>Merhaba ${escapeHtml(owner.fullName ?? '')},</p>
+          <p><strong>${escapeHtml(project.domain)}</strong> için site denetimi raporunuz ektedir.</p>
+          <p>Genel skor: ${data.overallGrade} (${Math.round(data.overallScore)}/100) · ${data.recommendations.length} öneri.</p>
+          <p><a href="https://funbreakseo.com/tr/dashboard/projects/${project.id}/audit" style="display:inline-block;background:#1d4ed8;color:#fff;text-decoration:none;padding:10px 22px;border-radius:8px;font-weight:600">Panelde Görüntüle</a></p>
+          <p style="color:#94a3b8;font-size:12px">FunBreak SEO · funbreakseo.com</p>
+        </div>`;
+
+        const subject = `${project.domain} — Aylık SEO Raporu — ${new Date().toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' })}`;
+
+        if (pdf) {
+          await this.email.sendMail(owner.email, subject, bodyHtml, [
+            { filename: `site-denetimi-${project.domain}-${new Date().toISOString().slice(0, 7)}.pdf`, content: pdf, contentType: 'application/pdf' },
+          ]);
+        } else {
+          await this.email.sendMail(owner.email, subject, html);
+        }
+        sent++;
+      } catch (e) {
+        this.logger.warn(`Aylık rapor gönderilemedi (${project.id}): ${(e as Error).message}`);
+      }
+    }
+    this.logger.log(`Aylık raporlar işlendi: ${sent}/${projects.length} proje`);
+  }
 
   /**
    * Access control is the controller's job (assertAccess, incl. the
@@ -101,13 +285,21 @@ export class SiteAuditReportService {
     }
     const report = crawlJob.siteAuditReport;
 
-    const gauges = await this.outreach.getBacklinkGauges(projectId).catch(() => ({
-      domainStrength: 0,
-      pageStrength: 0,
-      counters: {} as Record<string, number>,
-    }));
-    const top = await this.outreach.getTopBacklinks(projectId, 10).catch(() => []);
-    const anchors = await this.outreach.getTopAnchors(projectId, 10).catch(() => []);
+    const [gauges, top, anchors, monthly] = await Promise.all([
+      this.outreach.getBacklinkGauges(projectId).catch(() => ({
+        domainStrength: 0,
+        pageStrength: 0,
+        counters: {} as Record<string, number>,
+      })),
+      this.outreach.getTopBacklinks(projectId, 10).catch(() => []),
+      this.outreach.getTopAnchors(projectId, 10).catch(() => []),
+      // Same GA4+GSC data that used to power a separate monthly report — now
+      // folded into this one unified report instead of a parallel pipeline.
+      this.monthlyReport.buildReportData(projectId).catch((err) => {
+        this.logger.warn(`GA4/GSC verisi alınamadı (${projectId}): ${(err as Error).message}`);
+        return null;
+      }),
+    ]);
 
     return {
       project: { domain: project.domain, organization: project.organization?.name ?? '' },
@@ -116,15 +308,25 @@ export class SiteAuditReportService {
         finishedAt: crawlJob.finishedAt?.toISOString() ?? null,
         pagesScanned: crawlJob.pagesScanned,
         issuesFound: crawlJob.issuesFound,
+        totalPagesQueued: crawlJob.totalPagesQueued,
       },
       overallScore: report.overallScore,
       overallGrade: report.overallGrade,
       categoryScores: (report.categoryScores as any) ?? {},
-      recommendations: ((report.recommendations as any) ?? []).slice(0, 20),
+      recommendations: (report.recommendations as any) ?? [],
       onPage: report.onPageJson,
       geo: report.geoJson,
       performance: report.performanceJson,
       technology: report.technologyJson,
+      usability: report.usabilityJson,
+      social: report.socialJson,
+      localSeo: report.localSeoJson,
+      crawlList: report.crawlListJson,
+      screenshots: {
+        desktop: report.screenshotDesktopUrl,
+        mobile: report.screenshotMobileUrl,
+        tablet: report.screenshotTabletUrl,
+      },
       backlink: {
         domainStrength: gauges.domainStrength,
         pageStrength: gauges.pageStrength,
@@ -132,6 +334,21 @@ export class SiteAuditReportService {
         top: top as any,
         anchors: anchors as any,
       },
+      ga4: monthly
+        ? { connected: monthly.analytics.connected, current: monthly.analytics.current, previous: monthly.analytics.previous, channels: monthly.analytics.channels }
+        : null,
+      gsc: monthly
+        ? {
+            connected: monthly.gscConnected,
+            current: monthly.organic.current,
+            previous: monthly.organic.previous,
+            topQueries: monthly.organic.topQueries,
+            topPages: monthly.organic.topPages,
+            devices: monthly.organic.devices,
+            countries: monthly.organic.countries,
+          }
+        : null,
+      periodLabel: monthly?.period.label ?? '',
     };
   }
 
@@ -140,22 +357,71 @@ export class SiteAuditReportService {
       ? new Date(d.crawlJob.finishedAt).toLocaleString('tr-TR')
       : new Date(d.generatedAt).toLocaleString('tr-TR');
 
+    const pagehead = `<div class="pagehead"><span class="brand">FunBreak SEO</span><span class="meta">${escapeHtml(d.project.domain)} · ${dateLabel}</span></div>`;
+
+    // ── Sayfa 1: Kapak ──────────────────────────────────────────────────
+    const cover = `<div class="page cover">
+  <div class="logo">FunBreak <span>SEO</span></div>
+  <h1>Aylık SEO &amp; Site Denetimi Raporu</h1>
+  <div class="domain">${escapeHtml(d.project.domain)}</div>
+  <div class="date">Tarama tarihi: ${dateLabel}${d.periodLabel ? ` · Dönem: ${escapeHtml(d.periodLabel)}` : ''}</div>
+  <div class="cover-score">
+    ${ringSvg(d.overallScore, d.overallGrade, 170, 14)}
+    <div class="cover-grade">${escapeHtml(d.overallGrade)}<span class="cover-grade-sub">${Math.round(d.overallScore)}/100</span></div>
+  </div>
+  <div class="footer">${escapeHtml(d.project.organization || 'FunBreak Global Teknoloji Ltd. Şti.')} için hazırlandı · funbreakseo.com</div>
+</div>`;
+
+    // ── Sayfa 2: Genel Özet ─────────────────────────────────────────────
     const categoryRings = (Object.keys(CATEGORY_LABELS) as (keyof typeof CATEGORY_LABELS)[])
       .map((key) => {
         const cs = (d.categoryScores as any)?.[key] ?? { score: 0, grade: '—' };
-        return `<div class="cat-ring">${ringSvg(cs.score, cs.grade, 88, 9)}<div class="cat-label">${CATEGORY_LABELS[key]}</div></div>`;
+        return `<div class="cat-ring">${categoryRingSvg(cs.score, cs.grade)}<div class="cat-label">${CATEGORY_LABELS[key]}</div></div>`;
       })
       .join('');
+    const radarCategories = (Object.keys(CATEGORY_LABELS) as (keyof typeof CATEGORY_LABELS)[]).map((key) => ({
+      label: CATEGORY_LABELS[key],
+      score: (d.categoryScores as any)?.[key]?.score ?? 0,
+    }));
+
+    const critCount = d.recommendations.filter((r) => r.priority === 'CRITICAL').length;
+    const midCount = d.recommendations.filter((r) => r.priority === 'MEDIUM').length;
+    const lowCount = d.recommendations.filter((r) => r.priority === 'LOW').length;
 
     const priorityLabel: Record<string, string> = { CRITICAL: 'Kritik', MEDIUM: 'Orta', LOW: 'Düşük' };
     const recRows = d.recommendations
       .map(
         (r) =>
           `<div class="rec"><span class="prio ${r.priority === 'CRITICAL' ? 'high' : r.priority === 'MEDIUM' ? 'mid' : 'low'}">${priorityLabel[r.priority] ?? r.priority}</span>
-          <div><div style="font-weight:600">${escapeHtml(r.title)}</div>${r.affectedCount ? `<div class="muted">${r.affectedCount} sayfayı etkiliyor</div>` : ''}</div></div>`,
+          <div><div style="font-weight:600">${escapeHtml(r.title)}</div>${r.affectedCount ? `<div class="muted">${r.affectedCount} sayfayı etkiliyor</div>` : ''}${r.howToFix ? `<div class="muted" style="margin-top:2px">${escapeHtml(r.howToFix)}</div>` : ''}</div></div>`,
       )
       .join('');
 
+    const summaryPage = `<div class="page">
+  ${pagehead}
+  <div class="section">
+    <h2>Genel Özet</h2>
+    <p class="sub">Bu rapor sitenizin teknik SEO, GEO/AI görünürlük, backlink, kullanılabilirlik ve performans durumunu tek seferde özetler; ardından (bağlıysa) Google Analytics ve Search Console verilerinizle devam eder.</p>
+    <p class="sub">${d.crawlJob.pagesScanned}${d.crawlJob.totalPagesQueued ? `/${d.crawlJob.totalPagesQueued}` : ''} sayfa tarandı · ${d.crawlJob.issuesFound} sorun tespit edildi · <span class="prio high" style="display:inline-block">${critCount} Kritik</span> <span class="prio mid" style="display:inline-block">${midCount} Orta</span> <span class="prio low" style="display:inline-block">${lowCount} Düşük</span></p>
+    <div class="cat-rings">${categoryRings}</div>
+  </div>
+  <div class="section" style="text-align:center">
+    <h2>Kategori Karşılaştırması</h2>
+    <p class="sub">5 kategorinin tek grafikte karşılaştırması</p>
+    ${radarSvg(radarCategories)}
+  </div>
+</div>`;
+
+    const recsPage = `<div class="page">
+  ${pagehead}
+  <div class="section">
+    <h2>Öncelikli Öneriler</h2>
+    <p class="sub">Sitenizde tespit edilen tüm sorunlar, önem sırasına göre (Kritik → Orta → Düşük). Kritik maddeler görünürlüğünüzü en çok etkileyenlerdir.</p>
+    ${recRows || '<p class="muted">Öneri bulunamadı — tebrikler!</p>'}
+  </div>
+</div>`;
+
+    // ── Sayfa: Sayfa İçi SEO + SERP + Anahtar Kelime Matrisi ────────────
     const serpTitle = escapeHtml(d.onPage?.serpPreview?.title ?? d.project.domain);
     const serpDesc = escapeHtml(d.onPage?.serpPreview?.description ?? '');
     const serpUrl = escapeHtml(d.onPage?.serpPreview?.url ?? `https://${d.project.domain}`);
@@ -165,12 +431,56 @@ export class SiteAuditReportService {
       ['Robots.txt taramayı engelliyor mu', d.onPage?.robotsTxt?.blocking ? 'Evet (kritik)' : 'Hayır'],
       ['Canonical etiketi', d.onPage?.canonicalUrl ? 'Var' : 'Yok'],
       ['Noindex (meta)', d.onPage?.noindexMeta ? 'Var (dikkat)' : 'Yok'],
+      ['Noindex (HTTP başlığı)', d.onPage?.noindexHeader ? 'Var (dikkat)' : 'Yok'],
       ['Schema.org tipleri', (d.onPage?.schemaTypes ?? []).join(', ') || 'Bulunamadı'],
       ['Dil (lang)', d.onPage?.lang ?? '—'],
+      ['Kelime sayısı', d.onPage?.wordCount != null ? `${d.onPage.wordCount} kelime` : '—'],
     ]
       .map(([k, v]) => `<tr><td>${escapeHtml(k)}</td><td class="num">${escapeHtml(String(v))}</td></tr>`)
       .join('');
 
+    const keywordMatrixRows = (d.onPage?.keywordMatrix ?? [])
+      .slice(0, 15)
+      .map(
+        (k: any) =>
+          `<tr><td>${escapeHtml(k.phrase)}</td><td class="num">${k.inTitle ? '✓' : '✗'}</td><td class="num">${k.inMeta ? '✓' : '✗'}</td><td class="num">${k.inH1 ? '✓' : '✗'}</td><td class="num">${k.inH2 ? '✓' : '✗'}</td></tr>`,
+      )
+      .join('');
+
+    const onPagePage = `<div class="page">
+  ${pagehead}
+  <div class="section">
+    <h2>SERP Önizlemesi</h2>
+    <p class="sub">Siteniz Google arama sonuçlarında şu şekilde görünüyor.</p>
+    <div class="serp"><div class="serp-favicon"></div><div><div class="url">${serpUrl}</div><div class="title">${serpTitle}</div><div class="desc">${serpDesc}</div></div></div>
+  </div>
+  <div class="section">
+    <h2>Sayfa İçi SEO — Teknik Kontroller</h2>
+    <table>${onPageRows}</table>
+  </div>
+  ${keywordMatrixRows ? `<div class="section">
+    <h2>Anahtar Kelime Tutarlılık Matrisi</h2>
+    <p class="sub">Takip ettiğiniz kelimelerin Title/Meta/H1/H2 etiketlerinde geçip geçmediği.</p>
+    <table><tr><th>Kelime</th><th>Title</th><th>Meta</th><th>H1</th><th>H2</th></tr>${keywordMatrixRows}</table>
+  </div>` : ''}
+</div>`;
+
+    // ── Sayfa: Cihaz Görünümleri ─────────────────────────────────────────
+    const screenshotsPage = (d.screenshots.desktop || d.screenshots.mobile || d.screenshots.tablet)
+      ? `<div class="page">
+  ${pagehead}
+  <div class="section">
+    <h2>Cihaz Görünümleri</h2>
+    <p class="sub">Sitenizin masaüstü ve mobil cihazlarda gerçek görünümü.</p>
+    <div class="shots">
+      ${d.screenshots.desktop ? `<div class="shot-frame shot-desktop"><img src="${d.screenshots.desktop}" /></div><div class="shot-caption">Masaüstü</div>` : ''}
+      ${d.screenshots.mobile ? `<div class="shot-frame shot-mobile"><img src="${d.screenshots.mobile}" /></div><div class="shot-caption">Mobil</div>` : ''}
+    </div>
+  </div>
+</div>`
+      : '';
+
+    // ── Sayfa: Backlink ───────────────────────────────────────────────
     const backlinkTop = d.backlink.top
       .map(
         (b) =>
@@ -182,18 +492,113 @@ export class SiteAuditReportService {
       .join('');
     const c = d.backlink.counters ?? {};
 
-    const psi = d.performance?.psi ?? {};
-    const cwv = d.performance?.coreWebVitals ?? {};
-    const cwvRow = (label: string, m: any) =>
-      m ? `<tr><td>${label}</td><td class="num">${(m.lcp?.value / 1000).toFixed(1)}s</td><td class="num">${Math.round(m.inp?.value ?? 0)}ms</td><td class="num">${(m.cls?.value ?? 0).toFixed(2)}</td></tr>` : '';
+    const backlinkPage = `<div class="page">
+  ${pagehead}
+  <div class="section">
+    <h2>Backlink &amp; Otorite</h2>
+    <p class="sub">Backlinkler, diğer sitelerin sizin sitenize verdiği bağlantılardır — Google için bir güven oyu gibidir.</p>
+    <div class="gauge-row">${halfGaugeSvg(d.backlink.domainStrength, 'Domain Strength')}${halfGaugeSvg(d.backlink.pageStrength, 'Page Strength')}</div>
+    <div class="kpis">
+      <div class="kpi"><div class="label">Toplam Backlink</div><div class="value">${c.total ?? 0}</div></div>
+      <div class="kpi"><div class="label">Yönlendiren Alan</div><div class="value">${c.referringDomains ?? 0}</div></div>
+      <div class="kpi"><div class="label">Dofollow</div><div class="value">${c.dofollow ?? 0}</div></div>
+      <div class="kpi"><div class="label">Nofollow</div><div class="value">${c.nofollow ?? 0}</div></div>
+    </div>
+  </div>
+  <div class="section">
+    <h2>En Değerli Backlinkler</h2>
+    <table><tr><th>DR</th><th>Kaynak</th><th>Anchor</th><th>Tip</th></tr>${backlinkTop || '<tr><td colspan="4" class="muted">Veri yok</td></tr>'}</table>
+  </div>
+  <div class="section">
+    <h2>En Sık Kullanılan Anchor Metinleri</h2>
+    <table><tr><th>Anchor</th><th>Adet</th></tr>${anchorRows || '<tr><td colspan="2" class="muted">Veri yok</td></tr>'}</table>
+  </div>
+</div>`;
 
+    // ── Sayfa: Performans (her zaman elde olan verileri gösterir) ───────
+    const perf = d.performance ?? {};
+    const psi = perf.psi ?? {};
+    const cwv = perf.coreWebVitals ?? {};
+    const cwvRow = (label: string, m: any) =>
+      m ? `<tr><td>${label}</td><td class="num">${((m.lcp?.value ?? 0) / 1000).toFixed(1)}s</td><td class="num">${Math.round(m.inp?.value ?? 0)}ms</td><td class="num">${(m.cls?.value ?? 0).toFixed(2)}</td></tr>` : '';
+    const sizeBreakdown = perf.sizeBreakdown ?? {};
+    const sizeRows = Object.entries(sizeBreakdown)
+      .map(([k, v]: [string, any]) => `<tr><td>${k.toUpperCase()}</td><td class="num">${((v ?? 0) / 1024).toFixed(0)} KB</td></tr>`)
+      .join('');
+
+    const perfPage = `<div class="page">
+  ${pagehead}
+  <div class="section">
+    <h2>Performans</h2>
+    <p class="sub">Sayfa hızı, kullanıcı deneyimi ve Google sıralaması için doğrudan etkilidir.</p>
+    <div class="kpis">
+      <div class="kpi"><div class="label">Sunucu Yanıt Süresi</div><div class="value">${perf.serverResponseMs != null ? `${(perf.serverResponseMs / 1000).toFixed(2)}s` : '—'}</div></div>
+      <div class="kpi"><div class="label">Sayfa Yükleme Süresi</div><div class="value">${perf.pageLoadMs != null ? `${(perf.pageLoadMs / 1000).toFixed(1)}s` : '—'}</div></div>
+      <div class="kpi"><div class="label">İndirme Boyutu</div><div class="value">${perf.downloadSizeBytes != null ? `${(perf.downloadSizeBytes / (1024 * 1024)).toFixed(2)} MB` : '—'}</div></div>
+      <div class="kpi"><div class="label">İstek Sayısı</div><div class="value">${perf.requestCount ?? '—'}</div></div>
+    </div>
+    ${sizeRows ? `<table><tr><th>Kaynak Tipi</th><th>Boyut</th></tr>${sizeRows}</table>` : ''}
+  </div>
+  <div class="section">
+    <h2>PageSpeed Insights</h2>
+    ${psi.mobile ? barGauge('PageSpeed — Mobil', psi.mobile.score) : ''}
+    ${psi.desktop ? barGauge('PageSpeed — Masaüstü', psi.desktop.score) : ''}
+    ${(psi.mobile || psi.desktop) ? `<table><tr><th></th><th>LCP</th><th>INP</th><th>CLS</th></tr>${cwvRow('Mobil', cwv.mobile)}${cwvRow('Masaüstü', cwv.desktop)}</table>` : '<p class="muted">PageSpeed Insights verisi bu tarama için mevcut değil (GOOGLE_PSI_API_KEY tanımlı değil veya kota aşıldı) — yukarıdaki temel performans ölçümleri yine de gerçek Puppeteer taramasından alınmıştır.</p>'}
+  </div>
+</div>`;
+
+    // ── Sayfa: GEO / AI ───────────────────────────────────────────────
     const eeat = d.geo?.eeat ?? { score: 0, factors: [] };
     const eeatRows = (eeat.factors ?? [])
       .map((f: any) => `<tr><td>${escapeHtml(f.label)}</td><td class="num">${f.present ? '✓' : '✗'}</td></tr>`)
       .join('');
+    const geoPage = `<div class="page">
+  ${pagehead}
+  <div class="section">
+    <h2>GEO / AI Görünürlük</h2>
+    <p class="sub">ChatGPT, Perplexity, Gemini gibi AI asistanların sitenizi ne kadar iyi anlayıp alıntılayabileceğini ölçer.</p>
+    <div class="kpis">
+      <div class="kpi"><div class="label">Kimlik Şeması</div><div class="value" style="font-size:14px">${d.geo?.identitySchema?.found ? escapeHtml(d.geo.identitySchema.type) : 'Yok'}</div></div>
+      <div class="kpi"><div class="label">llms.txt</div><div class="value" style="font-size:14px">${d.geo?.llmsTxt?.found ? 'Var' : 'Yok'}</div></div>
+      <div class="kpi"><div class="label">LLM Okunabilirlik</div><div class="value" style="font-size:14px">${d.geo?.llmReadability?.rating ?? '—'}</div></div>
+    </div>
+    ${barGauge('E-E-A-T Skoru', eeat.score ?? 0)}
+    <table><tr><th>Faktör</th><th>Durum</th></tr>${eeatRows || '<tr><td colspan="2" class="muted">Veri yok</td></tr>'}</table>
+  </div>
+</div>`;
 
+    // ── Sayfa: Sosyal Medya + Yerel SEO ─────────────────────────────────
+    const social = d.social ?? {};
+    const socialRows = (social.profiles ?? [])
+      .map((p: any) => `<tr><td style="text-transform:capitalize">${escapeHtml(p.platform)}</td><td class="num">${p.found ? '✓' : '✗'}</td></tr>`)
+      .join('');
+    const localSeo = d.localSeo ?? {};
+    const socialLocalPage = `<div class="page">
+  ${pagehead}
+  <div class="section">
+    <h2>Sosyal Medya</h2>
+    <p class="sub">Sosyal medya profilleri ve paylaşım etiketleri (Open Graph/Twitter Card) marka görünürlüğünü destekler.</p>
+    <table><tr><th>Platform</th><th>Bağlantı Var mı</th></tr>${socialRows || '<tr><td colspan="2" class="muted">Veri yok</td></tr>'}</table>
+    <table style="margin-top:10px"><tr><td>Open Graph etiketleri</td><td class="num">${social.openGraph?.title ? 'Var' : 'Yok'}</td></tr><tr><td>Twitter/X Card</td><td class="num">${social.twitterCard?.type ? 'Var' : 'Yok'}</td></tr><tr><td>Facebook Pixel</td><td class="num">${social.facebookPixel ? 'Var' : 'Yok'}</td></tr></table>
+  </div>
+  <div class="section">
+    <h2>Yerel SEO</h2>
+    <p class="sub">Yerel işletmeler için Google'ın işletmenizi doğru tanıması adına önemlidir.</p>
+    <table>
+      <tr><td>LocalBusiness / Organization Şeması</td><td class="num">${localSeo.found ? escapeHtml(localSeo.schemaType) : 'Yok'}</td></tr>
+      <tr><td>İşletme Adı</td><td class="num">${escapeHtml(localSeo.name) || '—'}</td></tr>
+      <tr><td>Adres</td><td class="num">${escapeHtml(localSeo.address) || '—'}</td></tr>
+      <tr><td>Telefon</td><td class="num">${escapeHtml(localSeo.telephone) || '—'}</td></tr>
+      <tr><td>NAP Tutarlılığı</td><td class="num">${localSeo.napConsistency?.consistent === true ? 'Tutarlı' : localSeo.napConsistency?.consistent === false ? 'Tutarsız' : 'Karşılaştırılamadı'}</td></tr>
+    </table>
+  </div>
+</div>`;
+
+    // ── Sayfa: Teknoloji + Domain Bilgileri + Alt Sayfalar ───────────────
     const tech = d.technology ?? {};
-    const techList = (tech.technologies ?? []).map((t: any) => `${escapeHtml(t.category)}: ${escapeHtml(t.name)}`).join(', ') || 'Tespit edilemedi';
+    const techRows = (tech.technologies ?? [])
+      .map((t: any) => `<tr><td>${escapeHtml(t.category)}</td><td class="num">${escapeHtml(t.name)}</td></tr>`)
+      .join('');
     const domainInfoRows = [
       ['Domain Yaşı', tech.domainAgeYears != null ? `${tech.domainAgeYears.toFixed(1)} yıl` : 'Bilinmiyor'],
       ['SSL Durumu', tech.sslValid ? 'Geçerli' : 'Sorunlu'],
@@ -202,9 +607,109 @@ export class SiteAuditReportService {
       ['SPF Kaydı', tech.spf?.found ? 'Var' : 'Yok'],
       ['Sunucu IP', tech.serverIp ?? '—'],
       ['Web Sunucusu', tech.webServer ?? '—'],
+      ['DNS Sunucuları', (tech.nameservers ?? []).join(', ') || '—'],
     ]
       .map(([k, v]) => `<tr><td>${escapeHtml(k)}</td><td class="num">${escapeHtml(String(v))}</td></tr>`)
       .join('');
+
+    const crawlList = d.crawlList ?? {};
+    const totalUrls = (crawlList.urls ?? []).length;
+    const brokenCount = (crawlList.brokenLinks ?? []).length;
+    const orphanCount = (crawlList.orphanPages ?? []).length;
+    const redirectCount = (crawlList.redirectChains ?? []).length;
+
+    const techDomainPage = `<div class="page">
+  ${pagehead}
+  <div class="section">
+    <h2>Teknoloji Yığını</h2>
+    <p class="sub">Sitenizde tespit edilen CMS, framework, analytics ve diğer araçlar.</p>
+    <table><tr><th>Kategori</th><th>Teknoloji</th></tr>${techRows || '<tr><td colspan="2" class="muted">Tespit edilemedi</td></tr>'}</table>
+  </div>
+  <div class="section">
+    <h2>Domain / Güvenlik Bilgileri</h2>
+    <table>${domainInfoRows}</table>
+  </div>
+  <div class="section">
+    <h2>Alt Sayfalar Özeti</h2>
+    <p class="sub">Taranan tüm sayfalar ve tespit edilen bağlantı sorunları.</p>
+    <div class="kpis">
+      <div class="kpi"><div class="label">Toplam URL</div><div class="value">${totalUrls}</div></div>
+      <div class="kpi"><div class="label">Kırık Link</div><div class="value">${brokenCount}</div></div>
+      <div class="kpi"><div class="label">Yönlendirme Zinciri</div><div class="value">${redirectCount}</div></div>
+      <div class="kpi"><div class="label">Orphan Sayfa</div><div class="value">${orphanCount}</div></div>
+    </div>
+  </div>
+  <p class="muted" style="margin-top:20px">Bu rapor FunBreak SEO tarafından ${new Date(d.generatedAt).toLocaleString('tr-TR')} tarihinde otomatik oluşturulmuştur · funbreakseo.com · destek@funbreakseo.com</p>
+</div>`;
+
+    // ── Sayfa: Google Analytics (GA4) ────────────────────────────────────
+    const ga4Page = d.ga4?.connected
+      ? `<div class="page">
+  ${pagehead}
+  <div class="section">
+    <h2>Google Analytics (GA4)</h2>
+    <p class="sub">Sitenize gelen ziyaretçilerin sayısı, davranışı ve nereden geldiği.</p>
+    <div class="kpis">
+      <div class="kpi"><div class="label">Kullanıcı</div><div class="value">${fmt(d.ga4.current.users)}</div><div class="delta">${deltaHtml(d.ga4.current.users, d.ga4.previous.users)}</div></div>
+      <div class="kpi"><div class="label">Oturum</div><div class="value">${fmt(d.ga4.current.sessions)}</div><div class="delta">${deltaHtml(d.ga4.current.sessions, d.ga4.previous.sessions)}</div></div>
+      <div class="kpi"><div class="label">Görüntüleme</div><div class="value">${fmt(d.ga4.current.pageViews)}</div><div class="delta">${deltaHtml(d.ga4.current.pageViews, d.ga4.previous.pageViews)}</div></div>
+      <div class="kpi"><div class="label">Hemen Çıkma</div><div class="value">%${d.ga4.current.bounceRate.toFixed(1)}</div><div class="delta">${deltaHtml(d.ga4.current.bounceRate, d.ga4.previous.bounceRate)}</div></div>
+    </div>
+  </div>
+  <div class="section">
+    <h2>Trafik Kaynakları</h2>
+    <p class="sub">"AI Assistant" satırı ChatGPT/Perplexity gibi AI araçlarından gelen trafiği gösterir — GEO çalışmalarınızın somut kanıtıdır.</p>
+    <table><tr><th>Kaynak</th><th>Oturum</th><th>Kullanıcı</th></tr>${d.ga4.channels.map((ch) => `<tr${ch.channel.startsWith('AI Assistant') ? ' style="background:#eef2ff"' : ''}><td>${escapeHtml(ch.channel)}</td><td class="num">${fmt(ch.sessions)}</td><td class="num">${fmt(ch.users)}</td></tr>`).join('') || '<tr><td colspan="3" class="muted">Veri yok</td></tr>'}</table>
+  </div>
+</div>`
+      : `<div class="page">
+  ${pagehead}
+  <div class="section">
+    <h2>Google Analytics (GA4)</h2>
+    <p class="muted">GA4 henüz bağlanmadı. Panelden Google hesabınızı bağlayarak trafik verilerinizi bu rapora dahil edebilirsiniz.</p>
+  </div>
+</div>`;
+
+    // ── Sayfa: Google Search Console ────────────────────────────────────
+    const gscPage = d.gsc?.connected
+      ? `<div class="page">
+  ${pagehead}
+  <div class="section">
+    <h2>Google Search Console</h2>
+    <p class="sub">Google aramalarında sitenizin gösterim ve tıklanma performansı.</p>
+    <div class="kpis">
+      <div class="kpi"><div class="label">Tıklama</div><div class="value">${fmt(d.gsc.current.clicks)}</div><div class="delta">${deltaHtml(d.gsc.current.clicks, d.gsc.previous.clicks)}</div></div>
+      <div class="kpi"><div class="label">Gösterim</div><div class="value">${fmt(d.gsc.current.impressions)}</div><div class="delta">${deltaHtml(d.gsc.current.impressions, d.gsc.previous.impressions)}</div></div>
+      <div class="kpi"><div class="label">CTR</div><div class="value">%${d.gsc.current.ctr.toFixed(1)}</div><div class="delta">${deltaHtml(d.gsc.current.ctr, d.gsc.previous.ctr)}</div></div>
+      <div class="kpi"><div class="label">Ort. Pozisyon</div><div class="value">${d.gsc.current.position.toFixed(1)}</div><div class="delta">${deltaHtml(d.gsc.previous.position, d.gsc.current.position)}</div></div>
+    </div>
+  </div>
+  <div class="section">
+    <h2>Cihaz &amp; Ülke Dağılımı</h2>
+    <div class="two-col">
+      <table><tr><th>Cihaz</th><th>Tıklama</th></tr>${d.gsc.devices.slice(0, 5).map((x) => `<tr><td>${escapeHtml(x.device)}</td><td class="num">${fmt(x.clicks)}</td></tr>`).join('') || '<tr><td colspan="2" class="muted">Veri yok</td></tr>'}</table>
+      <table><tr><th>Ülke</th><th>Tıklama</th></tr>${d.gsc.countries.slice(0, 6).map((x) => `<tr><td>${escapeHtml(x.country.toUpperCase())}</td><td class="num">${fmt(x.clicks)}</td></tr>`).join('') || '<tr><td colspan="2" class="muted">Veri yok</td></tr>'}</table>
+    </div>
+  </div>
+</div>
+<div class="page">
+  ${pagehead}
+  <div class="section">
+    <h2>En İyi Sorgular</h2>
+    <table><tr><th>Sorgu</th><th>Tıklama</th><th>Gösterim</th><th>CTR</th><th>Pozisyon</th></tr>${d.gsc.topQueries.slice(0, 15).map((q) => `<tr><td>${escapeHtml(q.query)}</td><td class="num">${fmt(q.clicks)}</td><td class="num">${fmt(q.impressions)}</td><td class="num">%${q.ctr.toFixed(1)}</td><td class="num" style="color:${posColor(q.position)};font-weight:700">${q.position.toFixed(1)}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">Veri yok</td></tr>'}</table>
+  </div>
+  <div class="section">
+    <h2>En Çok Tıklanan Sayfalar</h2>
+    <table><tr><th>Sayfa</th><th>Tıklama</th><th>Gösterim</th></tr>${d.gsc.topPages.slice(0, 10).map((p) => `<tr><td class="url">${escapeHtml(p.page.replace(/^https?:\/\/[^/]+/, '') || '/')}</td><td class="num">${fmt(p.clicks)}</td><td class="num">${fmt(p.impressions)}</td></tr>`).join('') || '<tr><td colspan="3" class="muted">Veri yok</td></tr>'}</table>
+  </div>
+</div>`
+      : `<div class="page">
+  ${pagehead}
+  <div class="section">
+    <h2>Google Search Console</h2>
+    <p class="muted">Search Console henüz bağlanmadı. Panelden bağlayarak arama performansı verilerinizi bu rapora dahil edebilirsiniz.</p>
+  </div>
+</div>`;
 
     return `<!DOCTYPE html>
 <html lang="tr">
@@ -220,10 +725,13 @@ export class SiteAuditReportService {
            background: linear-gradient(160deg, #1d4ed8 0%, #2563eb 45%, #3b82f6 100%); color: #fff; text-align: center; padding: 60px; }
   .cover .logo { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 40px; }
   .cover .logo span { opacity: 0.85; font-weight: 400; }
-  .cover h1 { font-size: 30px; font-weight: 800; margin-bottom: 10px; }
+  .cover h1 { font-size: 28px; font-weight: 800; margin-bottom: 10px; }
   .cover .domain { font-size: 22px; opacity: 0.95; margin-bottom: 6px; }
-  .cover .date { font-size: 13px; opacity: 0.7; margin-bottom: 40px; }
+  .cover .date { font-size: 13px; opacity: 0.7; margin-bottom: 30px; }
   .cover .footer { margin-top: 40px; font-size: 11px; opacity: 0.65; }
+  .cover-score { display: flex; align-items: center; gap: 22px; }
+  .cover-grade { font-size: 56px; font-weight: 800; line-height: 1; text-align: left; }
+  .cover-grade-sub { display: block; font-size: 14px; font-weight: 400; opacity: 0.75; margin-top: 4px; }
 
   h2 { font-size: 17px; color: #1d4ed8; margin: 0 0 4px; font-weight: 700; }
   .sub { color: #64748b; font-size: 11px; margin-bottom: 16px; }
@@ -238,124 +746,65 @@ export class SiteAuditReportService {
   .cat-ring { text-align: center; }
   .cat-label { font-size: 10px; color: #64748b; margin-top: 4px; }
 
+  .gauge-row { display: flex; gap: 24px; justify-content: center; margin-bottom: 18px; }
+
   table { width: 100%; border-collapse: collapse; font-size: 11px; }
   th { background: #1d4ed8; color: #fff; text-align: left; padding: 8px 10px; font-weight: 600; }
   td { padding: 7px 10px; border-bottom: 1px solid #e8eef7; }
   tr:nth-child(even) td { background: #f6f9fd; }
   td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.url { word-break: break-all; max-width: 340px; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 
   .rec { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid #dbe4f0;
          border-radius: 8px; margin-bottom: 8px; background: #f8fafc; }
-  .prio { flex-shrink: 0; font-size: 9px; font-weight: 800; padding: 3px 8px; border-radius: 20px; letter-spacing: 0.05em; }
+  .prio { flex-shrink: 0; font-size: 9px; font-weight: 800; padding: 4px 10px; border-radius: 20px; letter-spacing: 0.05em; }
   .prio.high { background: #fee2e2; color: #b91c1c; }
   .prio.mid { background: #fef3c7; color: #92400e; }
   .prio.low { background: #e2e8f0; color: #475569; }
   .muted { color: #94a3b8; font-size: 10px; margin-top: 2px; }
+  .up { color: #16a34a; font-weight: 700; }
+  .down { color: #dc2626; font-weight: 700; }
+  .flat { color: #94a3b8; }
 
   .gauge { margin-bottom: 14px; }
   .gauge-label { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px; }
   .gauge-track { height: 10px; border-radius: 6px; background: #e2e8f0; overflow: hidden; }
   .gauge-fill { height: 100%; border-radius: 6px; }
 
-  .serp { border: 1px solid #dbe4f0; border-radius: 8px; padding: 14px; background: #fff; max-width: 480px; }
+  .serp { display: flex; gap: 10px; border: 1px solid #dbe4f0; border-radius: 8px; padding: 16px; background: #fff; max-width: 520px; }
+  .serp-favicon { width: 18px; height: 18px; border-radius: 50%; background: #dbe4f0; flex-shrink: 0; margin-top: 2px; }
   .serp .url { color: #16a34a; font-size: 11px; }
-  .serp .title { color: #1a0dab; font-size: 15px; margin: 3px 0; }
+  .serp .title { color: #1a0dab; font-size: 16px; margin: 3px 0; font-weight: 500; }
   .serp .desc { color: #4d5156; font-size: 12px; }
 
-  .kpis { display: flex; gap: 12px; margin-bottom: 18px; }
-  .kpi { flex: 1; border: 1px solid #dbe4f0; border-radius: 10px; padding: 14px; background: #f8fafc; text-align: center; }
+  .kpis { display: flex; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+  .kpi { flex: 1; min-width: 110px; border: 1px solid #dbe4f0; border-radius: 10px; padding: 14px; background: #f8fafc; text-align: center; }
   .kpi .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: #64748b; margin-bottom: 6px; }
-  .kpi .value { font-size: 22px; font-weight: 800; color: #0f172a; }
+  .kpi .value { font-size: 20px; font-weight: 800; color: #0f172a; }
+  .kpi .delta { font-size: 10px; margin-top: 3px; }
+
+  .shots { display: flex; align-items: flex-end; gap: 24px; }
+  .shot-frame { border: 6px solid #1e293b; border-radius: 10px; overflow: hidden; background: #000; }
+  .shot-frame img { display: block; width: 100%; }
+  .shot-desktop { width: 420px; }
+  .shot-mobile { width: 130px; border-radius: 18px; }
+  .shot-caption { font-size: 10px; color: #64748b; text-align: center; margin-top: 4px; }
 </style>
 </head>
 <body>
-
-<div class="page cover">
-  <div class="logo">FunBreak <span>SEO</span></div>
-  <h1>Site Denetimi Raporu</h1>
-  <div class="domain">${escapeHtml(d.project.domain)}</div>
-  <div class="date">Tarama tarihi: ${dateLabel}</div>
-  ${ringSvg(d.overallScore, d.overallGrade, 160, 14)}
-  <div class="footer">${escapeHtml(d.project.organization)} için hazırlandı · funbreakseo.com</div>
-</div>
-
-<div class="page">
-  <div class="pagehead"><span class="brand">FunBreak SEO</span><span class="meta">${escapeHtml(d.project.domain)} · ${dateLabel}</span></div>
-  <div class="section">
-    <h2>Kategori Skorları</h2>
-    <p class="sub">${d.crawlJob.pagesScanned} sayfa tarandı · ${d.crawlJob.issuesFound} sorun tespit edildi</p>
-    <div class="cat-rings">${categoryRings}</div>
-  </div>
-  <div class="section">
-    <h2>Öncelikli Öneriler</h2>
-    <p class="sub">En kritik ${d.recommendations.length} bulgu</p>
-    ${recRows || '<p class="muted">Öneri bulunamadı.</p>'}
-  </div>
-</div>
-
-<div class="page">
-  <div class="pagehead"><span class="brand">FunBreak SEO</span><span class="meta">${escapeHtml(d.project.domain)} · ${dateLabel}</span></div>
-  <div class="section">
-    <h2>SERP Önizlemesi</h2>
-    <div class="serp"><div class="url">${serpUrl}</div><div class="title">${serpTitle}</div><div class="desc">${serpDesc}</div></div>
-  </div>
-  <div class="section">
-    <h2>Sayfa İçi SEO — Teknik Kontroller</h2>
-    <table>${onPageRows}</table>
-  </div>
-  <div class="section">
-    <h2>Backlink Profili</h2>
-    ${barGauge('Domain Strength', d.backlink.domainStrength)}
-    ${barGauge('Page Strength', d.backlink.pageStrength)}
-    <div class="kpis">
-      <div class="kpi"><div class="label">Toplam Backlink</div><div class="value">${c.total ?? 0}</div></div>
-      <div class="kpi"><div class="label">Yönlendiren Alan</div><div class="value">${c.referringDomains ?? 0}</div></div>
-      <div class="kpi"><div class="label">Dofollow</div><div class="value">${c.dofollow ?? 0}</div></div>
-      <div class="kpi"><div class="label">Nofollow</div><div class="value">${c.nofollow ?? 0}</div></div>
-    </div>
-  </div>
-</div>
-
-<div class="page">
-  <div class="pagehead"><span class="brand">FunBreak SEO</span><span class="meta">${escapeHtml(d.project.domain)} · ${dateLabel}</span></div>
-  <div class="section">
-    <h2>En Değerli Backlinkler</h2>
-    <table><tr><th>DR</th><th>Kaynak</th><th>Anchor</th><th>Tip</th></tr>${backlinkTop || '<tr><td colspan="4" class="muted">Veri yok</td></tr>'}</table>
-  </div>
-  <div class="section">
-    <h2>En Sık Kullanılan Anchor Metinleri</h2>
-    <table><tr><th>Anchor</th><th>Adet</th></tr>${anchorRows || '<tr><td colspan="2" class="muted">Veri yok</td></tr>'}</table>
-  </div>
-</div>
-
-<div class="page">
-  <div class="pagehead"><span class="brand">FunBreak SEO</span><span class="meta">${escapeHtml(d.project.domain)} · ${dateLabel}</span></div>
-  <div class="section">
-    <h2>Performans</h2>
-    ${psi.mobile ? barGauge('PageSpeed — Mobil', psi.mobile.score) : ''}
-    ${psi.desktop ? barGauge('PageSpeed — Masaüstü', psi.desktop.score) : ''}
-    ${(psi.mobile || psi.desktop) ? `<table><tr><th></th><th>LCP</th><th>INP</th><th>CLS</th></tr>${cwvRow('Mobil', cwv.mobile)}${cwvRow('Masaüstü', cwv.desktop)}</table>` : '<p class="muted">PageSpeed verisi mevcut değil.</p>'}
-  </div>
-  <div class="section">
-    <h2>GEO / AI Görünürlük</h2>
-    ${barGauge('E-E-A-T Skoru', eeat.score ?? 0)}
-    <table><tr><th>Faktör</th><th>Durum</th></tr>${eeatRows || '<tr><td colspan="2" class="muted">Veri yok</td></tr>'}</table>
-  </div>
-</div>
-
-<div class="page">
-  <div class="pagehead"><span class="brand">FunBreak SEO</span><span class="meta">${escapeHtml(d.project.domain)} · ${dateLabel}</span></div>
-  <div class="section">
-    <h2>Teknoloji Yığını</h2>
-    <p class="sub">${techList}</p>
-  </div>
-  <div class="section">
-    <h2>Domain / Güvenlik Bilgileri</h2>
-    <table>${domainInfoRows}</table>
-  </div>
-  <p class="muted" style="margin-top:30px">Bu rapor FunBreak SEO tarafından ${new Date(d.generatedAt).toLocaleString('tr-TR')} tarihinde otomatik oluşturulmuştur · funbreakseo.com · destek@funbreakseo.com</p>
-</div>
-
+${cover}
+${summaryPage}
+${recsPage}
+${onPagePage}
+${screenshotsPage}
+${backlinkPage}
+${perfPage}
+${geoPage}
+${socialLocalPage}
+${techDomainPage}
+${ga4Page}
+${gscPage}
 </body>
 </html>`;
   }

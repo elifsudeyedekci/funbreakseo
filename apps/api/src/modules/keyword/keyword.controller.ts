@@ -173,6 +173,15 @@ export class KeywordController {
     );
   }
 
+  @Get('projects/:projectId/keywords/cannibalization')
+  @ApiOperation({ summary: 'Detect keyword cannibalization (multiple URLs ranking for the same keyword over time)' })
+  async cannibalization(
+    @CurrentUser() user: User,
+    @Param('projectId') projectId: string,
+  ) {
+    return this.keywordService.detectCannibalization(projectId, user.organizationId!);
+  }
+
   @Get('projects/:projectId/keywords/summary')
   @ApiOperation({ summary: 'Get keyword position distribution and visibility score' })
   async getSummary(
@@ -240,6 +249,15 @@ export class KeywordController {
     return this.keywordService.getRankedKeywordsForProject(projectId, user.organizationId!, {
       maxPosition: maxPosition ? parseInt(maxPosition, 10) : undefined,
     });
+  }
+
+  @Get('projects/:projectId/keywords/internal-link-opportunities')
+  @ApiOperation({ summary: 'Orphan pages worth adding internal links to (from the latest crawl + tracked keyword rankings)' })
+  async internalLinkOpportunities(
+    @CurrentUser() user: User,
+    @Param('projectId') projectId: string,
+  ) {
+    return this.keywordService.getInternalLinkOpportunities(projectId, user.organizationId!);
   }
 
   // ─── Keyword Tags ─────────────────────────────────────────────────────────────

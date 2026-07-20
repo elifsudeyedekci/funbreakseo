@@ -962,6 +962,10 @@ model CrawlJob {
   startedAt    DateTime?
   finishedAt   DateTime?
   pagesScanned Int            @default(0)
+  /// Total URLs queued for this crawl (sitemap/BFS discovery count) — set once
+  /// discovery finishes, lets the UI show a real "%pagesScanned/totalPagesQueued"
+  /// progress bar instead of a fake indeterminate animation.
+  totalPagesQueued Int?
   issuesFound  Int            @default(0)
   healthScore  Int?
   triggeredBy  CrawlTrigger   @default(MANUAL)

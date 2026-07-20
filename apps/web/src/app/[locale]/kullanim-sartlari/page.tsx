@@ -380,7 +380,7 @@ export default function TermsPage() {
                 <p><strong className="text-white/80">Şirket:</strong> FunBreak Global Teknoloji Ltd. Şti.</p>
                 <p><strong className="text-white/80">Hukuk E-posta:</strong> legal@funbreakseo.com</p>
                 <p><strong className="text-white/80">Destek E-posta:</strong> destek@funbreakseo.com</p>
-                <p><strong className="text-white/80">Adres:</strong> Çifte Havuzlar Mah. Eski Londra Asfaltı Cad. Kuluçka Merkezi B2 Blok No:151/1C İç Kapı No:2B Esenler / İstanbul</p>
+                <p><strong className="text-white/80">Adres:</strong> İstanbul</p>
               </div>
             </section>
 

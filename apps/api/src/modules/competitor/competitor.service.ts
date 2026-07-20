@@ -472,4 +472,97 @@ export class CompetitorService {
       },
     };
   }
+
+  // ─── Content Gap analysis ───────────────────────────────────────────────────
+
+  /**
+   * Keywords the competitor ranks for (position <= 30) that we either don't
+   * rank for at all or rank significantly worse for (position > 50 or
+   * untracked). Opportunity score rewards high volume + strong competitor
+   * position. Returns the top 50 by opportunity score, descending.
+   */
+  async getContentGap(projectId: string, organizationId: string, competitorDomain: string) {
+    const project = await this.getProject(projectId, organizationId);
+    await this.planLimit.assertFeatureWithinLimit(organizationId, 'COMPETITOR_COMPARE');
+
+    const domain = this.cleanDomain(project.domain);
+    const cleanCompetitor = this.cleanDomain(competitorDomain);
+    const locationCode = this.dfs.resolveLocationCode(project.country ?? 'TR');
+    const language = project.language ?? 'tr';
+
+    const [compRanked, projMap] = await Promise.all([
+      this.dfs.getRankedKeywordsDetailed(cleanCompetitor, 200, locationCode, language),
+      // Combines tracked keywords + our own live ranked keywords — same
+      // helper used by compareWithCompetitor/addCompetitor.
+      this.getProjectKeywordMap(projectId, domain, locationCode, language),
+    ]);
+
+    const gaps: Array<{
+      keyword: string; searchVolume: number; competitorPosition: number;
+      yourPosition: number | null; opportunityScore: number;
+    }> = [];
+
+    for (const r of compRanked) {
+      if (r.position == null || r.position > 30) continue;
+      const key = r.keyword.toLowerCase().trim();
+      const yourPosition = projMap.has(key) ? projMap.get(key)! : null;
+      const isGap = yourPosition == null || yourPosition > 50;
+      if (!isGap) continue;
+      const searchVolume = r.searchVolume ?? 0;
+      const opportunityScore = Math.round((searchVolume * (101 - r.position)) / 100);
+      gaps.push({ keyword: r.keyword, searchVolume, competitorPosition: r.position, yourPosition, opportunityScore });
+    }
+
+    gaps.sort((a, b) => b.opportunityScore - a.opportunityScore);
+
+    await this.planLimit.recordFeatureUsage(organizationId, 'COMPETITOR_COMPARE', projectId);
+    return gaps.slice(0, 50);
+  }
+
+  // ─── Backlink Gap (Link Intersect) ──────────────────────────────────────────
+
+  /**
+   * Referring domains present in the competitor's backlink profile that we
+   * do NOT already have (checked against our own stored Backlink rows).
+   * Sorted by the competitor backlink's normalized (0-100) domain rank, desc.
+   */
+  async getBacklinkGap(projectId: string, organizationId: string, competitorDomain: string) {
+    await this.getProject(projectId, organizationId);
+    await this.planLimit.assertFeatureWithinLimit(organizationId, 'COMPETITOR_COMPARE');
+
+    const cleanCompetitor = this.cleanDomain(competitorDomain);
+
+    const [competitorBacklinks, ownBacklinks] = await Promise.all([
+      this.dfs.getBacklinks(cleanCompetitor),
+      this.prisma.backlink.findMany({ where: { projectId }, select: { sourceDomain: true }, distinct: ['sourceDomain'] }),
+    ]);
+
+    const ownDomains = new Set(ownBacklinks.map((b) => this.cleanDomain(b.sourceDomain)));
+
+    // Keep the highest-rank sample per referring domain (a domain can appear
+    // multiple times in the sample via different pages/anchors).
+    const bestByDomain = new Map<string, (typeof competitorBacklinks.sample)[number]>();
+    for (const bl of competitorBacklinks.sample) {
+      const d = this.cleanDomain(bl.domain_from);
+      if (!d || ownDomains.has(d)) continue;
+      const existing = bestByDomain.get(d);
+      if (!existing || (bl.rank ?? 0) > (existing.rank ?? 0)) {
+        bestByDomain.set(d, bl);
+      }
+    }
+
+    const gaps = Array.from(bestByDomain.entries())
+      .map(([sourceDomain, bl]) => ({
+        sourceDomain,
+        domainRating: bl.rank ?? 0,
+        sourceUrl: bl.url_from,
+        anchor: bl.anchor ?? '',
+        isDofollow: bl.is_dofollow,
+      }))
+      .sort((a, b) => b.domainRating - a.domainRating)
+      .slice(0, 50);
+
+    await this.planLimit.recordFeatureUsage(organizationId, 'COMPETITOR_COMPARE', projectId);
+    return gaps;
+  }
 }

@@ -21,6 +21,16 @@ class AuditCompareDto {
   competitorDomain!: string;
 }
 
+class ContentGapDto {
+  @IsString()
+  competitorDomain!: string;
+}
+
+class BacklinkGapDto {
+  @IsString()
+  competitorDomain!: string;
+}
+
 @ApiTags('Competitors')
 @ApiBearerAuth('access-token')
 @UseGuards(JwtAuthGuard)
@@ -73,6 +83,26 @@ export class CompetitorController {
     @Body() body: AuditCompareDto,
   ) {
     return this.competitorService.compareFullAudit(projectId, user.organizationId!, body.competitorDomain);
+  }
+
+  @Post('content-gap')
+  @ApiOperation({ summary: 'Content gap: competitor keywords (pos <= 30) you do not rank for or rank badly for (pos > 50), with opportunity score' })
+  contentGap(
+    @CurrentUser() user: User,
+    @Param('projectId') projectId: string,
+    @Body() body: ContentGapDto,
+  ) {
+    return this.competitorService.getContentGap(projectId, user.organizationId!, body.competitorDomain);
+  }
+
+  @Post('backlink-gap')
+  @ApiOperation({ summary: 'Backlink gap (link intersect): competitor referring domains you do not have' })
+  backlinkGap(
+    @CurrentUser() user: User,
+    @Param('projectId') projectId: string,
+    @Body() body: BacklinkGapDto,
+  ) {
+    return this.competitorService.getBacklinkGap(projectId, user.organizationId!, body.competitorDomain);
   }
 
   @Post()

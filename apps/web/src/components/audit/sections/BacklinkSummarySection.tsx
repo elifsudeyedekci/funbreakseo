@@ -246,7 +246,7 @@ export function BacklinkSummarySection({ projectId }: BacklinkSummarySectionProp
             {toxic.map((t) => (
               <div key={t.id} className="flex items-center justify-between rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs">
                 <span className="text-white/70 truncate">{t.sourceDomain}</span>
-                <span className="text-red-400 flex-shrink-0">Toksik Skor: {t.toxicScore ?? '—'}</span>
+                <span className="text-red-400 flex-shrink-0">Toksik Skor: {t.toxicScore ?? 0}</span>
               </div>
             ))}
           </div>

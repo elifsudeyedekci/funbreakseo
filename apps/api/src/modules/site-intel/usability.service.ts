@@ -69,7 +69,7 @@ export class UsabilityService {
       })
 
       const [desktopBuf, tabletBuf, mobileResult] = await Promise.all([
-        this.captureViewport(browser, url, 1440, 900),
+        this.captureViewport(browser, url, 1280, 900),
         this.captureViewport(browser, url, 768, 1024),
         this.captureMobileAndEvaluate(browser, url),
       ])

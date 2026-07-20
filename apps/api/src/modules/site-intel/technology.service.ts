@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common'
 import axios from 'axios'
 import * as dns from 'dns'
 import * as tls from 'tls'
+import * as net from 'net'
 import { PriorityRecommendation } from '@funbreakseo/shared'
 
 // ---------------------------------------------------------------------------
@@ -246,10 +247,31 @@ export class TechnologyService {
     }
   }
 
+  /**
+   * RDAP first (rdap.org bridges most gTLDs + many ccTLDs), then a legacy
+   * WHOIS (port 43) fallback for .tr domains specifically — Turkey's ccTLD
+   * (.tr/.com.tr/...) has NO RDAP server at all (confirmed against IANA's
+   * bootstrap registry at data.iana.org/rdap/dns.json, which has no "tr"
+   * entry), so rdap.org 404s for every .tr domain. Since this platform's
+   * customer base is majority-Turkish, that made domain age silently
+   * unavailable (rendered as "0") for most real projects.
+   */
   private async resolveDomainAge(hostname: string): Promise<number | null> {
+    const registrableDomain = hostname.replace(/^www\./i, '')
+
+    const viaRdap = await this.tryRdapDomainAge(registrableDomain)
+    if (viaRdap != null) return viaRdap
+
+    if (/\.tr$/i.test(registrableDomain)) {
+      return this.tryTrWhoisDomainAge(registrableDomain)
+    }
+
+    return null
+  }
+
+  private async tryRdapDomainAge(domain: string): Promise<number | null> {
     try {
-      const registrableDomain = hostname.replace(/^www\./i, '')
-      const res = await axios.get(`https://rdap.org/domain/${registrableDomain}`, {
+      const res = await axios.get(`https://rdap.org/domain/${domain}`, {
         timeout: 8_000,
         validateStatus: () => true,
       })
@@ -259,14 +281,56 @@ export class TechnologyService {
       const registration = events?.find((e) => e.eventAction === 'registration')
       if (!registration?.eventDate) return null
 
-      const regDate = new Date(registration.eventDate)
-      if (isNaN(regDate.getTime())) return null
-
-      const years = (Date.now() - regDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25)
-      return years >= 0 ? Math.round(years * 10) / 10 : null
+      return this.yearsSince(registration.eventDate)
     } catch {
       return null
     }
+  }
+
+  /** whois.trabis.gov.tr — Turkey's official ccTLD WHOIS server (raw TCP, port 43). */
+  private tryTrWhoisDomainAge(domain: string): Promise<number | null> {
+    return new Promise((resolve) => {
+      let settled = false
+      const finish = (v: number | null) => {
+        if (settled) return
+        settled = true
+        resolve(v)
+      }
+
+      let socket: net.Socket
+      try {
+        socket = net.createConnection({ host: 'whois.trabis.gov.tr', port: 43, timeout: 8_000 })
+      } catch {
+        finish(null)
+        return
+      }
+
+      let data = ''
+      socket.on('connect', () => socket.write(`${domain}\r\n`))
+      socket.on('data', (chunk) => {
+        data += chunk.toString()
+      })
+      socket.on('end', () => {
+        // "Created on..............: 2019-Jul-09."
+        const m = data.match(/Created on\.*:\s*([\d]{4}-[A-Za-z]{3}-\d{1,2})/i)
+        if (!m) return finish(null)
+        const parsed = new Date(m[1].replace(/-/g, ' '))
+        if (isNaN(parsed.getTime())) return finish(null)
+        finish(this.yearsSince(parsed.toISOString()))
+      })
+      socket.on('timeout', () => {
+        socket.destroy()
+        finish(null)
+      })
+      socket.on('error', () => finish(null))
+    })
+  }
+
+  private yearsSince(dateStr: string): number | null {
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return null
+    const years = (Date.now() - d.getTime()) / (1000 * 60 * 60 * 24 * 365.25)
+    return years >= 0 ? Math.round(years * 10) / 10 : null
   }
 
   private resolveSsl(hostname: string): Promise<SslResult> {
