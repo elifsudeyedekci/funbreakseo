@@ -696,6 +696,67 @@ export class AuthService {
     }
   }
 
+  /**
+   * GA4 hesabına bağlandıktan sonra, kullanıcının Google Analytics hesabındaki
+   * property'ler arasında organizasyonun (ilk) proje domain'iyle eşleşeni arar
+   * ve bulursa organizations.ga4PropertyId'ye kaydeder. Eşleştirme mantığı
+   * MonthlyReportService.resolveGa4PropertyId ile aynıdır (displayName'de
+   * domain/domain kökü geçiyor mu, yoksa hesapta tek property var mı).
+   *
+   * Bu kolon Prisma client şemasında modellenmedi (bkz. migration +
+   * $executeRaw), o yüzden hem okuma hem yazma raw SQL ile yapılır.
+   * Başarısız olursa sessizce geçilir — GSC bağlantısı zaten kaydedildiği
+   * için akışı bozmamalı.
+   */
+  async autoDetectGa4Property(orgId: string, accessToken: string): Promise<void> {
+    try {
+      const project = await this.prisma.project.findFirst({
+        where: { organizationId: orgId },
+        orderBy: { createdAt: 'asc' },
+        select: { domain: true },
+      });
+      if (!project?.domain) {
+        process.stdout.write(`[GA4 autodetect] org ${orgId} has no project yet, skipping\n`);
+        return;
+      }
+
+      const { data } = await axios.get<{
+        accountSummaries?: Array<{ propertySummaries?: Array<{ property: string; displayName: string }> }>;
+      }>('https://analyticsadmin.googleapis.com/v1beta/accountSummaries?pageSize=200', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        timeout: 15_000,
+      });
+
+      const properties = (data.accountSummaries ?? []).flatMap((a) => a.propertySummaries ?? []);
+      process.stdout.write(`[GA4 autodetect] org ${orgId} candidateProperties=${properties.length}\n`);
+      if (properties.length === 0) return;
+
+      const cleanDomain = project.domain.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
+      const domainRoot = cleanDomain.split('.')[0].toLowerCase();
+      const match =
+        properties.find((p) => p.displayName.toLowerCase().includes(cleanDomain.toLowerCase())) ??
+        properties.find((p) => p.displayName.toLowerCase().includes(domainRoot)) ??
+        (properties.length === 1 ? properties[0] : null);
+
+      if (!match) {
+        process.stdout.write(`[GA4 autodetect] org ${orgId} — no property matched domain ${cleanDomain}\n`);
+        return;
+      }
+
+      const propertyId = match.property.replace('properties/', '');
+      await this.prisma.$executeRaw`
+        UPDATE organizations
+        SET "ga4PropertyId" = ${propertyId},
+            "updatedAt"     = NOW()
+        WHERE id = ${orgId}
+      `;
+      process.stdout.write(`[GA4 autodetect] org ${orgId} matched property ${propertyId} (${match.displayName}) for ${cleanDomain}\n`);
+    } catch (err) {
+      const axErr = err as { response?: { status?: number; data?: unknown }; message?: string };
+      process.stderr.write(`[GA4 autodetect] failed for org ${orgId}: ${axErr.message ?? ''} status=${axErr.response?.status} body=${JSON.stringify(axErr.response?.data ?? {}).substring(0, 300)}\n`);
+    }
+  }
+
   async disconnectGsc(orgId: string) {
     await this.prisma.$executeRaw`
       UPDATE organizations

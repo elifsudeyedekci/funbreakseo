@@ -254,10 +254,10 @@ export class AuthController {
     url.searchParams.set('client_id', clientId);
     url.searchParams.set('redirect_uri', callbackUrl);
     url.searchParams.set('response_type', 'code');
-    // GSC + GA4 (Analytics) okuma izni birlikte istenir — tek bağlantıyla iki entegrasyon
+    // GSC + GA4 (Analytics veri okuma + Admin API — property auto-detect için) izni birlikte istenir — tek bağlantıyla iki entegrasyon
     url.searchParams.set(
       'scope',
-      'profile email https://www.googleapis.com/auth/webmasters.readonly https://www.googleapis.com/auth/analytics.readonly',
+      'profile email https://www.googleapis.com/auth/webmasters.readonly https://www.googleapis.com/auth/analytics.readonly https://www.googleapis.com/auth/analytics',
     );
     url.searchParams.set('access_type', 'offline');
     url.searchParams.set('prompt', 'consent');
@@ -322,6 +322,10 @@ export class AuthController {
       process.stderr.write(`[GSC callback] DB save failed for org ${orgId}: ${(err as Error).message}\n`);
       return void res.redirect(errorUrl);
     }
+
+    // 3.5. GA4 property'yi otomatik tespit et (organizasyonun ilk projesinin
+    // domain'ine göre eşleştirir). Kendi içinde hata yakalar, akışı kesmez.
+    await this.authService.autoDetectGa4Property(orgId, tokens.accessToken);
 
     // 4. Redirect to success
     const successUrl = `${frontendUrl}/tr/dashboard/account?tab=integrations&gsc=success`;
